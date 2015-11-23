@@ -1,0 +1,6 @@
+dependencies {
+  compile project(':predict')
+}
+
+apply plugin: 'application'
+mainClassName = 'com.idibon.ml.app.App'
