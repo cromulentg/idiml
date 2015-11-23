@@ -1,2 +1,7 @@
+plugins {
+  // enable the ScalaTest test runner
+  id "com.github.maiflai.scalatest" version "0.10"
+}
+
 dependencies {
 }
