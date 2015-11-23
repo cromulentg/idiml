@@ -24,8 +24,10 @@ subprojects {
     compile group: 'org.apache.spark', name: 'spark-core_2.11', version: project.ext.sparkVersion
     compile group: 'org.apache.spark', name: 'spark-mllib_2.11', version: project.ext.sparkVersion
 
-    // ScalaTest dependencies
+    // ScalaTest framework
     testCompile 'org.scalatest:scalatest_2.11:2+'
+
+    // Generates an HTML report for tests in ../build/reports/tests/index.html
     testRuntime 'org.pegdown:pegdown:1.1.0'
   }
 }
