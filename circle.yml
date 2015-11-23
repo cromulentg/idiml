@@ -6,4 +6,12 @@ general:
   branches:
     ignore:
       - gh-pages
-    
+  artifacts:
+    # unit test reports
+    - "predict/build/reports"
+    - "train/build/reports"
+    - "ml-app/build/reports"
+
+    # JARs
+    - "predict/build/libs"
+    - "train/build/libs"
