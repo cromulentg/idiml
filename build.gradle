@@ -1,0 +1,31 @@
+// Common configuration for all subprojects listed in settings.gradle
+subprojects {
+  version = "0.0.1-SNAPSHOT"
+
+  apply plugin: 'scala'
+
+  // Java 8
+  sourceCompatibility = "1.8"
+  targetCompatibility = "1.8"
+
+  ext {
+    sparkVersion = '1.5.2'
+  }
+
+  repositories {
+    mavenCentral()
+  }
+
+  dependencies {
+    // Use Scala version 2.11
+    compile 'org.scala-lang:scala-library:2.11.7'
+
+    // Common Spark / Spark MLLib dependencies
+    compile group: 'org.apache.spark', name: 'spark-core_2.11', version: project.ext.sparkVersion
+    compile group: 'org.apache.spark', name: 'spark-mllib_2.11', version: project.ext.sparkVersion
+
+    // ScalaTest dependencies
+    testCompile 'org.scalatest:scalatest_2.11:2+'
+    testRuntime 'org.pegdown:pegdown:1.1.0'
+  }
+}
