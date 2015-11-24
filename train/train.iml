@@ -1,0 +1,1885 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id=":train" external.linked.project.path="$MODULE_DIR$" external.root.project.path="$MODULE_DIR$/.." external.system.id="GRADLE" external.system.module.group="idiml" external.system.module.version="0.0.1-SNAPSHOT" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/scala" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/scala" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" type="java-test-resource" />
+      <excludeFolder url="file://$MODULE_DIR$/.gradle" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="predict" />
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang:scala-library:2.11.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-library/2.11.7/f75e7acabd57b213d6f61483240286c07213ec0e/scala-library-2.11.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-library/2.11.7/b3cf65e92414af4ce51ad3507147cc9f31fd708c/scala-library-2.11.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-core_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-core_2.11/1.5.2/162efdca8a75d6c88fa237c38d6bdffc5e73266f/spark-core_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-core_2.11/1.5.2/798ebaf10487d4764d13a7f75e73c8c7fae14630/spark-core_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-mllib_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-mllib_2.11/1.5.2/f6a7cff7b077095a326d6544713bf3a907f7e00d/spark-mllib_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-mllib_2.11/1.5.2/559fb9e7de26a77127a19fa3bc1805e4fa8e6866/spark-mllib_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.avro:avro-mapred:1.7.7:hadoop2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-mapred/1.7.7/d8f23aff4a3c827c6a35009c8182872bfc0e52f5/avro-mapred-1.7.7-hadoop2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-mapred/1.7.7/5a33aec06e67b0eb64979a63a4949aff704b2a74/avro-mapred-1.7.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.twitter:chill_2.11:0.5.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.twitter/chill_2.11/0.5.0/69f9723745b9acc6e3f85502efa630d0b5642c65/chill_2.11-0.5.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.twitter/chill_2.11/0.5.0/620713a7f5702890bb8b07615ee87d3e5861e12f/chill_2.11-0.5.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.twitter:chill-java:0.5.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.twitter/chill-java/0.5.0/4b72c40509612ae221db6a2c2f733bd3e365ee5f/chill-java-0.5.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.twitter/chill-java/0.5.0/5a23bae4621915e276ddaa8b427fe5c4e7ffde9e/chill-java-0.5.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-client:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-client/2.2.0/8bc8c12f1991d1145e40011c8a8935798948246e/hadoop-client-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-launcher_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-launcher_2.11/1.5.2/f5075043d1838ffaa990863c3a5599ba83650363/spark-launcher_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-launcher_2.11/1.5.2/c0c1deb1da95d0f6e45c45eeab14c5a342839f28/spark-launcher_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-network-common_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-network-common_2.11/1.5.2/25a3118a30ae60971ab50ff0ad09d0aba9742c4/spark-network-common_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-network-common_2.11/1.5.2/9a5674aebdbd4d126538624e97aab3ff4cb32fdd/spark-network-common_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-network-shuffle_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-network-shuffle_2.11/1.5.2/dc4512cea025043275583f9d0a8ba1c9d8b82dec/spark-network-shuffle_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-network-shuffle_2.11/1.5.2/f26d1b09711922fa2a369fcd78c23b1ebd1cf20a/spark-network-shuffle_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-unsafe_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-unsafe_2.11/1.5.2/ca22f29fb52b8a09d55012b86c1f4fa370b5be94/spark-unsafe_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-unsafe_2.11/1.5.2/3720da68833aa8378ed8f31052343570b1a2aecd/spark-unsafe_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.java.dev.jets3t:jets3t:0.7.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.java.dev.jets3t/jets3t/0.7.1/2d10b62398360c674b4039ea4f2d1c697f46f6cd/jets3t-0.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.java.dev.jets3t/jets3t/0.7.1/1f14497d3b31b46e33252071a87e32b2e6d6be1/jets3t-0.7.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.curator:curator-recipes:2.4.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-recipes/2.4.0/54ae45b88db06bdf83be8d5b36313b8e20434584/curator-recipes-2.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-recipes/2.4.0/ca1824698c62a6e51438177a5ef19788173a0202/curator-recipes-2.4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.eclipse.jetty.orbit:javax.servlet:3.0.0.v201112011016">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty.orbit/javax.servlet/3.0.0.v201112011016/aaaa85845fb5c59da00193f06b8e5278d8bf3f8/javax.servlet-3.0.0.v201112011016.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty.orbit/javax.servlet/3.0.0.v201112011016/15c914135cf30177b83c321250c458396289cd37/javax.servlet-3.0.0.v201112011016-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.commons:commons-lang3:3.3.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.3.2/90a3822c38ec8c996e84c16a3477ef632cbc87a3/commons-lang3-3.3.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.3.2/d2a489573c0ed2c4942b3660decad5d65087b406/commons-lang3-3.3.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.commons:commons-math3:3.4.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-math3/3.4.1/3ac44a8664228384bc68437264cf7c4cf112f579/commons-math3-3.4.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-math3/3.4.1/975c1f46d8df327af57892ea4787007f31d2066b/commons-math3-3.4.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.slf4j:slf4j-api:1.7.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.10/5b338f206827d88acd890739f400a9b7664e5984/slf4j-api-1.7.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.10/4d2725efe68b9943ba0deaf334bb27116ca6b687/slf4j-api-1.7.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.slf4j:jul-to-slf4j:1.7.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/jul-to-slf4j/1.7.10/35dd785e5e36c957da395091c837dd2ed57b7fa3/jul-to-slf4j-1.7.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/jul-to-slf4j/1.7.10/3cf06b1271618869b45bc3c8204f1f646a0bf370/jul-to-slf4j-1.7.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.slf4j:jcl-over-slf4j:1.7.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/jcl-over-slf4j/1.7.10/ce49a188721bc39cb9710b346ae9b7ec27b0f36b/jcl-over-slf4j-1.7.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/jcl-over-slf4j/1.7.10/6e04c28745fd98501a958d4e6daa40214f63b69f/jcl-over-slf4j-1.7.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: log4j:log4j:1.2.17">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/log4j/log4j/1.2.17/5af35056b4d257e4b64b9e8069c0746e8b08629f/log4j-1.2.17.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/log4j/log4j/1.2.17/677abe279b68c5e7490d6d50c6951376238d7d3e/log4j-1.2.17-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.slf4j:slf4j-log4j12:1.7.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-log4j12/1.7.10/b3eeae7d1765f988a1f45ea81517191315c69c9e/slf4j-log4j12-1.7.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-log4j12/1.7.10/49c7ee5f2f363e6fa8ce5faa7e3be49d0124884e/slf4j-log4j12-1.7.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.ning:compress-lzf:1.0.3">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.ning/compress-lzf/1.0.3/3e1495b0c532ebe58f1c8b1c5d9b3bdcc6c1504c/compress-lzf-1.0.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.ning/compress-lzf/1.0.3/4b0902929c0311e912db907f1c75d42af9bf8950/compress-lzf-1.0.3-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.xerial.snappy:snappy-java:1.1.1.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.xerial.snappy/snappy-java/1.1.1.7/33b6965e9364145972035c30a45a996aad2bf789/snappy-java-1.1.1.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.xerial.snappy/snappy-java/1.1.1.7/99ad611939e0d2c5d539fe09fb97f761824f5137/snappy-java-1.1.1.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.jpountz.lz4:lz4:1.3.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.jpountz.lz4/lz4/1.3.0/c708bb2590c0652a642236ef45d9f99ff842a2ce/lz4-1.3.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.jpountz.lz4/lz4/1.3.0/31debfaa8a55bc4af1d4fe63a8ad0a2a7e851274/lz4-1.3.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.roaringbitmap:RoaringBitmap:0.4.5">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.roaringbitmap/RoaringBitmap/0.4.5/7ed833c05e5115546f6ef2d0003fd17bfa1d3423/RoaringBitmap-0.4.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.roaringbitmap/RoaringBitmap/0.4.5/3da8215dc863c6a9cc09276546747662e5728f44/RoaringBitmap-0.4.5-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.typesafe.akka:akka-remote_2.11:2.3.11">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-remote_2.11/2.3.11/8635c561dddd5946ade7d2bc667567ed39831afc/akka-remote_2.11-2.3.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-remote_2.11/2.3.11/41b284f9c1d173be24bb433fa89b7d0cf18298ba/akka-remote_2.11-2.3.11-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.typesafe.akka:akka-slf4j_2.11:2.3.11">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-slf4j_2.11/2.3.11/3428d15735a72c70bd8fa66c6561d5a890bb3578/akka-slf4j_2.11-2.3.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-slf4j_2.11/2.3.11/6cbe326f35f1d0459c4fe06cb37db2906302e038/akka-slf4j_2.11-2.3.11-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.json4s:json4s-jackson_2.11:3.2.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-jackson_2.11/3.2.10/b74c106bf32e9835cb911b13de76e61eb5c80a81/json4s-jackson_2.11-3.2.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-jackson_2.11/3.2.10/3ccf0dd7694378878cbc6a255590a2a332a990e1/json4s-jackson_2.11-3.2.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey:jersey-server:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-server/1.9/3a6ea7cc5e15c824953f9f3ece2201b634d90d18/jersey-server-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-server/1.9/d710a3f1d00388a093da6511ca26a743366edf60/jersey-server-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey:jersey-core:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-core/1.9/8341846f18187013bb9e27e46b7ee00a6395daf4/jersey-core-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-core/1.9/56cafb409f0468aef023b327f25daa54b284fe8d/jersey-core-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.mesos:mesos:0.21.1:shaded-protobuf">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.mesos/mesos/0.21.1/851f713e976394739b51d4519b0066363cef016f/mesos-0.21.1-shaded-protobuf.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.mesos/mesos/0.21.1/ac3dc517b1b649dd0ca31873432621ba61279684/mesos-0.21.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.netty:netty-all:4.0.29.Final">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-all/4.0.29.Final/3ae0c9ad242cf197bf69032030cc6ef7c5ee04ad/netty-all-4.0.29.Final.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-all/4.0.29.Final/a965a304da55e3827db685232f355fb15a91c768/netty-all-4.0.29.Final-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.clearspring.analytics:stream:2.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.clearspring.analytics/stream/2.7.0/9998f8cf87d329fef226405f8d519638cfe1431d/stream-2.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.clearspring.analytics/stream/2.7.0/7abd440902be1e990f6c6794d7797cc83b3ee816/stream-2.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.dropwizard.metrics:metrics-core:3.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-core/3.1.2/224f03afd2521c6c94632f566beb1bb5ee32cf07/metrics-core-3.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-core/3.1.2/25177c6da71f42d7934040a2f5608e3a5f81464c/metrics-core-3.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.dropwizard.metrics:metrics-jvm:3.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-jvm/3.1.2/ed364e77218e50fdcdebce4d982cb4d1f4a8c187/metrics-jvm-3.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-jvm/3.1.2/6dabd9668cf817f54f2acd20788bdadad109566/metrics-jvm-3.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.dropwizard.metrics:metrics-json:3.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-json/3.1.2/88d9e57e1ef6431109d4030c717cf5f927900fd9/metrics-json-3.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-json/3.1.2/104736881e70152dffb61c904bdb247e1881c1ae/metrics-json-3.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.dropwizard.metrics:metrics-graphite:3.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-graphite/3.1.2/15a68399652c6123fe6e4c82ac4f0749e2eb6583/metrics-graphite-3.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.dropwizard.metrics/metrics-graphite/3.1.2/64508d6f32a3e502ee4905cfe773a8c81d75cab1/metrics-graphite-3.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.fasterxml.jackson.core:jackson-databind:2.4.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.4.4/e2ff13c3de2f5a2ab2449a3dace2b0d1c37bd8ee/jackson-databind-2.4.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.4.4/43a7e3856fb4b24de35cdc0627f7bb49b1e713dd/jackson-databind-2.4.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.fasterxml.jackson.module:jackson-module-scala_2.11:2.4.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-scala_2.11/2.4.4/506ac22fa6f0675a1a94411767cc4ac54d0130ac/jackson-module-scala_2.11-2.4.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-scala_2.11/2.4.4/3771836ba9ae84332cca4553c18ad3970b84a465/jackson-module-scala_2.11-2.4.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.ivy:ivy:2.4.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.ivy/ivy/2.4.0/5abe4c24bbe992a9ac07ca563d5bd3e8d569e9ed/ivy-2.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.ivy/ivy/2.4.0/813c562d56030e07b64eaaf61cc19212babbd191/ivy-2.4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: oro:oro:2.0.8">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/oro/oro/2.0.8/5592374f834645c4ae250f4c9fbb314c9369d698/oro-2.0.8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/oro/oro/2.0.8/3598e790ecd76ff7eb249853d4d00822ae1a5e71/oro-2.0.8-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.tachyonproject:tachyon-client:0.7.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-client/0.7.1/92ad20eb39794c94ae6d8dc8b997435822116823/tachyon-client-0.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-client/0.7.1/3b291f826142fb8298857c7b3973c8cd74c2774f/tachyon-client-0.7.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.razorvine:pyrolite:4.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.razorvine/pyrolite/4.4/90107dae1a3dc7f014e70a84fd99ca2323e7f877/pyrolite-4.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.razorvine/pyrolite/4.4/3e3c82ce96a4a6516401c7e0fc3419229ca704fa/pyrolite-4.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.sf.py4j:py4j:0.8.2.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.py4j/py4j/0.8.2.1/3e22b0cccd1baa119c56e898dc2962b15ad1cb0a/py4j-0.8.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.py4j/py4j/0.8.2.1/1a03bfa1f0f28ffa1cbcf0b60f7cc6773e9af4b9/py4j-0.8.2.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.spark-project.spark:unused:1.0.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spark-project.spark/unused/1.0.0/205fe37a2fade6ce6dfcf8eff57ed21a4a1c22af/unused-1.0.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spark-project.spark/unused/1.0.0/c850b154071e23ca68cba01ae75c413b774655cd/unused-1.0.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-streaming_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-streaming_2.11/1.5.2/e336ed7a8aea17acc77c23145652f8bcfd816460/spark-streaming_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-streaming_2.11/1.5.2/6481f82a91e45b43a7ba664c5e4244ce01761dc2/spark-streaming_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-sql_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-sql_2.11/1.5.2/49b2b29ef86b21a6f882f8ac86e2b5db9a455262/spark-sql_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-sql_2.11/1.5.2/ca664af682b44c217947789e20df7da4063b24cd/spark-sql_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-graphx_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-graphx_2.11/1.5.2/a70195c274135091f97408fc11dbd40e4df34f78/spark-graphx_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-graphx_2.11/1.5.2/916e63655fbc7088531a9389959fb3854623f34c/spark-graphx_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scalanlp:breeze_2.11:0.11.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalanlp/breeze_2.11/0.11.2/4ad3c8d549f05e59b6b9d82d6882025a853f027/breeze_2.11-0.11.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalanlp/breeze_2.11/0.11.2/eb727c06b317173645ce2803c5f22385bbb4b7df/breeze_2.11-0.11.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.jpmml:pmml-model:1.1.15">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-model/1.1.15/513ba64c020a71f5079e72b9b7416a0fd88218e6/pmml-model-1.1.15.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-model/1.1.15/318bfa58441c025f87e298e355d083a919b22eb6/pmml-model-1.1.15-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.avro:avro-ipc:1.7.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.7/b754e613b8fbd8c81fb6fb250e658f6c16efbffa/avro-ipc-1.7.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.7/e3cf4fa5bd5798e0acf218817358ef78ef888d4f/avro-ipc-1.7.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.avro:avro-ipc:1.7.7:tests">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.7/1ef0eeefcd80710085a95172819c78cf2cb7f13d/avro-ipc-1.7.7-tests.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.7/e3cf4fa5bd5798e0acf218817358ef78ef888d4f/avro-ipc-1.7.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.jackson:jackson-core-asl:1.9.13">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-core-asl/1.9.13/3c304d70f42f832e0a86d45bd437f692129299a4/jackson-core-asl-1.9.13.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-core-asl/1.9.13/6ed53c5ce78344e14296aa47769d67b10e1c7b2c/jackson-core-asl-1.9.13-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.jackson:jackson-mapper-asl:1.9.13">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-mapper-asl/1.9.13/1ee2f2bed0e5dd29d1cb155a166e6f8d50bbddb7/jackson-mapper-asl-1.9.13.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-mapper-asl/1.9.13/83113901bc2a377d698ccea35ad842786f37c6ad/jackson-mapper-asl-1.9.13-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.esotericsoftware.kryo:kryo:2.21">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.kryo/kryo/2.21/9a4e69cff8d225729656f7e97e40893b23bffef/kryo-2.21.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.kryo/kryo/2.21/c77d5c8cbe410c2f1bbb499ab1f743b5737675c4/kryo-2.21-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-common:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-common/2.2.0/a840350e4a1f5483f949ec5e72cfa2c6b2b3cf94/hadoop-common-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-common/2.2.0/d7e52ab002a7c3a4b3dd8a84f2870aa7df054ca5/hadoop-common-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-hdfs:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-hdfs/2.2.0/f2686b55818b9bae3e16d33a3f205a388920aa34/hadoop-hdfs-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-hdfs/2.2.0/4e622cdd54fdf17adde473e341ab425cbbd3738d/hadoop-hdfs-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-mapreduce-client-app:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-app/2.2.0/9e5bdd970000b330382128350a957609cbcfe348/hadoop-mapreduce-client-app-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-app/2.2.0/3432b6f6dd99bcf209427c264d4bf625e85e0879/hadoop-mapreduce-client-app-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-yarn-api:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-api/2.2.0/655910becbe9c5c60033e9e64e95aab0ec4ce94a/hadoop-yarn-api-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-api/2.2.0/5fadfa6114597aad01b04e510f41226617161dba/hadoop-yarn-api-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-mapreduce-client-core:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-core/2.2.0/4be274d45f35543d3c4dd8e2bfed2cebc56696c7/hadoop-mapreduce-client-core-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-core/2.2.0/6f1d005e61e0b9d57bed393915e81fc1a1958a87/hadoop-mapreduce-client-core-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-mapreduce-client-jobclient:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-jobclient/2.2.0/842d0c9d8793fd21bfbb1c6b1fa9fbc05698f76c/hadoop-mapreduce-client-jobclient-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-jobclient/2.2.0/659068241ee5636746d3ddcc120d6b3d0a4e63ba/hadoop-mapreduce-client-jobclient-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-annotations:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-annotations/2.2.0/ebd95f271e3bce5c0dca5926bb3eb36530cd9ab6/hadoop-annotations-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-annotations/2.2.0/16cdbacf263b891b1aed8a0a02b35df83e9c77e4/hadoop-annotations-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-httpclient:commons-httpclient:3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-httpclient/commons-httpclient/3.1/964cd74171f427720480efdec40a7c7f6e58426a/commons-httpclient-3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-httpclient/commons-httpclient/3.1/c6d6ea83d0cf16d3ed9c1b7e600fa0f60b9d3159/commons-httpclient-3.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.curator:curator-framework:2.4.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-framework/2.4.0/ef7ac4063f09578f1b54cee4cf1192a3d31cae04/curator-framework-2.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-framework/2.4.0/13b4ecb04b7cbb2ceba4a81d3aa7fe850896ee3d/curator-framework-2.4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.zookeeper:zookeeper:3.4.5">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.zookeeper/zookeeper/3.4.5/c0f69fb36526552a8f0bc548a6c33c49cf08e562/zookeeper-3.4.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.zookeeper/zookeeper/3.4.5/ad9efdd95bf63381ecf2898e84f392bbfc4784f3/zookeeper-3.4.5-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.google.guava:guava:14.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/14.0.1/69e12f4c6aeac392555f1ea86fab82b5e5e31ad4/guava-14.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/14.0.1/169f11e28e3ed9a64e9fa895eaafb579e6a5aa6c/guava-14.0.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.typesafe.akka:akka-actor_2.11:2.3.11">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-actor_2.11/2.3.11/5a3da894879253c96950d8b9687ad72a1400bbf4/akka-actor_2.11-2.3.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe.akka/akka-actor_2.11/2.3.11/f2d9fee6728631a3d1b47f592d87cc7b2a329e48/akka-actor_2.11-2.3.11-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: io.netty:netty:3.8.0.Final">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty/3.8.0.Final/65e00948a33493081e4f6a8619d82ab3d4024af1/netty-3.8.0.Final.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty/3.8.0.Final/5317e212bf50479fb06abf675caedbe39d396ab0/netty-3.8.0.Final-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.google.protobuf:protobuf-java:2.5.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.protobuf/protobuf-java/2.5.0/a10732c76bfacdbd633a7eb0f7968b1059a65dfa/protobuf-java-2.5.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.protobuf/protobuf-java/2.5.0/7a27a7fc815e481b367ead5df19b4a71ace4a419/protobuf-java-2.5.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.uncommons.maths:uncommons-maths:1.2.2a">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.uncommons.maths/uncommons-maths/1.2.2a/e4e84f879d4160be9508aa3904516ec30c39e815/uncommons-maths-1.2.2a.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.uncommons.maths/uncommons-maths/1.2.2a/bb01359792453974c40d34f49c84d703deff266b/uncommons-maths-1.2.2a-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.json4s:json4s-core_2.11:3.2.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-core_2.11/3.2.10/789d6ad991b71ffd410f1f0c836b4f8aee3512e0/json4s-core_2.11-3.2.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-core_2.11/3.2.10/cd240c8d57ae6101911eafca2af6684dd02099cb/json4s-core_2.11-3.2.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: asm:asm:3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm/3.1/c157def142714c544bdea2e6144645702adf7097/asm-3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm/3.1/2eaa4de56203f433f287a6df5885ef9ad3c5bcae/asm-3.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.fasterxml.jackson.core:jackson-core:2.4.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.4.4/c5cd3347c0a86d0dcfbf3da593d8431d5a789d54/jackson-core-2.4.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.4.4/652bd9217e1d258cb72c1c4c50b3e6a757826d95/jackson-core-2.4.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.4.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.4.4/d3dad1a494f94579fca4b6a1142fb15fb68f0b2f/jackson-annotations-2.4.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.4.4/9e1cd34eb4b59486c3261d8b5a7ff16d139b4d7f/jackson-annotations-2.4.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.thoughtworks.paranamer:paranamer:2.6">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.thoughtworks.paranamer/paranamer/2.6/52c3c8d8876440d714e23036eb87bcc4244d9aa5/paranamer-2.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.thoughtworks.paranamer/paranamer/2.6/caaf8777e6bb374d653a81d38c9d38a02c6864c6/paranamer-2.6-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-io:commons-io:2.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-io/commons-io/2.4/b1b6ea3b7e4aa4f492509a4952029cd8e48019ad/commons-io-2.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-io/commons-io/2.4/f2d8698c46d1167ff24b06a840a87d91a02db891/commons-io-2.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.tachyonproject:tachyon-underfs-hdfs:0.7.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-underfs-hdfs/0.7.1/efce0bc9971414b6f41ec5f23596aba2d8465435/tachyon-underfs-hdfs-0.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-underfs-hdfs/0.7.1/e4c1554794b301115300b27688a85d1b5d42e041/tachyon-underfs-hdfs-0.7.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.tachyonproject:tachyon-underfs-local:0.7.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-underfs-local/0.7.1/575e63d2605be85b1d1834bac024162f837e2235/tachyon-underfs-local-0.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tachyonproject/tachyon-underfs-local/0.7.1/27162d7b35a228215b8931cc50958dc00db4d391/tachyon-underfs-local-0.7.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.spark:spark-catalyst_2.11:1.5.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-catalyst_2.11/1.5.2/3a0ceedcd75195c71183913835e5d1f3104dfd3d/spark-catalyst_2.11-1.5.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-catalyst_2.11/1.5.2/c9045e895676ea4f6e983ae11af3a856e76bbf74/spark-catalyst_2.11-1.5.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-column:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-column/1.7.0/87b549ad6981c2484cf2c800dae17dde027b6c3d/parquet-column-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-column/1.7.0/c4bb4a47769b733fb0712b41732ed3bbdc40c975/parquet-column-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-hadoop:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-hadoop/1.7.0/a3d39d6556d0f52a8a47082d2421f70ec74c3e28/parquet-hadoop-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-hadoop/1.7.0/7433755fdcae8e5e4d783ab8d78c0b6f0041e9e6/parquet-hadoop-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.github.fommil.netlib:core:1.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.fommil.netlib/core/1.1.2/574b480eca62f535fad6d259e144fee3ef24b66e/core-1.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.fommil.netlib/core/1.1.2/db345b07c3809044d45f2acde54e2c9f6a5d3c4c/core-1.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.sourceforge.f2j:arpack_combined_all:0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sourceforge.f2j/arpack_combined_all/0.1/225619a060b42605b4d9fd4af11815664abf26eb/arpack_combined_all-0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scalanlp:breeze-macros_2.11:0.11.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalanlp/breeze-macros_2.11/0.11.2/fe2c740389b32720054a7ac7facd2e7dd489f63c/breeze-macros_2.11-0.11.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalanlp/breeze-macros_2.11/0.11.2/78a1ec75471bd8d787e4513edd2705aa4720c228/breeze-macros_2.11-0.11.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: net.sf.opencsv:opencsv:2.3">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.opencsv/opencsv/2.3/c23708cdb9e80a144db433e23344a788a1fd6599/opencsv-2.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.sf.opencsv/opencsv/2.3/235993117036d44d126f76db9ea2202ee4884682/opencsv-2.3-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.github.rwl:jtransforms:2.4.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.rwl/jtransforms/2.4.0/20ab3d14a0375cc2baee9452b92b217aac7e3c57/jtransforms-2.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.rwl/jtransforms/2.4.0/6f00e845e13a8b5d204fdfd2eca4e340048448fe/jtransforms-2.4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.spire-math:spire_2.11:0.7.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spire-math/spire_2.11/0.7.4/6882bd3c7b517e9049ddcd0ff9b97cbed581bf54/spire_2.11-0.7.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spire-math/spire_2.11/0.7.4/92466a0070fc95fb5afa57592b377e6cd62dc397/spire_2.11-0.7.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.jpmml:pmml-agent:1.1.15">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-agent/1.1.15/95ad2df87fc343cfc25ddab05b9a4938eef03bb8/pmml-agent-1.1.15.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-agent/1.1.15/5a3debcbea9c69448276d5ea0485c0caaeac324b/pmml-agent-1.1.15-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.jpmml:pmml-schema:1.1.15">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-schema/1.1.15/e6ed3659d2b6c978efa5852ce07eaba43c876770/pmml-schema-1.1.15.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jpmml/pmml-schema/1.1.15/3ec7791aa760e71b7e29faa9f4e073fff859be5d/pmml-schema-1.1.15-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.xml.bind:jaxb-impl:2.2.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.2.7/a29e53347934e694c9551981cecd242fad05022b/jaxb-impl-2.2.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.2.7/628ed8524d22baaa9d3e5a26cd1ce5523e795c8e/jaxb-impl-2.2.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.avro:avro:1.7.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro/1.7.7/3548c0bc136e71006f3fc34e22d34a29e5069e50/avro-1.7.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro/1.7.7/7d8cd1047bfd01f73c71c10c1467e2242282d574/avro-1.7.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.esotericsoftware.reflectasm:reflectasm:1.07:shaded">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.reflectasm/reflectasm/1.07/76f11c94a53ee975a0d9154b325c408b210155bd/reflectasm-1.07-shaded.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.reflectasm/reflectasm/1.07/ca505e39e6ea1762cdc42f1311448333a9b1c6c2/reflectasm-1.07-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.esotericsoftware.minlog:minlog:1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.minlog/minlog/1.2/59bfcd171d82f9981a5e242b9e840191f650e209/minlog-1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.esotericsoftware.minlog/minlog/1.2/c0bf75c30b19393673253e25708aa797a545fa10/minlog-1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.objenesis:objenesis:1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.objenesis/objenesis/1.2/bfcb0539a071a4c5a30690388903ac48c0667f2a/objenesis-1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.objenesis/objenesis/1.2/71909ee0264af468fe26f0a2467d01bcb85f6fa9/objenesis-1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-cli:commons-cli:1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-cli/commons-cli/1.2/2bf96b7aa8b611c177d329452af1dc933e14501c/commons-cli-1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-cli/commons-cli/1.2/6c5459816530a1962ac18cd315cc775b1b384329/commons-cli-1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.commons:commons-math:2.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-math/2.1/b3c4bdc2778ddccceb8da2acec3e37bfa41303e9/commons-math-2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-math/2.1/78987455b7dee797ea73f7376ef5093fc8121bf6/commons-math-2.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: xmlenc:xmlenc:0.52">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/xmlenc/xmlenc/0.52/d82554efbe65906d83b3d97bd7509289e9db561a/xmlenc-0.52.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-configuration:commons-configuration:1.6">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-configuration/commons-configuration/1.6/32cadde23955d7681b0d94a2715846d20b425235/commons-configuration-1.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-configuration/commons-configuration/1.6/2d24067548bf9022d03cfd6ca302e1f6c5d4936/commons-configuration-1.6-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-auth:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-auth/2.2.0/74e5f8b2134be51312c004d29e33a7bf4377ce20/hadoop-auth-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-auth/2.2.0/b472a065fb1ef045ecb452dbc7788b555ca38ec0/hadoop-auth-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.commons:commons-compress:1.4.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-compress/1.4.1/b02e84a993d88568417536240e970c4b809126fd/commons-compress-1.4.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-compress/1.4.1/277d39267403965a7a192474794a29bac6760a25/commons-compress-1.4.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.mortbay.jetty:jetty-util:6.1.26">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.mortbay.jetty/jetty-util/6.1.26/e5642fe0399814e1687d55a3862aa5a3417226a9/jetty-util-6.1.26.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.mortbay.jetty/jetty-util/6.1.26/ca704dfc9e26567bd69ee3f065a1337fa6d296f/jetty-util-6.1.26-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-mapreduce-client-common:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-common/2.2.0/5600fdda58499e3901bf179f1614a8ca38090871/hadoop-mapreduce-client-common-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-common/2.2.0/e5d5b958d4d65719da5c4b98eba2ef189bed5939/hadoop-mapreduce-client-common-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-mapreduce-client-shuffle:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-shuffle/2.2.0/c4c9da8f8f6ab1e3ba68798f30360eff4ba52187/hadoop-mapreduce-client-shuffle-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-mapreduce-client-shuffle/2.2.0/47ac22c272fee0879d87e5d9d5324f1c0df1764/hadoop-mapreduce-client-shuffle-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-yarn-common:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-common/2.2.0/77f18c3d40dcb45b0be2602cfa5115a5edb40db1/hadoop-yarn-common-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-common/2.2.0/3d1fe69566c347cb7692ebbc0d64a2df3cb6f18e/hadoop-yarn-common-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: jline:jline:0.9.94">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jline/jline/0.9.94/99a18e9a44834afdebc467294e1138364c207402/jline-0.9.94.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jline/jline/0.9.94/7ac7b49164e4f9d250309c70caee645151b87e46/jline-0.9.94-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.typesafe:config:1.2.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe/config/1.2.1/f771f71fdae3df231bcd54d5ca2d57f0bf93f467/config-1.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.typesafe/config/1.2.1/bdacf4f82ce9b29cd474bfde2e91eeb0ca623d28/config-1.2.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.json4s:json4s-ast_2.11:3.2.10">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-ast_2.11/3.2.10/3a64a2c31865801157c8d06932a451ffbd811c56/json4s-ast_2.11-3.2.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.json4s/json4s-ast_2.11/3.2.10/c391bd2f2fea336ca26b0c9a50932f68b7ab0e34/json4s-ast_2.11-3.2.10-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang:scalap:2.11.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scalap/2.11.0/4d1ef078a977e29c32d539fac2900ca56f17fb85/scalap-2.11.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scalap/2.11.0/e1a6db7ce139af3b1bbe2c6901c314765434b0fd/scalap-2.11.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.janino:janino:2.7.8">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.janino/janino/2.7.8/109852ba81725a1ca29cc9aa0688455bd7be4b0f/janino-2.7.8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.janino/janino/2.7.8/70a377c52fa7d733cbfc1f94cded7b101bc5bc4b/janino-2.7.8-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-common:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-common/1.7.0/208e4576958c5d5ab64d3c808a759e388d90a99f/parquet-common-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-common/1.7.0/a320fa273286611848bc3b513c267693bab43fa1/parquet-common-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-encoding:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-encoding/1.7.0/3b31bf2a9b472959a30927b96e0dca3e7ba49eb9/parquet-encoding-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-encoding/1.7.0/52df08a15d762a5e70422e4080c4aaef4e6449a1/parquet-encoding-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-format:2.3.0-incubating">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-format/2.3.0-incubating/9ce0a76de9e695abc81d28bd6e3cc75322d14d28/parquet-format-2.3.0-incubating.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-format/2.3.0-incubating/3d098f6e556ded6b8d0e990bead6fe8c42a47c2b/parquet-format-2.3.0-incubating-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-jackson:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-jackson/1.7.0/32115a2437f8a3386ed15d7f7bfe7f204312fd20/parquet-jackson-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-jackson/1.7.0/56a82ac0782a3e9554a7b19b3d4309da032cbeb6/parquet-jackson-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.spire-math:spire-macros_2.11:0.7.4">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spire-math/spire-macros_2.11/0.7.4/35a96f7ddee39e99ca8051ac43a0f741eeb66803/spire-macros_2.11-0.7.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.spire-math/spire-macros_2.11/0.7.4/7715d3eadef89ccbbf4f5193208b3a5aa84028d3/spire-macros_2.11-0.7.4-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.xml.bind:jaxb-core:2.2.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-core/2.2.7/f327817188a7dce503ae3c667c5931077630b0a1/jaxb-core-2.2.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-core/2.2.7/112d8d05249708fb9842e211f9486e331549a305/jaxb-core-2.2.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-collections:commons-collections:3.2.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-collections/commons-collections/3.2.1/761ea405b9b37ced573d2df0d1e3a4e0f9edc668/commons-collections-3.2.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-collections/commons-collections/3.2.1/fa095ef874374e5b2a11f8b06c26a5d68c7cb3a4/commons-collections-3.2.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-digester:commons-digester:1.8">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-digester/commons-digester/1.8/dc6a73fdbd1fa3f0944e8497c6c872fa21dca37e/commons-digester-1.8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-digester/commons-digester/1.8/6c296de7dc352e0af9a40f92f5af995314d41fc9/commons-digester-1.8-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-beanutils:commons-beanutils-core:1.8.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils-core/1.8.0/175dc721f87e4bc5cc0573f990e28c3cf9117508/commons-beanutils-core-1.8.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.tukaani:xz:1.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tukaani/xz/1.0/ecff5cb8b1189514c9d1d8d68eb77ac372e000c9/xz-1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.tukaani/xz/1.0/f95e32a5d2dd8da643c4419814415b9704312993/xz-1.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-yarn-client:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-client/2.2.0/f299044dd9e546ca30a30014ef30699306e9ef3e/hadoop-yarn-client-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-client/2.2.0/f59c7269fe790286076aa23ac27c91f889f84ced/hadoop-yarn-client-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-yarn-server-common:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-server-common/2.2.0/ce13e5699bbe644da95bfd7e01549c6a389fec7f/hadoop-yarn-server-common-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-server-common/2.2.0/10c903579cfb1f1ec160c7627321798277930110/hadoop-yarn-server-common-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.hadoop:hadoop-yarn-server-nodemanager:2.2.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-server-nodemanager/2.2.0/5e7f0f16676afffff62919578bcb5606e3548f36/hadoop-yarn-server-nodemanager-2.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.hadoop/hadoop-yarn-server-nodemanager/2.2.0/893ddb3d5b134ee281a5b1432a25bc4187548c5a/hadoop-yarn-server-nodemanager-2.2.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.google.inject:guice:3.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.inject/guice/3.0/9d84f15fe35e2c716a02979fb62f50a29f38aefa/guice-3.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.inject/guice/3.0/d117c4481f64955cb1862ed38cb568add2f5fe05/guice-3.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey.jersey-test-framework:jersey-test-framework-grizzly2:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.jersey-test-framework/jersey-test-framework-grizzly2/1.9/8bf4d5cef8cbf70a160cc2ff78b332db454030bd/jersey-test-framework-grizzly2-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.jersey-test-framework/jersey-test-framework-grizzly2/1.9/17fcca35bddf4f91bea8558a5b2802a45e692b89/jersey-test-framework-grizzly2-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey:jersey-json:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-json/1.9/1aa73e1896bcc7013fed247157d7f676226eb432/jersey-json-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-json/1.9/9831f56e36a870f372cc2844675d76193144151a/jersey-json-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey.contribs:jersey-guice:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.contribs/jersey-guice/1.9/5963c28c47df7e5d6ad34cec80c071c368777f7b/jersey-guice-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.contribs/jersey-guice/1.9/93589b9543ec99347db4c8526dfb82ceea140512/jersey-guice-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang:scala-compiler:2.11.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-compiler/2.11.0/75d94f0ddcabb626832a992607acb6e2d6bc2a4a/scala-compiler-2.11.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-compiler/2.11.0/f9a1f81daacc36858eb2b69c067ae516c53b8948/scala-compiler-2.11.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.jboss.netty:netty:3.2.2.Final">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jboss.netty/netty/3.2.2.Final/d4afed2b2038db3f5298da54314575ef194f8bd0/netty-3.2.2.Final.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jboss.netty/netty/3.2.2.Final/1a9960822301de2d5cf35d4d87e9c6cce1bcf1fd/netty-3.2.2.Final-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.janino:commons-compiler:2.7.8">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.janino/commons-compiler/2.7.8/fe224c801f296af125316178300dfc633675a8ff/commons-compiler-2.7.8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.janino/commons-compiler/2.7.8/9b4872aac6baca858a8ca0466d5fb38aa686d7b6/commons-compiler-2.7.8-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.parquet:parquet-generator:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-generator/1.7.0/3fedca3e1825a8ad7d30d374ff102fdb0d439681/parquet-generator-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.parquet/parquet-generator/1.7.0/7e980b3893f51dae66477fc297d0ba773e93e2f0/parquet-generator-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: javax.xml.bind:jaxb-api:2.2.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.xml.bind/jaxb-api/2.2.7/2f51c4bb4724ea408096ee9100ff2827e07e5b7c/jaxb-api-2.2.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.xml.bind/jaxb-api/2.2.7/5fb055d3773b48d759d43290f33e5533b25d2d62/jaxb-api-2.2.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-beanutils:commons-beanutils:1.7.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.7.0/5675fd96b29656504b86029551973d60fb41339b/commons-beanutils-1.7.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.7.0/b68c4fc66026e8c08df7fb57c7dc1e94a6ed8cbb/commons-beanutils-1.7.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: javax.inject:javax.inject:1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.inject/javax.inject/1/6975da39a7040257bd51d21a231b76c915872d38/javax.inject-1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.inject/javax.inject/1/a00123f261762a7c5e0ec916a2c7c8298d29c400/javax.inject-1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: aopalliance:aopalliance:1.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/aopalliance/aopalliance/1.0/235ba8b489512805ac13a8f9ea77a1ca5ebe3e8/aopalliance-1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/aopalliance/aopalliance/1.0/4a4b6d692e17846a9f3da036438a7ac491d3c814/aopalliance-1.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.sonatype.sisu.inject:cglib:2.2.1-v20090111">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sonatype.sisu.inject/cglib/2.2.1-v20090111/7ce5e983fd0e6c78346f4c9cbfa39d83049dda2/cglib-2.2.1-v20090111.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sonatype.sisu.inject/cglib/2.2.1-v20090111/65030c30094de36e3fddbc22442d47cbf547741f/cglib-2.2.1-v20090111-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey.jersey-test-framework:jersey-test-framework-core:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.jersey-test-framework/jersey-test-framework-core/1.9/129431673b2735840b9216a651de38b4f1cb3c66/jersey-test-framework-core-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey.jersey-test-framework/jersey-test-framework-core/1.9/aa91222f3baab96e80120f88ff933a4342ffe660/jersey-test-framework-core-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey:jersey-grizzly2:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-grizzly2/1.9/1e23ccc25f4dced8857b4296cceed42a7a49200c/jersey-grizzly2-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-grizzly2/1.9/3e498efb7c7b6f0ddb73d98a3de30102ed68d7f5/jersey-grizzly2-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.jettison:jettison:1.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jettison/jettison/1.1/1a01a2a1218fcf9faa2cc2a6ced025bdea687262/jettison-1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jettison/jettison/1.1/6e5ebf802c909bcef2d7e3275c64b474467353b5/jettison-1.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.jackson:jackson-jaxrs:1.8.3">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-jaxrs/1.8.3/3604ca9f572170e2ef5813141ec1f0e0100efd19/jackson-jaxrs-1.8.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-jaxrs/1.8.3/62bc865bb486f24b9d0f5c7e7910f9effe3b7e8e/jackson-jaxrs-1.8.3-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.codehaus.jackson:jackson-xc:1.8.3">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-xc/1.8.3/1226667dcdb7c259b3ee07e112ed83446554516e/jackson-xc-1.8.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-xc/1.8.3/cf3b2508f4ca5beccbd6f28e027ba89e4b09097/jackson-xc-1.8.3-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang.modules:scala-xml_2.11:1.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-xml_2.11/1.0.1/21dbac0088b91b8ffb7ac385301f4340f8ebe71f/scala-xml_2.11-1.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-xml_2.11/1.0.1/a598f0c51693338901223a8cf1f74a2d86279e2d/scala-xml_2.11-1.0.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang.modules:scala-parser-combinators_2.11:1.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-parser-combinators_2.11/1.0.1/f05d7345bf5a58924f2837c6c1f4d73a938e1ff0/scala-parser-combinators_2.11-1.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-parser-combinators_2.11/1.0.1/34d013c02d0b73794ba2911552896dd9c00f34c3/scala-parser-combinators_2.11-1.0.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: javax.servlet:javax.servlet-api:3.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.servlet/javax.servlet-api/3.0.1/6bf0ebb7efd993e222fc1112377b5e92a13b38dd/javax.servlet-api-3.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.servlet/javax.servlet-api/3.0.1/1952f91d84016a39e31346c9d18bd8c9c4a128a/javax.servlet-api-3.0.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.jersey:jersey-client:1.9">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-client/1.9/d3c4b2b5f89db32c96ceddcb863684821910a7bb/jersey-client-1.9.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.jersey/jersey-client/1.9/fcd4ed548c23e5036fe9628cbb36e7b440a6a090/jersey-client-1.9-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.grizzly:grizzly-http:2.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http/2.1.2/aa477bd5b57367c344bf50f1f4af71a24a94ec9f/grizzly-http-2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http/2.1.2/458a23ae60dedada7cdeb2715b72cd48d3812e0f/grizzly-http-2.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.grizzly:grizzly-http-server:2.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http-server/2.1.2/8a1c41c688cb3a34998a3515048a2284e5201192/grizzly-http-server-2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http-server/2.1.2/7bf9b906c2174c920689553a97dfb55566a03bcd/grizzly-http-server-2.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.grizzly:grizzly-http-servlet:2.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http-servlet/2.1.2/225700354dd0b7bc6132689c4fa046fa69744e20/grizzly-http-servlet-2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-http-servlet/2.1.2/14d333b05166d090c3d01ed8704e91461de1bb4/grizzly-http-servlet-2.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish:javax.servlet:3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish/javax.servlet/3.1/ab7db738667bea1b937efcf3a1845c0d28e6beaf/javax.servlet-3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish/javax.servlet/3.1/2c0464de33758d4778117e74e7f3494bae708ce5/javax.servlet-3.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: stax:stax-api:1.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/stax/stax-api/1.0.1/49c100caf72d658aca8e58bd74a4ba90fa2b0d70/stax-api-1.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.grizzly:grizzly-framework:2.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-framework/2.1.2/684c82b28f7e7a53c20d30e69d9787abfeb85d32/grizzly-framework-2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-framework/2.1.2/64c0586a725c9982efd705ec30ab3a013f7aeaad/grizzly-framework-2.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.grizzly:grizzly-rcm:2.1.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-rcm/2.1.2/19c3a4301ae7e38eb0518cfd4f3f34223c1b7f39/grizzly-rcm-2.1.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.grizzly/grizzly-rcm/2.1.2/98b690bbe70618df7edd7b7535212193df6f3c5c/grizzly-rcm-2.1.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.gmbal:gmbal-api-only:3.0.0-b023">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.gmbal/gmbal-api-only/3.0.0-b023/14f077191ad7ec73004ca58de2c90a2137f1d882/gmbal-api-only-3.0.0-b023.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.glassfish.external:management-api:3.0.0-b012">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.glassfish.external/management-api/3.0.0-b012/707686d845faede060b79bdf018a25a469a611b4/management-api-3.0.0-b012.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.google.code.findbugs:jsr305:2.0.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.code.findbugs/jsr305/2.0.1/516c03b21d50a644d538de0f0369c620989cd8f0/jsr305-2.0.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-codec:commons-codec:1.5">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.5/cf993e250ff71804754ec2734a16f23c0be99f70/commons-codec-1.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.5/1100638866461d41fbed0e89d722b161c579fe23/commons-codec-1.5-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-net:commons-net:3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-net/commons-net/3.1/2298164a7c2484406f2aa5ac85b205d39019896f/commons-net-3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-net/commons-net/3.1/8cc516e03d35ecf8f4ca71511f7961f1a9339820/commons-net-3.1-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: commons-lang:commons-lang:2.5">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-lang/commons-lang/2.5/b0236b252e86419eef20c31a44579d2aee2f0a69/commons-lang-2.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-lang/commons-lang/2.5/bb75ef699b349b6e02d17d41556cebcd755d07ab/commons-lang-2.5-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.scala-lang:scala-reflect:2.11.7">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-reflect/2.11.7/bf1649c9d33da945dea502180855b56caf06288c/scala-reflect-2.11.7.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang/scala-reflect/2.11.7/c4d5a9d0a7a6956720809bcebca1b2fe978e5dc6/scala-reflect-2.11.7-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.xml.fastinfoset:FastInfoset:1.2.12">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.fastinfoset/FastInfoset/1.2.12/e8c1c096162a146c2d84135c5036edf54c1b1d38/FastInfoset-1.2.12.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.xml.fastinfoset/FastInfoset/1.2.12/98ddd31ad3dddb3ee2f43e3e6b7b39d0c5ccdea5/FastInfoset-1.2.12-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: com.sun.istack:istack-commons-runtime:2.16">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.istack/istack-commons-runtime/2.16/927eb6fbb003f40d536efd96e7cbcb7ea4c1c2d0/istack-commons-runtime-2.16.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.sun.istack/istack-commons-runtime/2.16/553f3b0152c1f5bd757799867e567a28604ab6f2/istack-commons-runtime-2.16-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: javax.xml.bind:jsr173_api:1.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.xml.bind/jsr173_api/1.0/c79b8431c3104315c0aeaed7bf23d0ab0edbaa09/jsr173_api-1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: org.apache.curator:curator-client:2.4.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-client/2.4.0/5bd0fa698f4adad953df0aaf2492773364ab9dad/curator-client-2.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.curator/curator-client/2.4.0/4007f9d07f67c51c00f148ba9920afb20bd1b04b/curator-client-2.4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.scalatest:scalatest_2.11:2.3.0-SNAP2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalatest/scalatest_2.11/2.3.0-SNAP2/b02b4673e62375c30040316462c33fb069cdc76b/scalatest_2.11-2.3.0-SNAP2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalatest/scalatest_2.11/2.3.0-SNAP2/7e6386cc5313d5c655bcfeb0209e94d4593ab507/scalatest_2.11-2.3.0-SNAP2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.scalactic:scalactic_2.11:2.3.0-SNAP2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalactic/scalactic_2.11/2.3.0-SNAP2/a355ae9eba06b136ba50bc3d994c608bb7b85720/scalactic_2.11-2.3.0-SNAP2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scalactic/scalactic_2.11/2.3.0-SNAP2/d0df63573cfddc61c30198432404349b6e9f17f1/scalactic_2.11-2.3.0-SNAP2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.scala-lang.modules:scala-xml_2.11:1.0.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-xml_2.11/1.0.2/820fbca7e524b530fdadc594c39d49a21ea0337e/scala-xml_2.11-1.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.scala-lang.modules/scala-xml_2.11/1.0.2/312c3557d1ca0b34820f3b3fc5404a47936ceb26/scala-xml_2.11-1.0.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.pegdown:pegdown:1.1.0">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.pegdown/pegdown/1.1.0/bcc0c5b025b09ab85bb80a8311ce5c015d005b/pegdown-1.1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.pegdown/pegdown/1.1.0/994e4c6bd96da7c7e2a65e4cc76b48ddf417aaca/pegdown-1.1.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.parboiled:parboiled-core:1.0.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.parboiled/parboiled-core/1.0.2/7f8abb816e828aae4731f1cd78f9b14746d5102f/parboiled-core-1.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.parboiled/parboiled-core/1.0.2/e85ddb3182ccbf4ffb096fe631bea6aef5f8423/parboiled-core-1.0.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: org.parboiled:parboiled-java:1.0.2">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.parboiled/parboiled-java/1.0.2/bf1cbdf55395bb4c97e5ba3bf363897f1f7af643/parboiled-java-1.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.parboiled/parboiled-java/1.0.2/384b0eb5663dc5bedb5cd85aa2acdb63477c510c/parboiled-java-1.0.2-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: asm:asm-util:3.3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm-util/3.3.1/d891b52ddd9a06f0fa73c1f53c334145e23b6514/asm-util-3.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: asm:asm-tree:3.3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm-tree/3.3.1/c9723d887e26c3049944e46312bb39e7ab1a2ed2/asm-tree-3.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: asm:asm-analysis:3.3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm-analysis/3.3.1/6a42d88a6a2866c511a9246af325234279a50d12/asm-analysis-3.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="Gradle: asm:asm:3.3.1">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/asm/asm/3.3.1/1d5f20b4ea675e6fab6ab79f1cd60ec268ddc015/asm-3.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+  </component>
+</module>
