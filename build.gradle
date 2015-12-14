@@ -12,6 +12,7 @@ subprojects {
 
   ext {
     scalaVersion = '2.11'
+    scalaCompilerBuild = '7'
     sparkVersion = '1.5.2'
   }
 
@@ -21,7 +22,7 @@ subprojects {
 
   dependencies {
     // Use Scala version 2.11
-    compile 'org.scala-lang:scala-library:2.11.7'
+    compile "org.scala-lang:scala-library:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 
     // Common Spark / Spark MLLib dependencies
     compile group: 'org.apache.spark', name: "spark-core_${project.ext.scalaVersion}", version: project.ext.sparkVersion
