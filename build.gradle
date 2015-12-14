@@ -5,7 +5,7 @@ subprojects {
   version = "0.0.1-SNAPSHOT"
 
   apply plugin: 'scala'
-  
+
   // Java 8
   sourceCompatibility = "1.8"
   targetCompatibility = "1.8"
@@ -31,7 +31,7 @@ subprojects {
     compile group: 'org.json4s', name: "json4s-native_${project.ext.scalaVersion}", version: '3.3.0'
 
     // ScalaTest framework
-    testCompile 'org.scalatest:scalatest_2.11:2+'
+    testCompile "org.scalatest:scalatest_${project.ext.scalaVersion}:2+"
 
     // Generates an HTML report for tests in ../build/reports/tests/index.html
     testRuntime 'org.pegdown:pegdown:1.1.0'

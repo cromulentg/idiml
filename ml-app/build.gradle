@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
   compile project(':predict')
+  runtime 'org.scala-lang:scala-compiler:2.11.7'
 }
 
 apply plugin: 'application'
