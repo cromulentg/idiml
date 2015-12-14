@@ -25,6 +25,15 @@ You can build all of the projects by executing the `jar` task, either
 individually (like in the introduction above), or for all tasks:
 `./gradlew jar`
 
+# Running in the Scala REPL
+
+If you want to start the Scala REPL to try out some code quickly, you
+can launch it using:
+`./gradlew ml-app:scalaConsole -q`
+
+The REPL includes all of the idiml code dependencies in the class
+path, so this is a good way to quickly experiment with new libraries.
+
 # Unit testing
 
 Run unit tests with the `test` task: `./gradlew test`. Unit testing is
