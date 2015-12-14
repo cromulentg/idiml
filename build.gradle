@@ -5,13 +5,14 @@ subprojects {
   version = "0.0.1-SNAPSHOT"
 
   apply plugin: 'scala'
-  
+
   // Java 8
   sourceCompatibility = "1.8"
   targetCompatibility = "1.8"
 
   ext {
     scalaVersion = '2.11'
+    scalaCompilerBuild = '7'
     sparkVersion = '1.5.2'
   }
 
@@ -21,7 +22,7 @@ subprojects {
 
   dependencies {
     // Use Scala version 2.11
-    compile 'org.scala-lang:scala-library:2.11.7'
+    compile "org.scala-lang:scala-library:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 
     // Common Spark / Spark MLLib dependencies
     compile group: 'org.apache.spark', name: "spark-core_${project.ext.scalaVersion}", version: project.ext.sparkVersion
@@ -31,7 +32,7 @@ subprojects {
     compile group: 'org.json4s', name: "json4s-native_${project.ext.scalaVersion}", version: '3.3.0'
 
     // ScalaTest framework
-    testCompile 'org.scalatest:scalatest_2.11:2+'
+    testCompile "org.scalatest:scalatest_${project.ext.scalaVersion}:2+"
 
     // Generates an HTML report for tests in ../build/reports/tests/index.html
     testRuntime 'org.pegdown:pegdown:1.1.0'
