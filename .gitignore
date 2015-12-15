@@ -6,3 +6,4 @@ build/
 *.ipr
 .idea/
 .idea_modules/
+*.class
