@@ -15,8 +15,7 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
 
     it("should work on an empty sequence") {
-      val empty = Seq[Feature[_]]()
-      transform.apply(Map("tokens" -> empty)) shouldBe empty
+      transform.apply(Seq[Token]()) shouldBe empty
     }
 
     it("should work on a sequence of Tokens") {
@@ -25,7 +24,7 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
       val expected = Seq[Feature[Word]](
         new Word("token", 1), new Word("words", 1)
       )
-      transform.apply(Map("tokens" -> twoTokens)) shouldBe expected
+      transform.apply(twoTokens) shouldBe expected
     }
 
     it("should only return the unique tokens with their occurrence counts") {
@@ -35,17 +34,7 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
       val expected = Seq[Feature[Word]](
         new Word("token", 1), new Word("words", 2)
       )
-      transform.apply(Map("tokens" -> twoTokens)) shouldBe expected
+      transform.apply(twoTokens) shouldBe expected
     }
-
-    it("should fail if 'tokens' not provided") {
-      val twoTokens = Seq[Feature[Token]](
-        new Token("token", Tag.Word, 0, 1), new Token("words", Tag.Word, 1, 1),
-        new Token("words", Tag.Word, 2, 1))
-      intercept[java.util.NoSuchElementException] {
-        transform.apply(Map("monkeys" -> twoTokens))
-      }
-    }
-
   }
 }

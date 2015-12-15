@@ -8,36 +8,47 @@ import java.io.*;
  * @author Michelle Casbon <michelle@idibon.com>
  */
 public class IntentAlloy implements Alloy {
+    public Alloy.Reader reader() {
+        return new IntentReader("/tmp");
+    }
 
-    public class IntentReader implements Alloy.Reader {
+    class IntentReader implements Alloy.Reader {
+        IntentReader(String path) {
+            _path = path;
+        }
+
         public DataInputStream resource(String resourceName) throws IOException {
-            String filename = "/tmp/" + resourceName + ".txt";
+            String filename = _path + "/" + resourceName;
             FileInputStream fis = new FileInputStream(filename);
             return new DataInputStream(fis);
         }
 
-        public IntentReader within(String namespace) throws IOException {
-            return this;
+        public Alloy.Reader within(String namespace) throws IOException {
+            return new IntentReader(_path + "/" + namespace);
         }
+
+        private final String _path;
     }
 
-    public class IntentWriter implements Alloy.Writer {
+    public Alloy.Writer writer() {
+        return new IntentWriter("/tmp");
+    }
+
+    class IntentWriter implements Alloy.Writer {
+        IntentWriter(String path) {
+            _path = path;
+        }
+
         public DataOutputStream resource(String resourceName) throws IOException {
-            String filename = "/tmp/" + resourceName + ".txt";
+            String filename = _path + "/" + resourceName;
             FileOutputStream fos = new FileOutputStream(filename);
             return new DataOutputStream(fos);
         }
 
-        public IntentWriter within(String namespace) throws IOException {
-            return this;
+        public Alloy.Writer within(String namespace) throws IOException {
+            return new IntentWriter(_path + "/" + namespace);
         }
-    }
 
-    public IntentReader reader;
-    public IntentWriter writer;
-
-    public IntentAlloy() {
-        reader = new IntentReader();
-        writer = new IntentWriter();
+        private final String _path;
     }
 }

@@ -21,11 +21,7 @@ import org.json4s._
     *   
     *   @author Michelle Casbon <michelle@idibon.com>
     */
-  class IndexTransformer extends FeatureTransformer[Index] with Archivable {
-
-    def input = IndexTransformer.input
-
-    def options = None
+  class IndexTransformer extends FeatureTransformer with Archivable {
 
     private[indexer] var featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
 
@@ -33,7 +29,6 @@ import org.json4s._
 
     def save(writer: Alloy.Writer) = {
       val dos = writer.resource("featureIndex")
-      writer.within("indexer")
 
       // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
       Codec.VLuint.write(dos, featureIndex.size)
@@ -54,7 +49,6 @@ import org.json4s._
 
     def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
       val dis = reader.resource("featureIndex")
-      reader.within("indexer")
 
       featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
 
@@ -91,7 +85,7 @@ import org.json4s._
         featureIndex(feature) = 0
       }
       else if (!featureIndex.contains(feature)) {
-        featureIndex(feature) = featureIndex.valuesIterator.max + 1
+        featureIndex(feature) = featureIndex.size
       }
 
       featureIndex(feature)
@@ -105,9 +99,9 @@ import org.json4s._
       */
     private[indexer] def createFeatureIndex(features: Seq[Feature[_]]): Int = {
 
-      val uniqueIndexes = features.map(t => lookupOrAddToFeatureIndex(t))
+      val allIndexes = features.map(t => lookupOrAddToFeatureIndex(t))
 
-      uniqueIndexes.max + 1
+      allIndexes.max + 1
     }
 
     /**
@@ -132,20 +126,12 @@ import org.json4s._
       featureVector.toSparse
     }
 
-    def apply(inputFeatures: scala.collection.immutable.Map[String, Seq[Feature[_]]]): Seq[Index] = {
-      // extract input features
-      val features: Seq[Feature[_]] = inputFeatures("features").map(f => f.getAs[Feature[_]])
-
+    def apply(features: Seq[Feature[_]]): Vector = {
       if (features.length < 1)
-        Seq()
+        Vectors.zeros(0)
       else {
-        Seq(new Index(getFeatureVector(features)))
+        getFeatureVector(features)
       }
     }
   }
-
-  private[indexer] object IndexTransformer {
-    lazy val input = scala.collection.immutable.Map("features" -> typeOf[Feature[_]])
-  }
-
 }

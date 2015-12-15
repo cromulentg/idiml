@@ -1,4 +1,5 @@
 import java.io.{DataInputStream, DataOutputStream}
+import com.idibon.ml.alloy.Codec
 
 package com.idibon.ml.feature {
 
@@ -20,7 +21,7 @@ package com.idibon.ml.feature {
     def get: R
 
     /** Returns the internal representation of this feature.
-      * 
+      *
       * Applies a type-safe conversion of the underlying feature
       * representation.
       */
@@ -31,5 +32,11 @@ package com.idibon.ml.feature {
 
     /** Reloads a previously saved feature */
     def load(input: DataInputStream)
+  }
+
+  case class StringFeature(var value: String) extends Feature[String] {
+    def get = value
+    def save(output: DataOutputStream) { Codec.String.write(output, value) }
+    def load(input: DataInputStream) { value = Codec.String.read(input) }
   }
 }
