@@ -1,8 +1,38 @@
 package com.idibon.ml.feature
-import org.scalatest.{Matchers, FunSpec}
+import com.idibon.ml.feature.tokenizer.{Token,TokenTransformer}
+
 import scala.util.Random
 
+import org.scalatest.{Matchers, FunSpec}
+import org.json4s.{JObject,JString}
+
 class FeaturePipelineSpec extends FunSpec with Matchers {
+
+  describe("isValidBinding") {
+    val consumer = Class
+      .forName("com.idibon.ml.feature.TokenConsumer")
+      .newInstance.asInstanceOf[FeatureTransformer]
+    val tokenizer = Class
+      .forName("com.idibon.ml.feature.tokenizer.TokenTransformer")
+      .newInstance.asInstanceOf[FeatureTransformer]
+    val generator = Class
+      .forName("com.idibon.ml.feature.DocumentExtractor")
+      .newInstance.asInstanceOf[FeatureTransformer]
+
+    it("should return true on valid bindings") {
+      FeaturePipeline.isValidBinding(consumer, List(tokenizer)) shouldBe true
+      FeaturePipeline.isValidBinding(tokenizer, List(generator)) shouldBe true
+      /* this is interpreted / indistinguishable from a variadic parameter of
+       * type Feature[JObject]*, so the empty list is 'ok'. */
+      FeaturePipeline.isValidBinding(tokenizer, List()) shouldBe true
+    }
+
+    it("should return false on invalid bindings") {
+      FeaturePipeline.isValidBinding(tokenizer, List(consumer)) shouldBe false
+      FeaturePipeline.isValidBinding(tokenizer, List(generator, generator)) shouldBe false
+      FeaturePipeline.isValidBinding(consumer, List(tokenizer, generator)) shouldBe false
+    }
+  }
 
   describe("buildDependencyChain") {
     val pipeline = new FeaturePipeline
@@ -71,5 +101,15 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
         )
       }
     }
+  }
+}
+
+private [this] class TokenConsumer extends FeatureTransformer {
+  def apply(tokens: Seq[Feature[Token]]) = tokens
+}
+
+private [this] class DocumentExtractor extends FeatureTransformer {
+  def apply(document: JObject): Seq[StringFeature] = {
+    List(StringFeature((document \ "content").asInstanceOf[JString].s))
   }
 }

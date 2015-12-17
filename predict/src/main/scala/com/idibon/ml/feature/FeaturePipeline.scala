@@ -3,7 +3,9 @@ import scala.collection.mutable.{HashSet => MutableSet, MutableList}
 import org.json4s._
 import org.json4s.Formats._
 import org.apache.spark.mllib.linalg.Vector
+
 import com.idibon.ml.alloy.Alloy
+import com.idibon.ml.common.Reflect._
 
 package com.idibon.ml.feature {
 
@@ -120,6 +122,33 @@ package com.idibon.ml.feature {
 
   private[feature] object FeaturePipeline {
     val DocumentInput = "$document"
+
+    /** Returns the #apply method within the provided FeatureTransformer
+      *
+      * Throws an error if zero or more than one apply methods exist.
+      */
+    def getApplyMethod(transformer: FeatureTransformer) = {
+      getMethodsNamed(transformer, "apply") match {
+        case Some(alternatives) if alternatives.size == 1 =>
+          alternatives.head
+        case _ =>
+          // if the transform has 0 or overloaded apply methods, fail
+          throw new IllegalArgumentException(
+            s"Invalid apply: ${transformer.getClass}")
+      }
+    }
+
+    def isValidBinding(transformer: FeatureTransformer,
+        inputs: List[FeatureTransformer]): Boolean = {
+
+      /* grab the return types from all input transform stages, and shove
+       * all of them into a single argument list */
+      val inputTypes = List(inputs.map(getApplyMethod(_).returnType))
+
+      // is transformer#apply(inputTypes: _*) a valid call?
+      isValidInvocation(getApplyMethod(transformer), inputTypes)
+    }
+
   }
 
   // Schema for each entry within the pipeline JSON array
