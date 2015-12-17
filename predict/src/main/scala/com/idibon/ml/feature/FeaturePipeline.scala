@@ -10,8 +10,6 @@ package com.idibon.ml.feature {
   /** The feature pipeline transforms documents into feature vectors
     */
   class FeaturePipeline extends Archivable {
-    type AnyTransformer = FeatureTransformer[Feature[_]]
-
     /** Applies the entire feature pipeline to the provided document.
       *
       * Returns a sequence of Vectors, one for each FeatureSpace included
@@ -118,9 +116,6 @@ package com.idibon.ml.feature {
       if (!currentStage.isEmpty) stages += currentStage.toList
       stages.toList
     }
-
-    /* master table of all FeatureTransformers in the pipeline */
-    private var transforms: Option[Map[String, AnyTransformer]] = None
   }
 
   private[feature] object FeaturePipeline {
