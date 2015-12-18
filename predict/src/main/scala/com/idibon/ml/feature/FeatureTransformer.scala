@@ -1,31 +1,16 @@
-import org.apache.spark.mllib.linalg.Vector
-import scala.reflect.runtime.universe._
-
 package com.idibon.ml.feature {
 
   /** FeatureTransformers convert from one or more lists of input features
-    * into a list of output features.
+    * into a list of output features. Marker interface.
     *
-    * FeatureTransformer implementations are expected to ?
+    * FeatureTransformer implementations must implement an #apply method
+    * that takes as input Seqs of features (of whatever feature sub-
+    * types are requireed by the transform) and returns a Seq of features,
+    * such as the following signatures:
+    *
+    * * [A<:Feature[A], B<:Feature[B]](Seq[A], metadata: Seq[B]) -> Seq[F]
+    * * (Seq[Feature[_]*) -> Seq[F]
+    * * (
     */
-  trait FeatureTransformer[F <: Feature[_]] {
-
-    /** Returns the required input data for this transformer.
-      *
-      * Input data requirements are defined as a map from the named input
-      * field to the internal data representation that is allowed for that
-      * field.
-      *
-      * "tokens" => typeOf[String]
-      */
-    def input: Map[String, Type]
-
-    /** Returns the optional configuration parameters for this transformer */
-    def options: Option[Map[String, Type]]
-
-    /**
-      * Applies the feature transformation to the provided input features
-      */
-    def apply(input: Map[String, Seq[Feature[_]]]): Seq[F]
-  }
+  trait FeatureTransformer
 }
