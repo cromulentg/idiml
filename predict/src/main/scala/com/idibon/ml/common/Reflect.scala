@@ -2,7 +2,10 @@ import scala.reflect.runtime.universe._
 
 package com.idibon.ml.common {
 
-  /** Variety of helper functions for handling erased reflective types */
+  /** Variety of helper functions for handling erased reflective types
+    *
+    * Refer to the unit tests for usage examples.
+    */
   package object Reflect {
 
     /** Returns all overloaded variations of method "name" in an object

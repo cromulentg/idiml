@@ -1,7 +1,6 @@
 import scala.collection.mutable.{HashSet => MutableSet, MutableList}
 
-import org.json4s._
-import org.json4s.Formats._
+import org.json4s.{JObject, DefaultFormats}
 import org.apache.spark.mllib.linalg.Vector
 
 import com.idibon.ml.alloy.Alloy
@@ -56,6 +55,8 @@ package com.idibon.ml.feature {
         (entry.name -> (entry.inputs, MutableSet[String]()))
       }).toMap
 
+      /* recursive call to determine all transitive dependencies in
+       * pipeline entry "name." returns the full dependency list */
       def getDeps(name: String, history: MutableSet[String]): Set[String] = {
         if (history.contains(name)) {
           /* the graph is already processed for this node, so just return
@@ -90,13 +91,13 @@ package com.idibon.ml.feature {
         }
       }
 
-      val graphed = MutableSet[String]()
-      pipeline.foreach(entry => getDeps(entry.name, graphed))
+      val graphedEntries = MutableSet[String]()
+      pipeline.foreach(entry => getDeps(entry.name, graphedEntries))
 
       /* sort the pipeline stages based on the order that they must be
        * processed to fulfill the dependency graph: returns true if A
        * is a dependency of B, or if A has fewer total dependencies than B. */
-      val sorted = graphed.toList.sortWith((a, b) => {
+      val sortedEntries = graphedEntries.toList.sortWith((a, b) => {
         dependencies(b)._2.contains(a) ||
         dependencies(a)._2.size <= dependencies(b)._2.size
       })
@@ -104,7 +105,8 @@ package com.idibon.ml.feature {
       val stages = MutableList[List[String]]()
       val currentStage = MutableSet[String]()
 
-      sorted.foreach(entry => {
+      // split the sorted pipeline entries into independent pipeline stages
+      sortedEntries.foreach(entry => {
         if (dependencies(entry)._1.exists(currentStage.contains(_))) {
           /* if any of the named dependencies for the transform exist
            * within the current stage, then a new stage must be created
