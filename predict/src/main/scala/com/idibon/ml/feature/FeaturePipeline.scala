@@ -2,8 +2,8 @@ import scala.collection.mutable.{HashSet => MutableSet}
 import scala.collection.{Map => AnyMap}
 import scala.reflect.runtime.universe.{MethodMirror, Type, typeOf}
 
+import org.json4s._
 
-import org.json4s.{JObject, DefaultFormats}
 import org.apache.spark.mllib.linalg.Vector
 import com.typesafe.scalalogging.StrictLogging
 
@@ -15,6 +15,7 @@ package com.idibon.ml.feature {
   /** The feature pipeline transforms documents into feature vectors
     */
   class FeaturePipeline extends Archivable {
+
     /** Applies the entire feature pipeline to the provided document.
       *
       * Returns a sequence of Vectors, one for each FeatureSpace included
@@ -38,8 +39,35 @@ package com.idibon.ml.feature {
       }).getOrElse(throw new IllegalStateException("Pipeline not loaded"))
     }
 
-    def save(resourceWriter: Alloy.Writer): Option[JObject] = {
-      None
+    /** Saves each archivable transforms and generates the total pipeline JSON
+      *
+      * See {@link com.idibon.ml.feature.Archivable}
+      */
+    def save(writer: Alloy.Writer): Option[JObject] = {
+      // todo: store dimensions of output vectors here?
+      _state.map(s =>
+        JObject(List(
+          JField("transforms", JArray(s.transforms.map({ case (name, xf) => {
+            // archive each Archivable transform
+            val configJson = xf match {
+              case archive: Archivable => archive.save(writer.within(name))
+              case _ => None
+            }
+            // and map to the entry in the transforms array
+            JObject(List(
+              JField("name", JString(name)),
+              JField("class", JString(xf.getClass.getName)),
+              JField("config", configJson.getOrElse(JNothing))
+            ))
+          }}).toList)),
+          JField("pipeline", JArray(s.pipeline.map(pipe => {
+            // construct an entry in the "pipeline" array for each PipelineEntry
+            JObject(List(
+              JField("name", JString(pipe.name)),
+              JField("inputs", JArray(pipe.inputs.map(i => JString(i))))
+            ))
+          }).toList))
+        )))
     }
 
     @volatile private var _state: Option[LoadState] = None
@@ -54,8 +82,58 @@ package com.idibon.ml.feature {
       *   pipeline was last saved
       */
     def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
+      // configure format converters for json4s
+      implicit val formats = DefaultFormats
+
+      val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
+      val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
+
+      /* instantiate all of the transformers and pass any configuration data
+       * to them, generating a map of the transform name to the reified
+       * transformer object. */
+      val transforms = xfJson.map(obj => {
+        (obj.name -> reify(reader.within(obj.name), obj))
+      }).toMap
+
+      val graph = FeaturePipeline.bindGraph(transforms, pipeJson)
+
+      /* grab all of the feature transformers bound to the output stage
+       * these are the possible sources for significant feature inversion */
+      val outputs = pipeJson.find(_.name == "$output")
+        .map(_.inputs.map(i => transforms(i))).getOrElse(List.empty)
+
+      _state = Some(new LoadState(graph, pipeJson, outputs, transforms))
       this
     }
+
+    /** Reifies a single FeatureTransformer
+      *
+      * Instantiates and, for Archivable objects, loads, the FeatureTransformer
+      * represented by transformDef.
+      *
+      * @param reader        an Alloy.Reader configured for loading all of the
+      *   resources for this FeatureTransformer
+      * @param transformDef  the instance information for this transform -
+      *   name, class and optional configuration information.
+      * @return   tuple of the transformer name and the reified object
+      */
+    private def reify(reader: Alloy.Reader, entry: TransformEntry):
+        FeatureTransformer = {
+
+      val transform = Class.forName(entry.`class`)
+        .newInstance.asInstanceOf[FeatureTransformer]
+
+      transform match {
+        // load and return the transform from the Alloy, if it's Archivable
+        case archived: FeatureTransformer with Archivable => {
+          // grab the configuration data for this transformer, if any
+          archived.load(reader, entry.config)
+        }
+        // otherwise just return the transform
+        case _ => transform
+      }
+    }
+  }
 
   private[feature] object FeaturePipeline extends StrictLogging {
     val OutputStage = "$output"
