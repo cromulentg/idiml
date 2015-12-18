@@ -1,4 +1,7 @@
-import scala.collection.mutable.{HashSet => MutableSet, MutableList}
+import scala.collection.mutable.{HashSet => MutableSet}
+import scala.collection.{Map => AnyMap}
+import scala.reflect.runtime.universe.{MethodMirror, Type, typeOf}
+
 
 import org.json4s.{JObject, DefaultFormats}
 import org.apache.spark.mllib.linalg.Vector
@@ -18,12 +21,28 @@ package com.idibon.ml.feature {
       * in this pipeline.
       */
     def apply(document: JObject): Seq[Vector] = {
-      List[Vector]()
+      _state.map(s => {
+        /* the intermediate data passed between pipeline stages; initialize
+         * with the document under the reserved name "$document" */
+        val intermediates = scala.collection.mutable.Map[String, Any](
+          FeaturePipeline.DocumentInput -> document
+        )
+        for (stage <- s.graph) {
+          intermediates ++= stage.transforms
+            .map(xf => (xf.name -> xf.transform(intermediates)))
+
+          intermediates --= stage.killList
+        }
+
+        intermediates(FeaturePipeline.OutputStage).asInstanceOf[Seq[Vector]]
+      }).getOrElse(throw new IllegalStateException("Pipeline not loaded"))
     }
 
     def save(resourceWriter: Alloy.Writer): Option[JObject] = {
       None
     }
+
+    @volatile private var _state: Option[LoadState] = None
 
     /** Load the FeaturePipeline from the Alloy
       *
@@ -42,6 +61,133 @@ package com.idibon.ml.feature {
     val OutputStage = "$output"
     val DocumentInput = "$document"
 
+    /** Validates and generates a bound, callable feature pipeline
+      *
+      * @param transforms  all of the defined feature transformer objects
+      *   in the feature pipeline
+      * @param entries     the unordered list of edges loaded from JSON
+      * @return   a transformation function that accepts a document JSON
+      *   as input and returns the concatenated set of feature outputs
+      */
+    private[feature] def bindGraph(transforms: Map[String, FeatureTransformer],
+        entries: Seq[PipelineEntry]): Seq[PipelineStage] = {
+
+      // create a map of transform name to required inputs
+      val dependency = entries.map(obj => (obj.name -> obj.inputs)).toMap
+
+      /* generate a map from every named transformer to the apply method for
+       * that transformer; throw an exception if the method isn't defined */
+      val applyMirrors: Map[String, MethodMirror] =
+        transforms.map({ case (name, transformer) => {
+          (name -> getMethod(transformer, "apply")
+            .getOrElse(throw new IllegalArgumentException("No apply:" + name)))
+        }}).toMap
+
+      /* sort all of the individual pipeline entries into a dependency
+       * graph, where each entry in the graph is all of the transforms that
+       * can be performed at that stage. */
+      val sortedDependencies = sortDependencies(entries)
+
+      /* for each dependency stage, compute the set of intermediate values
+       * that are needed by future stages; this will be used to form the
+       * list of intermediate values that are removed from the intermediate
+       * map after executing each pipeline stage. */
+
+      val futureNeeds = scala.collection.mutable.MutableList[Set[String]]()
+
+      /* build the list of future needs in reverse by accumulating all of
+       * input references in later stages, and prepending each accumulated
+       * set to the list of futureNeeds */
+      for (stage <- sortedDependencies.reverse) {
+        (futureNeeds.headOption.getOrElse(Set.empty) ++ stage) +=: futureNeeds
+      }
+
+      /* track all of the live intermediate values at each stage (initially
+       * seeded by the document itself). this will be compared against the
+       * future needs to produce a set of intermediate values that should
+       * be killed at each processing stage. */
+      val liveList = MutableSet(FeaturePipeline.DocumentInput)
+
+      // convert the dependency graph into PipelineStage instances
+      (sortedDependencies zip futureNeeds).map(
+        { case (transformNamesInStage, needsAfterStage) => {
+          /* create BoundTransform objects for each transform in this stage.
+           * the method in the BoundTransform is just a thunk that deserializes
+           * the input data from a shared map of live intermediate data, calls
+           * the apply() method on the FeatureTrasformer (using reflection),
+           * then stores the results of the transform back in the shared map for
+           future stages. */
+          val bindings = transformNamesInStage.map(current => {
+
+            /* lookup the named input dependencies for this transform, or
+             * return an empty list if (for some reason) the transform has
+             * no inputs. */
+            val inputNames = dependency.getOrElse(current, List())
+
+            /* map all of the named inputs to the actual data types that are
+             * expected to be used. inputs named "$input" will just take a JSON
+             * object of the document. */
+            val inputTypes = inputNames.map(_ match {
+              case FeaturePipeline.DocumentInput => typeOf[JObject]
+              case otherXformer => applyMirrors(otherXformer).symbol.returnType
+            })
+
+            val bindFunction = current match {
+              /* for "$output", return a function that concatenates the named
+               * inputs into a Seq */
+              case FeaturePipeline.OutputStage => {
+                /* at least one input to the $output stage must exist for the
+                 * pipeline to validate. */
+                if (inputNames.isEmpty)
+                  throw new IllegalArgumentException("No output from pipeline")
+
+                /* all of the stages feeding into the $output stage should
+                 * return vectors. log a warning message if not. */
+                (inputNames zip inputTypes).filterNot(_._2 <:< typeOf[Vector])
+                  .foreach(i => {
+                    logger.warn(s"Output of ${i._1} may not be a Vector")
+                  })
+
+                /* and return the binding function that just pivots the input
+                 * data from the intermediates map into a sequence */
+                (intermediates: AnyMap[String, Any]) => {
+                  inputNames.map(intermediates(_))
+                }
+              }
+              /* for proper transform stages, return a thunk that deserializes
+               * the named inputs from the intermediates map, then calls the
+               * reflected apply method to generate the output */
+              case _ => {
+                val reflected = applyMirrors(current)
+                if (!isValidInvocation(reflected.symbol, List(inputTypes)))
+                  logger.warn(s"Binding for $current may not satisfy type signature")
+
+                /* and return a thunk that calls the apply method using the
+                 * input values from the intermediates map.
+                 *
+                 * TODO: handle variadic arguments
+                 */
+                (intermediates: AnyMap[String, Any]) => {
+                  reflected(inputNames.map(intermediates(_)): _*)
+                }
+              }
+            }
+
+            // return a BoundTransform for the bind function
+            new BoundTransform(current, bindFunction)
+          })
+
+          // anything that is alive but not needed in the future is killable
+          val killable = liveList & needsAfterStage
+          liveList --= killable
+
+          // add all of the transforms from this stage as live intermediate values
+          liveList ++= transformNamesInStage
+
+          // yield the final pipeline stage
+          new PipelineStage(killable.toList, bindings)
+        }})
+    }
 
     /** Orders the transformers in a pipeline in dependency order
       *
@@ -130,37 +276,25 @@ package com.idibon.ml.feature {
     }
   }
 
-  private[feature] object FeaturePipeline {
-    val DocumentInput = "$document"
+  // all internal state maintained by the FeaturePipeline
+  private[this] case class LoadState(graph: Seq[PipelineStage],
+    pipeline: Seq[PipelineEntry],
+    inverters: Seq[FeatureTransformer],
+    transforms: Map[String, FeatureTransformer])
 
-    /** Returns the #apply method within the provided FeatureTransformer
-      *
-      * Throws an error if zero or more than one apply methods exist.
-      */
-    def getApplyMethod(transformer: FeatureTransformer) = {
-      getMethodsNamed(transformer, "apply") match {
-        case Some(alternatives) if alternatives.size == 1 =>
-          alternatives.head
-        case _ =>
-          // if the transform has 0 or overloaded apply methods, fail
-          throw new IllegalArgumentException(
-            s"Invalid apply: ${transformer.getClass}")
-      }
-    }
 
-    def isValidBinding(transformer: FeatureTransformer,
-        inputs: List[FeatureTransformer]): Boolean = {
-
-      /* grab the return types from all input transform stages, and shove
-       * all of them into a single argument list */
-      val inputTypes = List(inputs.map(getApplyMethod(_).returnType))
-
-      // is transformer#apply(inputTypes: _*) a valid call?
-      isValidInvocation(getApplyMethod(transformer), inputTypes)
-    }
-
-  }
+  // Schema for each entry within the transforms JSON array
+  private[feature] case class TransformEntry(name: String, `class`: String,
+    config: Option[JObject])
 
   // Schema for each entry within the pipeline JSON array
   private[feature] case class PipelineEntry(name: String, inputs: List[String])
+
+  // Binds a reified FeatureTransformer within a processing graph
+  private[feature] case class BoundTransform(name: String,
+    transform: (AnyMap[String, Any]) => Any)
+
+  // An independently-processable stage within the processing graph.
+  private[feature] case class PipelineStage(killList: List[String],
+    transforms: List[BoundTransform])
 }

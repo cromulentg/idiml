@@ -2,35 +2,62 @@ package com.idibon.ml.feature
 import com.idibon.ml.feature.tokenizer.{Token,TokenTransformer}
 
 import scala.util.Random
+import scala.collection.mutable.{HashMap => MutableMap}
 
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.scalatest.{Matchers, FunSpec}
-import org.json4s.{JObject,JString}
+import org.json4s.{JObject, JString, JDouble, JField}
 
 class FeaturePipelineSpec extends FunSpec with Matchers {
 
-  describe("isValidBinding") {
-    val consumer = Class
-      .forName("com.idibon.ml.feature.TokenConsumer")
-      .newInstance.asInstanceOf[FeatureTransformer]
-    val tokenizer = Class
-      .forName("com.idibon.ml.feature.tokenizer.TokenTransformer")
-      .newInstance.asInstanceOf[FeatureTransformer]
-    val generator = Class
-      .forName("com.idibon.ml.feature.DocumentExtractor")
-      .newInstance.asInstanceOf[FeatureTransformer]
+  describe("bindGraph") {
 
-    it("should return true on valid bindings") {
-      FeaturePipeline.isValidBinding(consumer, List(tokenizer)) shouldBe true
-      FeaturePipeline.isValidBinding(tokenizer, List(generator)) shouldBe true
-      /* this is interpreted / indistinguishable from a variadic parameter of
-       * type Feature[JObject]*, so the empty list is 'ok'. */
-      FeaturePipeline.isValidBinding(tokenizer, List()) shouldBe true
+    it("should raise an exception if $output is incomplete") {
+      val transforms = Map[String, FeatureTransformer]()
+      val pipeline = List(new PipelineEntry("$output", List()))
+
+      intercept[IllegalArgumentException] {
+        FeaturePipeline.bindGraph(transforms, pipeline)
+      }
     }
 
-    it("should return false on invalid bindings") {
-      FeaturePipeline.isValidBinding(tokenizer, List(consumer)) shouldBe false
-      FeaturePipeline.isValidBinding(tokenizer, List(generator, generator)) shouldBe false
-      FeaturePipeline.isValidBinding(consumer, List(tokenizer, generator)) shouldBe false
+    it("should raise an exception if a transformer doesn't implement apply")(pending)
+
+    it("should raise an exception if $output is undefined")(pending)
+
+    it("should raise an exception if a pipeline stage is missing")(pending)
+
+    it("should raise an exception if a reserved name is used")(pending)
+
+    it("should treat $document as a typeOf[JObject]") {
+      val transforms = Map(
+        "contentExtractor" -> new DocumentExtractor,
+        "metadataVector" -> new MetadataNumberExtractor,
+        "featureVector" -> new FeatureVectors
+      )
+      val pipeline = List(
+        new PipelineEntry("$output", List("featureVector", "metadataVector")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("metadataVector", List("$document")),
+        new PipelineEntry("featureVector", List("contentExtractor"))
+      )
+
+      val graph = FeaturePipeline.bindGraph(transforms, pipeline)
+      graph.size shouldBe 3
+
+      val intermediates = MutableMap[String, Any]()
+      intermediates.put("$document", JObject(List(
+        JField("content", JString("A document!")),
+        JField("metadata", JObject(List(
+          JField("number", JDouble(3.14159265)))))
+      )))
+
+      for (stage <- graph; transform <- stage.transforms) {
+        intermediates.put(transform.name, transform.transform(intermediates))
+      }
+
+      intermediates.get("$output") shouldBe
+        Some(List(Vectors.dense(11.0), Vectors.dense(3.14159265)))
     }
   }
 
@@ -99,6 +126,18 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
         )
       }
     }
+  }
+}
+
+private [this] class FeatureVectors extends FeatureTransformer {
+  def apply(content: Seq[Feature[String]]): Vector = {
+    Vectors.dense(content.map(_.get.length.toDouble).toArray)
+  }
+}
+
+private [this] class MetadataNumberExtractor extends FeatureTransformer {
+  def apply(document: JObject): Vector = {
+    Vectors.dense((document \ "metadata" \ "number").asInstanceOf[JDouble].num)
   }
 }
 
