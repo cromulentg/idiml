@@ -1,10 +1,17 @@
 package com.idibon.ml.feature.indexer
 
+import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.Feature
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import java.io._
 import org.apache.spark.mllib.linalg.Vectors
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
+
+/**
+  * Tests for validating the functionality of the IndexTransformer
+  *
+  * @author Michelle Casbon <michelle@idibon.com>
+  */
 
 class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
@@ -53,7 +60,7 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
       }
     }
 
-    it("should save and load properly") {
+    it("should save and load a token properly") {
       val fiveTokens = Seq[Feature[Token]](
         new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
         new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
@@ -79,6 +86,26 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
       // Remove the temporary file
       new File(filename).delete()
+    }
+
+    it("should save and load a transformer properly") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("sleep", Tag.Word, 1, 1), new Token("furiously", Tag.Word, 1, 1),
+        new Token("green", Tag.Word, 1, 1))
+      val result1 = transform.apply(Map("features" -> fiveTokens))
+
+      // Save the results
+      val intentAlloy = new IntentAlloy()
+      transform.save(intentAlloy.writer)
+
+      // Load the results
+      val transform2 = new IndexTransformer()
+      transform2.load(intentAlloy.reader, null)
+      val result2 = transform2.apply(Map("features" -> fiveTokens))
+
+      result1 shouldBe result2
     }
   }
 }

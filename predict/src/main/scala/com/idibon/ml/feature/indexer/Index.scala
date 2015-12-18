@@ -7,11 +7,15 @@ import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import scala.collection.mutable.ArrayBuffer
 
 /** This class represents an index of features.
+  *
   * @author Michelle Casbon <michelle@idibon.com>
   */
 case class Index(var values: Vector) extends Feature[Index] {
 
   def get = this
+
+  // Default parameterless constructor for reflection or when you just want to load a saved Index
+  def this() = this(values = Vectors.dense(0))
 
   /** Stores the feature to an output stream so it may be reloaded later. */
   def save(output: DataOutputStream): Unit = {
@@ -44,7 +48,6 @@ case class Index(var values: Vector) extends Feature[Index] {
     var di_values = ArrayBuffer[Double]()
     1 to di_length foreach { _ => di_values += Codec.VLuint.read(input)}
 
-    //val newVector: Vector = Vectors.sparse(di_length, di_indices.toArray, di_values.toArray)
     values = Vectors.sparse(di_length, di_indices.toArray, di_values.toArray)
   }
 }
