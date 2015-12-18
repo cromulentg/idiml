@@ -35,15 +35,13 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
   }
 
   describe("buildDependencyChain") {
-    val pipeline = new FeaturePipeline
-
     it("should handle an empty list correctly") {
-      val chain = pipeline.sortDependencies(List[PipelineEntry]())
+      val chain = FeaturePipeline.sortDependencies(List[PipelineEntry]())
       chain shouldBe empty
     }
 
     it("should sort simple pipelines in dependency order") {
-      val chain = pipeline.sortDependencies(
+      val chain = FeaturePipeline.sortDependencies(
         Random.shuffle(List(
           new PipelineEntry("tokenizer", List("$document")),
           new PipelineEntry("ngrammer", List("tokenizer")),
@@ -53,7 +51,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
     }
 
     it("should support diamond graphs") {
-      val chain = pipeline.sortDependencies(
+      val chain = FeaturePipeline.sortDependencies(
         Random.shuffle(List(
           new PipelineEntry("tokenizer", List("$document")),
           new PipelineEntry("metadata", List("$document")),
@@ -73,7 +71,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
 
     it("should raise an exception on cyclic graphs") {
       intercept[IllegalArgumentException] {
-        pipeline.sortDependencies(
+        FeaturePipeline.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("tokenizer", List("$document")),
             new PipelineEntry("n-grams", List("tokenizer", "word-vectors")),
@@ -83,7 +81,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
       }
 
       intercept[IllegalArgumentException] {
-        pipeline.sortDependencies(
+        FeaturePipeline.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("tokenizer", List("$document")),
             new PipelineEntry("n-grams", List("tokenizer", "n-grams")),
@@ -94,7 +92,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
 
     it("should raise an exception on non-existent transforms") {
       intercept[IllegalArgumentException] {
-        pipeline.sortDependencies(
+        FeaturePipeline.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("n-grams", List("tokenizer")),
             new PipelineEntry("$output", List("n-grams"))))

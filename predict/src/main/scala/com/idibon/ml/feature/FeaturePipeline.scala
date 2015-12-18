@@ -2,6 +2,7 @@ import scala.collection.mutable.{HashSet => MutableSet, MutableList}
 
 import org.json4s.{JObject, DefaultFormats}
 import org.apache.spark.mllib.linalg.Vector
+import com.typesafe.scalalogging.StrictLogging
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Reflect._
@@ -37,6 +38,11 @@ package com.idibon.ml.feature {
       this
     }
 
+  private[feature] object FeaturePipeline extends StrictLogging {
+    val OutputStage = "$output"
+    val DocumentInput = "$document"
+
+
     /** Orders the transformers in a pipeline in dependency order
       *
       * Orders all of the entries in a pipeline based on the order that
@@ -45,7 +51,7 @@ package com.idibon.ml.feature {
       * stages of independent processing (i.e., any entry in stage N
       * depends only on the results of transforms in [Stage 0..N-1])
       */
-    private[feature] def sortDependencies(pipeline: List[PipelineEntry]):
+    private[feature] def sortDependencies(pipeline: Seq[PipelineEntry]):
         List[List[String]] = {
 
       /* recursively construct the full dependency graph using the partial
@@ -74,7 +80,9 @@ package com.idibon.ml.feature {
               history += name
               /* add all of the computed dependencies for each direct
                * dependency to the dependency list */
-              transitive ++= named.map(n => getDeps(n, history)).reduce(_ ++ _)
+              val indirect = named.map(n => getDeps(n, history))
+                .foldLeft(MutableSet[String]())(_ ++= _)
+              transitive ++= indirect
               // nodes should never appear as their own dependencies
               if (transitive.contains(name))
                 throw new IllegalArgumentException("Cyclic graph: " +name)
@@ -102,7 +110,7 @@ package com.idibon.ml.feature {
         dependencies(a)._2.size <= dependencies(b)._2.size
       })
 
-      val stages = MutableList[List[String]]()
+      val stages = scala.collection.mutable.MutableList[List[String]]()
       val currentStage = MutableSet[String]()
 
       // split the sorted pipeline entries into independent pipeline stages
