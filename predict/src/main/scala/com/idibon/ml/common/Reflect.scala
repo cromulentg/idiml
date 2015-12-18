@@ -22,6 +22,23 @@ package com.idibon.ml.common {
       }
     }
 
+    /** Returns a method mirror for invoking the named method on obj
+      *
+      * Returns None if no method exists with the requested name, or if
+      * multiple overloaded methods with the same name exist.
+      *
+      * @param obj  object to reflect
+      * @param name name of method to lookup
+      * @return a mirror to invoke the named method on the object
+      */
+    def getMethod(obj: Any, name: String): Option[MethodMirror] = {
+      val instanceMirror = Mirror.reflect(obj)
+      instanceMirror.symbol.typeSignature.member(TermName(name)) match {
+        case meth: MethodSymbol => Some(instanceMirror.reflectMethod(meth))
+        case _ => None
+      }
+    }
+
     /** Returns the type of the variadic argument accepted by the param list
       *
       * Parameter lists are treated as variadic if the last parameter has
