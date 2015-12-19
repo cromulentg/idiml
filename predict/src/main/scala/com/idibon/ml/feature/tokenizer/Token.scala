@@ -23,6 +23,9 @@ package com.idibon.ml.feature.tokenizer {
   case class Token(var content: String, var tag: Tag.Value,
     var offset: Int, var length: Int) extends Feature[Token] {
 
+    // Default parameterless constructor for reflection or when you just want to load a saved Token
+    def this() = this(content = "", tag = Tag.Word, offset = 0, length = 0)
+
     def get = this
 
     def save(output: DataOutputStream) {
