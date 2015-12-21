@@ -216,20 +216,22 @@ package com.idibon.ml.feature {
               case FeaturePipeline.OutputStage => {
                 /* at least one input to the $output stage must exist for the
                  * pipeline to validate. */
-                if (inputNames.isEmpty)
-                  throw new IllegalArgumentException("No output from pipeline")
+                if (inputNames.isEmpty) {
+                  logger.error(s"$this no outputs defined")
+                  throw new IllegalArgumentException("No pipeline output")
+                }
 
                 /* all of the stages feeding into the $output stage should
                  * return vectors. log a warning message if not. */
                 (inputNames zip inputTypes).filterNot(_._2 <:< typeOf[Vector])
                   .foreach(i => {
-                    logger.warn(s"Output of ${i._1} may not be a Vector")
+                    logger.warn(s"$this output of ${i._1} may not be a Vector")
                   })
 
                 /* and return the binding function that just pivots the input
                  * data from the intermediates map into a sequence */
                 (intermediates: AnyMap[String, Any]) => {
-                  inputNames.map(intermediates(_))
+                  inputNames.map(n => intermediates(n))
                 }
               }
               /* for proper transform stages, return a thunk that deserializes
@@ -237,16 +239,41 @@ package com.idibon.ml.feature {
                * reflected apply method to generate the output */
               case _ => {
                 val reflected = applyMirrors(current)
-                if (!isValidInvocation(reflected.symbol, List(inputTypes)))
-                  logger.warn(s"Binding for $current may not satisfy type signature")
+                val method = reflected.symbol
+                if (!isValidInvocation(method, List(inputTypes)))
+                  logger.warn(s"$this inputs may not satisfy call to $current")
+
+                /* if the FeatureTransformer is declared using multiple
+                 * parameter lists (for, e.g., function currying), throw
+                 * an UnsupportedOperationException. */
+                if (method.paramLists.size > 1) {
+                  logger.error(s"$this has a curried signature for $current")
+                  throw new UnsupportedOperationException("Curried arguments")
+                }
+
+                /* if the method accepts variadic arguments for the last
+                 * parameter, the thunk will need to convert:
+                 * (A, B, C, D, ...) into (A, B, C, D, List(...)).
+                 * cache the number of non-variadic arguments in the
+                 * parameter list */
+                val variadicIndex = getVariadicParameterType(method,
+                  method.paramLists.head)
+                  .map(_ => method.paramLists.head.length - 1)
 
                 /* and return a thunk that calls the apply method using the
-                 * input values from the intermediates map.
-                 *
-                 * TODO: handle variadic arguments
-                 */
+                 * input values from the intermediates map. */
                 (intermediates: AnyMap[String, Any]) => {
-                  reflected(inputNames.map(intermediates(_)): _*)
+                  // pivot the intermediates table into an argument list
+                  val args = inputNames.map(n => intermediates(n))
+                  /* if the apply method is variadic, slice off the tail
+                   * (variadic) arguments, and append the resulting list as a
+                   * single element (i.e., do not concatenate the lists).
+                   * otherwise, just call the reflected method with the
+                   * unmodified argumnets list */
+                  variadicIndex.map(i => {
+                    val va = args.slice(0, i - 1) :+ args.slice(i - 1, args.size)
+                    reflected(va:_*)
+                  }).getOrElse(reflected(args:_*))
                 }
               }
             }

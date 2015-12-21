@@ -47,14 +47,13 @@ class ReflectSpec extends FunSpec with Matchers {
     it("should return type arguments for variadic methods") {
       val cases = List(
         "actuallyVariadic" -> Some(typeOf[Int]),
-        "possiblyVariadic" -> Some(typeOf[Int]),
+        "possiblyVariadic" -> None,
         "neverVariadic" -> None
       )
       val obj = new TestGetVariadicParamType
       cases.foreach({ case (methodName, expected) => {
         val method = getMethodsNamed(obj, methodName).get.head
-        val variadicType = getVariadicParameterType(method.paramLists.head)
-        getVariadicParameterType(method.paramLists.head) shouldBe expected
+        getVariadicParameterType(method, method.paramLists.head) shouldBe expected
       }})
     }
   }

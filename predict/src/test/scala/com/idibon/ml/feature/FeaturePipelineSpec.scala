@@ -29,6 +29,21 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
 
     it("should raise an exception if a reserved name is used")(pending)
 
+    it("should raise an exception if the transformer uses currying") {
+      val transforms = Map(
+        "curriedExtractor" -> new CurriedExtractor,
+        "contentExtractor" -> new DocumentExtractor
+      )
+      val pipeline = List(
+        new PipelineEntry("$output", List("curriedExtractor")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("curriedExtractor", List("$document", "contentExtractor"))
+      )
+      intercept[UnsupportedOperationException] {
+        FeaturePipeline.bindGraph(transforms, pipeline)
+      }
+    }
+
     it("should treat $document as a typeOf[JObject]") {
       val transforms = Map(
         "contentExtractor" -> new DocumentExtractor,
@@ -58,6 +73,49 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
 
       intermediates.get("$output") shouldBe
         Some(List(Vectors.dense(11.0), Vectors.dense(3.14159265)))
+    }
+
+    it("should support variadic arguments in pipelines") {
+      val transforms = Map(
+        "contentExtractor" -> new DocumentExtractor,
+        "concatenator" -> new VectorConcatenator,
+        "metadataVector" -> new MetadataNumberExtractor,
+        "featureVector" -> new FeatureVectors
+      )
+
+      val pipelines = List(
+        (Vectors.dense(3.14159265, 11.0), List(
+          new PipelineEntry("$output", List("concatenator")),
+          new PipelineEntry("concatenator", List("metadataVector", "featureVector")),
+          new PipelineEntry("contentExtractor", List("$document")),
+          new PipelineEntry("metadataVector", List("$document")),
+          new PipelineEntry("featureVector", List("contentExtractor")))),
+        (Vectors.dense(11.0, 3.14159265), List(
+          // exactly the same, but the order of concatenation is reversed
+          new PipelineEntry("$output", List("concatenator")),
+          new PipelineEntry("concatenator", List("featureVector", "metadataVector")),
+          new PipelineEntry("contentExtractor", List("$document")),
+          new PipelineEntry("metadataVector", List("$document")),
+          new PipelineEntry("featureVector", List("contentExtractor"))))
+      )
+
+      pipelines.foreach({ case (expected, pipeline) => {
+        val graph = FeaturePipeline.bindGraph(transforms, pipeline)
+        graph.size shouldBe 4
+
+        val intermediates = MutableMap[String, Any]()
+        intermediates.put("$document", JObject(List(
+          JField("content", JString("A document!")),
+          JField("metadata", JObject(List(
+            JField("number", JDouble(3.14159265)))))
+        )))
+
+        for (stage <- graph; transform <- stage.transforms) {
+          intermediates.put(transform.name, transform.transform(intermediates))
+        }
+
+        intermediates.get("$output") shouldBe Some(List(expected))
+      }})
     }
   }
 
@@ -126,6 +184,18 @@ class FeaturePipelineSpec extends FunSpec with Matchers {
         )
       }
     }
+  }
+}
+
+private [this] class VectorConcatenator extends FeatureTransformer {
+  def apply(inputs: Vector*): Vector = {
+    Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
+  }
+}
+
+private [this] class CurriedExtractor extends FeatureTransformer {
+  def apply(document: JObject)(tokens: Seq[Feature[String]]): Vector = {
+    Vectors.dense(1.0)
   }
 }
 
