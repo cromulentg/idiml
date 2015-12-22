@@ -22,6 +22,23 @@ package com.idibon.ml.common {
       }
     }
 
+    /** Returns a method mirror for invoking the named method on obj
+      *
+      * Returns None if no method exists with the requested name, or if
+      * multiple overloaded methods with the same name exist.
+      *
+      * @param obj  object to reflect
+      * @param name name of method to lookup
+      * @return a mirror to invoke the named method on the object
+      */
+    def getMethod(obj: Any, name: String): Option[MethodMirror] = {
+      val instanceMirror = Mirror.reflect(obj)
+      instanceMirror.symbol.typeSignature.member(TermName(name)) match {
+        case meth: MethodSymbol => Some(instanceMirror.reflectMethod(meth))
+        case _ => None
+      }
+    }
+
     /** Returns the type of the variadic argument accepted by the param list
       *
       * Parameter lists are treated as variadic if the last parameter has
@@ -38,11 +55,15 @@ package com.idibon.ml.common {
       * Scala 2.11), so the best you'll get is a Some(Object) if you call
       * getVariadicParameterType on an instance of an anonymous class
       *
+      * @param method the possibly-variadic method
       * @param params a parameter list
       * @return the type of the variadic argument accepted, or None
       */
-    def getVariadicParameterType(params: List[Symbol]): Option[Type] = {
-      if (params.isEmpty) {
+    def getVariadicParameterType(method: MethodSymbol,
+      params: List[Symbol]): Option[Type] = {
+
+      if (params.isEmpty || !method.isVarargs) {
+        // only try to detect a variadic type if the method is variadic
         None
       } else {
         /* extract the type of the last (and only possible variadic) entry
@@ -72,7 +93,7 @@ package com.idibon.ml.common {
        * the parameters in the provided parameter list. */
       def validList(params: List[Symbol], args: List[Type]): Boolean = {
 
-        val variadicType = getVariadicParameterType(params)
+        val variadicType = getVariadicParameterType(method.asMethod, params)
 
         /* we need to detect if the arguments treat the variadic parameter
          * as a (splatted) variadic invocation, or collate the arguments

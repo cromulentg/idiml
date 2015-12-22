@@ -20,18 +20,40 @@ class ReflectSpec extends FunSpec with Matchers {
     }
   }
 
+  describe("getMethod") {
+
+    it("should return a callable Option if the method exists") {
+      val reflect = getMethod(new TestIsValidInvocation, "m2")
+      reflect should not be empty
+      reflect.get.apply() shouldBe "hi"
+    }
+
+    it("should return None if the method does not exist") {
+      val reflect = getMethod(new TestIsValidInvocation, "nothing")
+      reflect shouldBe empty
+    }
+
+    it("should support anonymous classes") {
+      val obj = new Object {
+        def calledByReflection(x: Double, y: Double) = x + y
+      }
+      val reflect = getMethod(obj, "calledByReflection")
+      reflect should not be empty
+      reflect.get(17.5, 16.5) shouldBe 34.0
+    }
+  }
+
   describe("getVariadicParameterType") {
     it("should return type arguments for variadic methods") {
       val cases = List(
         "actuallyVariadic" -> Some(typeOf[Int]),
-        "possiblyVariadic" -> Some(typeOf[Int]),
+        "possiblyVariadic" -> None,
         "neverVariadic" -> None
       )
       val obj = new TestGetVariadicParamType
       cases.foreach({ case (methodName, expected) => {
         val method = getMethodsNamed(obj, methodName).get.head
-        val variadicType = getVariadicParameterType(method.paramLists.head)
-        getVariadicParameterType(method.paramLists.head) shouldBe expected
+        getVariadicParameterType(method, method.paramLists.head) shouldBe expected
       }})
     }
   }
