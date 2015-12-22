@@ -14,10 +14,17 @@ subprojects {
     scalaVersion = '2.11'
     scalaCompilerBuild = '7'
     sparkVersion = '1.5.2'
+    log4jVersion = '2.5'
   }
 
   repositories {
     mavenCentral()
+  }
+
+  configurations {
+    // exclude the log4j 1.2-compatible bindings that come by default
+    // with SLF4J (which comes with scala-logging). we use log4j 2
+    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
   }
 
   dependencies {
@@ -30,6 +37,14 @@ subprojects {
 
     // Json 4 Scala (Json4s)
     compile group: 'org.json4s', name: "json4s-native_${project.ext.scalaVersion}", version: '3.3.0'
+
+    // Scala logging (https://github.com/typesafehub/scala-logging),
+    compile group: 'com.typesafe.scala-logging', name: "scala-logging_${project.ext.scalaVersion}", version: '3.1.0'
+
+    // log4j2 + slf4j bindings
+    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: "${project.ext.log4jVersion}"
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: "${project.ext.log4jVersion}"
+    compile group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: "${project.ext.log4jVersion}"
 
     // ScalaTest framework
     testCompile "org.scalatest:scalatest_${project.ext.scalaVersion}:2+"
