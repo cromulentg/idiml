@@ -5,7 +5,7 @@ import scala.reflect.runtime.universe.{MethodMirror, Type, typeOf}
 import org.json4s._
 
 import org.apache.spark.mllib.linalg.Vector
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.Logger
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Reflect._
@@ -85,6 +85,8 @@ package com.idibon.ml.feature {
       // configure format converters for json4s
       implicit val formats = DefaultFormats
 
+      FeaturePipeline.logger.trace(s"[$this] loading")
+
       val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
       val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
 
@@ -92,6 +94,7 @@ package com.idibon.ml.feature {
        * to them, generating a map of the transform name to the reified
        * transformer object. */
       val transforms = xfJson.map(obj => {
+        FeaturePipeline.checkTransformerName(obj.name)
         (obj.name -> reify(reader.within(obj.name), obj))
       }).toMap
 
@@ -135,9 +138,23 @@ package com.idibon.ml.feature {
     }
   }
 
-  private[feature] object FeaturePipeline extends StrictLogging {
+  private[feature] object FeaturePipeline {
     val OutputStage = "$output"
     val DocumentInput = "$document"
+    val DefaultName = "<undefined>"
+
+    lazy val logger = Logger(org.slf4j.LoggerFactory
+      .getLogger(classOf[FeaturePipeline].getName))
+
+    /** Tests if a user-provided name uses a reserved sequence.
+      *
+      * @param name string to check
+      * @return true if the name uses reserved characters, otherwise false
+      */
+    def checkTransformerName(name: String, pipelineName: String = DefaultName) {
+      if (name.charAt(0) == '$')
+        logger.warn(s"[$pipelineName/$name] - using reserved name")
+    }
 
     /** Validates and generates a bound, callable feature pipeline
       *
@@ -147,18 +164,25 @@ package com.idibon.ml.feature {
       * @return   a transformation function that accepts a document JSON
       *   as input and returns the concatenated set of feature outputs
       */
-    private[feature] def bindGraph(transforms: Map[String, FeatureTransformer],
-        entries: Seq[PipelineEntry]): Seq[PipelineStage] = {
+    def bindGraph(transforms: Map[String, FeatureTransformer],
+        entries: Seq[PipelineEntry],
+        pipelineName: String = DefaultName): Seq[PipelineStage] = {
 
       // create a map of transform name to required inputs
       val dependency = entries.map(obj => (obj.name -> obj.inputs)).toMap
+
+      // an output stage must be defined
+      if (entries.find(_.name == FeaturePipeline.OutputStage).isEmpty) {
+        logger.error(s"[$pipelineName/$$output]: $$output missing")
+        throw new NoSuchElementException("No $output")
+      }
 
       /* generate a map from every named transformer to the apply method for
        * that transformer; throw an exception if the method isn't defined */
       val applyMirrors: Map[String, MethodMirror] =
         transforms.map({ case (name, transformer) => {
           (name -> getMethod(transformer, "apply")
-            .getOrElse(throw new IllegalArgumentException("No apply:" + name)))
+            .getOrElse(throw new IllegalArgumentException(s"No apply: $name")))
         }}).toMap
 
       /* sort all of the individual pipeline entries into a dependency
@@ -217,7 +241,7 @@ package com.idibon.ml.feature {
                 /* at least one input to the $output stage must exist for the
                  * pipeline to validate. */
                 if (inputNames.isEmpty) {
-                  logger.error(s"$this no outputs defined")
+                  logger.error(s"[$pipelineName/$$output] no outputs defined")
                   throw new IllegalArgumentException("No pipeline output")
                 }
 
@@ -225,7 +249,7 @@ package com.idibon.ml.feature {
                  * return vectors. log a warning message if not. */
                 (inputNames zip inputTypes).filterNot(_._2 <:< typeOf[Vector])
                   .foreach(i => {
-                    logger.warn(s"$this output of ${i._1} may not be a Vector")
+                    logger.warn(s"[$pipelineName/${i._1}] possible non-Vector output")
                   })
 
                 /* and return the binding function that just pivots the input
@@ -238,16 +262,19 @@ package com.idibon.ml.feature {
                * the named inputs from the intermediates map, then calls the
                * reflected apply method to generate the output */
               case _ => {
-                val reflected = applyMirrors(current)
+                val reflected = applyMirrors.get(current).getOrElse({
+                  logger.error(s"[$pipelineName/$current] no transformer defined")
+                  throw new NoSuchElementException(current)
+                })
                 val method = reflected.symbol
                 if (!isValidInvocation(method, List(inputTypes)))
-                  logger.warn(s"$this inputs may not satisfy call to $current")
+                  logger.warn(s"[$pipelineName/$current] inputs may not satisfy call")
 
                 /* if the FeatureTransformer is declared using multiple
                  * parameter lists (for, e.g., function currying), throw
                  * an UnsupportedOperationException. */
                 if (method.paramLists.size > 1) {
-                  logger.error(s"$this has a curried signature for $current")
+                  logger.error(s"[$pipelineName/$current] curried arguments")
                   throw new UnsupportedOperationException("Curried arguments")
                 }
 
@@ -257,7 +284,7 @@ package com.idibon.ml.feature {
                  * cache the number of non-variadic arguments in the
                  * parameter list */
                 val variadicIndex = getVariadicParameterType(method,
-                  method.paramLists.head)
+                  method.paramLists.headOption.getOrElse(List.empty))
                   .map(_ => method.paramLists.head.length - 1)
 
                 /* and return a thunk that calls the apply method using the
@@ -345,7 +372,7 @@ package com.idibon.ml.feature {
             // base case handling for initial document input
             case None if name == FeaturePipeline.DocumentInput => Set()
             // or throw an exception if the node doesn't exist
-            case _ => throw new IllegalArgumentException("Missing: " + name)
+            case _ => throw new NoSuchElementException(name)
           }
         }
       }
