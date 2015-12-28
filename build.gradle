@@ -56,6 +56,9 @@ subprojects {
     // SLF4J (http://www.slf4j.org)
     compile "org.slf4j:slf4j-api:${project.ext.slf4jVersion}"
 
+    // ICU4J
+    compile group: 'com.ibm.icu', name: 'icu4j', version: '56.1'
+
     // ScalaTest framework
     testCompile "org.scalatest:scalatest_${project.ext.scalaVersion}:2+"
 
