@@ -80,6 +80,7 @@ package com.idibon.ml.feature {
       *   resources for this FeaturePipeline
       * @param config    the JSON configuration object generated when this
       *   pipeline was last saved
+      * @return this
       */
     def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
       // configure format converters for json4s
@@ -98,14 +99,29 @@ package com.idibon.ml.feature {
         (obj.name -> reify(reader.within(obj.name), obj))
       }).toMap
 
-      val graph = FeaturePipeline.bindGraph(transforms, pipeJson)
+      bind(transforms, pipeJson)
+    }
+
+    /** Creates a bound state graph from the provided input state
+      *
+      * Helper method for load, also used for programmatic creation of
+      * FeaturePipline instances by the FeaturePipelineBuilder
+      *
+      * @param transforms  all of the transforms and names used in the pipeline
+      * @param pipeline    the pipeline structure
+      * @return this
+      */
+    private [feature] def bind(transforms: Map[String, FeatureTransformer],
+        pipeline: Seq[PipelineEntry]): this.type = {
+
+      val graph = FeaturePipeline.bindGraph(transforms, pipeline)
 
       /* grab all of the feature transformers bound to the output stage
        * these are the possible sources for significant feature inversion */
-      val outputs = pipeJson.find(_.name == "$output")
+      val outputs = pipeline.find(_.name == "$output")
         .map(_.inputs.map(i => transforms(i))).getOrElse(List.empty)
 
-      _state = Some(new LoadState(graph, pipeJson, outputs, transforms))
+      _state = Some(new LoadState(graph, pipeline, outputs, transforms))
       this
     }
 
