@@ -30,8 +30,9 @@ public final class CLD2 {
      */
     public static LangID detect(String content, DocumentMode mode) {
         mustBeInitialized();
-        return LangID.of(cld2_Detect(
-            content.getBytes(UTF_8), mode == DocumentMode.PlainText));
+        int cld = cld2_Detect(content.getBytes(UTF_8),
+                              mode == DocumentMode.PlainText);
+        return LangID.of(Math.abs(cld));
     }
 
     /**
@@ -42,6 +43,17 @@ public final class CLD2 {
             throw new IllegalStateException("Failed to initialize CLD2");
     }
 
+    /**
+     * C calling convention wrapper to C++ CLD detection function
+     *
+     * Returns the language ID if the detection was reliable, or the
+     * negative language ID if unreliable.
+     *
+     * @param content the content to detect, must be valid UTF-8
+     * @param plainText when true, the document is treated as plain text;
+     *    when false, the document is treated as HTML and tags are ignored
+     * @return the value of the langauge ID
+     */
     private static native int cld2_Detect(byte[] content, boolean plainText);
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");

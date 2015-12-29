@@ -7,6 +7,8 @@ apply plugin: 'java'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+version = "1.0"
+
 def add_cc_args(platform, args) {
   def javaHome = org.gradle.internal.jvm.Jvm.current().javaHome
   args << "-O2"
@@ -96,6 +98,19 @@ model {
   }
 }
 
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // use JUnit for unit testing this library, to avoid creating yet-
+  // another language plugin dependency for this project
+  testCompile("junit:junit:4.11") {
+    exclude group: "org.hamcrest"
+  }
+  testCompile "org.hamcrest:hamcrest-all:1.3"
+}
+
 // task that auto-generates the C JNI headers
 task nativeHeaders(type: Exec) {
   executable org.gradle.internal.jvm.Jvm.current().getExecutable('javah')
@@ -110,4 +125,15 @@ tasks.withType(CppCompile) { task ->
   task.dependsOn nativeHeaders
 }
 
+test {
+  testLogging.showStandardStreams = true
 
+  beforeTest { descriptor ->
+    logger.lifecycle("Running test: " + descriptor)
+  }
+
+  // we can't just depend on the built classes and raw resource paths,
+  // due to the build-time packaging of the shared library into the JAR
+  classpath = project.sourceSets.test.runtimeClasspath + files(jar.archivePath)
+  dependsOn jar
+}
