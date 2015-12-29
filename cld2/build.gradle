@@ -81,6 +81,7 @@ model {
     gcc(Gcc) {
       eachPlatform { platform ->
         cppCompiler.withArguments { args ->
+          args << "-std=c++11"
           add_cc_args(platform.platform, args)
         }
       }
