@@ -1,0 +1,112 @@
+apply plugin: 'cpp'
+apply plugin: 'java'
+
+// JNI module build adapted from
+// https://github.com/adammurdoch/native-platform/blob/master/build.gradle
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def add_cc_args(platform, args) {
+  def javaHome = org.gradle.internal.jvm.Jvm.current().javaHome
+  args << "-O2"
+  args << "-I${javaHome}/include"
+  if (platform.operatingSystem.macOsX)
+    args << "-I${javaHome}/include/darwin"
+  else if (platform.operatingSystem.linux)
+    args << "-I${javaHome}/include/linux"
+  else if (platform.operatingSystem.windows)
+    args << "-I${javaHome}/include/win32"
+  else if (platform.operatingSystem.freebsd)
+    args << "-I${javaHome}/include/freebsd"
+}
+
+model {
+  buildTypes {
+    release
+  }
+  platforms {
+    osx_amd64 {
+      architecture "amd64"
+      operatingSystem "osx"
+    }
+    linux_amd64 {
+      architecture "amd64"
+      operatingSystem "linux"
+    }
+    windows_amd64 {
+      architecture "amd64"
+      operatingSystem "windows"
+    }
+    freebsd_amd64 {
+      architecture "amd64"
+      operatingSystem "freebsd"
+    }
+  }
+
+  components {
+    cld2(NativeLibrarySpec) {
+      sources {
+        cpp {
+          source {
+            srcDir 'src/main/cpp'
+            include "**/*.cc"
+          }
+          exportedHeaders {
+            srcDir 'src/main/cpp/jni/include'
+          }
+        }
+      }
+      targetPlatform "osx_amd64"
+      targetPlatform "linux_amd64"
+      targetPlatform "windows_amd64"
+      targetPlatform "freebsd_amd64"
+
+      // add the shared library output file for each target platform that this
+      // system knows how to compile into the JAR
+      binaries.withType(SharedLibraryBinarySpec) { binary ->
+        if (buildable) {
+          jar.dependsOn binary
+          jar.into("libs/${binary.targetPlatform.name}") {
+            from(binary.sharedLibraryFile)
+          }
+        } else {
+          logger.warn("Can't build shared library for ${binary.targetPlatform}")
+        }
+      }
+    }
+  }
+
+  toolChains {
+    gcc(Gcc) {
+      eachPlatform { platform ->
+        cppCompiler.withArguments { args ->
+          add_cc_args(platform.platform, args)
+        }
+      }
+    }
+    clang(Clang) {
+      eachPlatform { platform ->
+        cppCompiler.withArguments { args ->
+          add_cc_args(platform.platform, args)
+        }
+      }
+    }
+  }
+}
+
+// task that auto-generates the C JNI headers
+task nativeHeaders(type: Exec) {
+  executable org.gradle.internal.jvm.Jvm.current().getExecutable('javah')
+  args '-d', 'src/main/cpp/jni/include'
+  args '-classpath', sourceSets.main.output.classesDir
+  args 'com.idibon.ml.cld2.CLD2'
+  dependsOn classes
+}
+
+// all of the C++ compiler tasks need the headers generated first
+tasks.withType(CppCompile) { task ->
+  task.dependsOn nativeHeaders
+}
+
+
