@@ -50,10 +50,10 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should save and load a transformer properly") {
       val fiveTokens = Seq[Feature[Token]](
-        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
-        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
-        new Token("sleep", Tag.Word, 1, 1), new Token("furiously", Tag.Word, 1, 1),
-        new Token("green", Tag.Word, 1, 1))
+        new Token("colorless", Tag.Word, 0, 0), new Token("green", Tag.Word, 0, 0),
+        new Token("ideas", Tag.Word, 0, 0), new Token("sleep", Tag.Word, 0, 0),
+        new Token("sleep", Tag.Word, 0, 0), new Token("furiously", Tag.Word, 0, 0),
+        new Token("green", Tag.Word, 0, 0))
       val result1 = transform.apply(fiveTokens)
 
       // Save the results
