@@ -9,7 +9,11 @@ targetCompatibility = 1.8
 
 version = "1.0"
 
+// adds common include directory and optimizer flags to the
+// cc / c++ command line, so that this won't have to be repeated
+// for every tool chain
 def add_cc_args(platform, args) {
+  // where to find the JNI headers
   def javaHome = org.gradle.internal.jvm.Jvm.current().javaHome
   args << "-O2"
   args << "-I${javaHome}/include"
@@ -23,10 +27,20 @@ def add_cc_args(platform, args) {
     args << "-I${javaHome}/include/freebsd"
 }
 
+// define the native (shared + static library) part of the build
+// see the gradle DSL reference for more info:
+// https://docs.gradle.org/2.9/dsl/index.html#N105D3
 model {
+  // only build in release mode; we're not going to be debugging
+  // CLD2, and you can't really gdb the JVM, anyway
   buildTypes {
     release
   }
+
+  // build for a bunch of operating systems, but only for the
+  // x86-64 architecture. if we want to support 32-bit JVMs or
+  // other architectures (e.g., ARM) -- or more operating systems,
+  // we'll need to add more platform definitions for these
   platforms {
     osx_amd64 {
       architecture "amd64"
@@ -59,6 +73,7 @@ model {
           }
         }
       }
+      // we want to build the cld2 shared library runs on all platforms
       targetPlatform "osx_amd64"
       targetPlatform "linux_amd64"
       targetPlatform "windows_amd64"
@@ -73,12 +88,15 @@ model {
             from(binary.sharedLibraryFile)
           }
         } else {
+          // ideally the host (i.e., compilation) system will have tool chains
+          // to build for all target platforms. if not, log a warning message
           logger.warn("Can't build shared library for ${binary.targetPlatform}")
         }
       }
     }
   }
 
+  // support the common build chains. TODO: mingw / VC++ for Windows?
   toolChains {
     gcc(Gcc) {
       eachPlatform { platform ->
@@ -109,6 +127,9 @@ dependencies {
     exclude group: "org.hamcrest"
   }
   testCompile "org.hamcrest:hamcrest-all:1.3"
+
+  // use slf4j with no service provider for logging
+  compile "org.slf4j:slf4j-api:1.7.13"
 }
 
 // task that auto-generates the C JNI headers
@@ -120,7 +141,7 @@ task nativeHeaders(type: Exec) {
   dependsOn classes
 }
 
-// all of the C++ compiler tasks need the headers generated first
+// all of the C++ compiler tasks need the JNI headers generated first
 tasks.withType(CppCompile) { task ->
   task.dependsOn nativeHeaders
 }

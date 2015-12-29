@@ -8,6 +8,9 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.File;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
@@ -30,6 +33,7 @@ public final class CLD2 {
      */
     public static LangID detect(String content, DocumentMode mode) {
         mustBeInitialized();
+        // CLD2 only operates on UTF-8 bytes. convert to UTF-8 before calling
         int cld = cld2_Detect(content.getBytes(UTF_8),
                               mode == DocumentMode.PlainText);
         return LangID.of(Math.abs(cld));
@@ -60,8 +64,16 @@ public final class CLD2 {
 
     private static final boolean INITIALIZED;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CLD2.class);
+
+    /**
+     * Extract the correct CLD2 shared library from the JAR and load it.
+     *
+     * Used by the class static initializer.
+     */
     private static void initialize() throws Exception {
         Properties props = new Properties();
+        // jni.properties maps OS-Arch pairs to the correct shared library file
         try (InputStream in = CLD2.class.getResourceAsStream("/jni.properties")) {
             if (in == null)
                 throw new FileNotFoundException("jni.properties");
@@ -70,6 +82,10 @@ public final class CLD2 {
 
         String key = "";
         String os = System.getProperty("os.name");
+        /* map the rich OS string to a simple identifier used for lookups in
+         * the property file. for error logging purposes, keep unmapped
+         * operating system names in their entirety, preceded by some invalid
+         * characters to ensure that they won't be found in jni.properties */
         if (os.equals("Mac OS X"))
             key += "osx";
         else if (os.startsWith("Windows"))
@@ -78,10 +94,17 @@ public final class CLD2 {
             key += "linux";
         else if (os.equals("FreeBSD"))
             key += "freebsd";
+        else
+            key += "::" + os;
 
         String arch = System.getProperty("os.arch");
+        // Apple and Oracle seem to disagree how to present x86-64
         if (arch.equals("x86_64") || arch.equals("amd64"))
             key += ".amd64";
+        else
+            key += "::" + arch;
+
+        LOGGER.debug("initializing CLD2 for {} {}", os, arch);
 
         String resource = props.getProperty(key);
         if (resource == null)
@@ -90,6 +113,7 @@ public final class CLD2 {
         try (InputStream in = CLD2.class.getResourceAsStream(resource)) {
             if (in == null)
                 throw new FileNotFoundException(resource);
+            // copy the shared library into a temp file
             File systemTemp = new File(System.getProperty("java.io.tmpdir"));
             File localTemp = new File(systemTemp, "idiml/cld2/libs");
             localTemp.mkdirs();
@@ -97,6 +121,8 @@ public final class CLD2 {
             int extensionPos = resource.lastIndexOf(".");
             String extension = resource.substring(extensionPos);
             final File extract = new File(localTemp, "jni-" + key + extension);
+
+            LOGGER.info("loading '{}' from '{}'", resource, extract);
             // clean up the temp file on exit
             Runtime.getRuntime()
                 .addShutdownHook(new Thread(() -> { extract.delete(); }));
@@ -105,16 +131,13 @@ public final class CLD2 {
         }
     }
 
-    /* Dynamically detect the correct library to load, extract it from
-     * the JAR, and load it */
     static {
         boolean success = false;
         try {
             initialize();
             success = true;
         } catch (Exception ex) {
-            // FIXME: log exception
-            System.err.printf("%s\n", ex.getMessage());
+            LOGGER.error("failed to initialize CLD2", ex);
         } finally {
             INITIALIZED = success;
         }
