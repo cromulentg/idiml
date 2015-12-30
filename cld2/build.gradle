@@ -1,0 +1,160 @@
+apply plugin: 'cpp'
+apply plugin: 'java'
+
+// JNI module build adapted from
+// https://github.com/adammurdoch/native-platform/blob/master/build.gradle
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+version = "1.0"
+
+// adds common include directory and optimizer flags to the
+// cc / c++ command line, so that this won't have to be repeated
+// for every tool chain
+def add_cc_args(platform, args) {
+  // where to find the JNI headers
+  def javaHome = org.gradle.internal.jvm.Jvm.current().javaHome
+  args << "-O2"
+  args << "-I${javaHome}/include"
+  if (platform.operatingSystem.macOsX)
+    args << "-I${javaHome}/include/darwin"
+  else if (platform.operatingSystem.linux)
+    args << "-I${javaHome}/include/linux"
+  else if (platform.operatingSystem.windows)
+    args << "-I${javaHome}/include/win32"
+  else if (platform.operatingSystem.freebsd)
+    args << "-I${javaHome}/include/freebsd"
+}
+
+// define the native (shared + static library) part of the build
+// see the gradle DSL reference for more info:
+// https://docs.gradle.org/2.9/dsl/index.html#N105D3
+model {
+  // only build in release mode; we're not going to be debugging
+  // CLD2, and you can't really gdb the JVM, anyway
+  buildTypes {
+    release
+  }
+
+  // build for a bunch of operating systems, but only for the
+  // x86-64 architecture. if we want to support 32-bit JVMs or
+  // other architectures (e.g., ARM) -- or more operating systems,
+  // we'll need to add more platform definitions for these
+  platforms {
+    osx_amd64 {
+      architecture "amd64"
+      operatingSystem "osx"
+    }
+    linux_amd64 {
+      architecture "amd64"
+      operatingSystem "linux"
+    }
+    windows_amd64 {
+      architecture "amd64"
+      operatingSystem "windows"
+    }
+    freebsd_amd64 {
+      architecture "amd64"
+      operatingSystem "freebsd"
+    }
+  }
+
+  components {
+    cld2(NativeLibrarySpec) {
+      sources {
+        cpp {
+          source {
+            srcDir 'src/main/cpp'
+            include "**/*.cc"
+          }
+          exportedHeaders {
+            srcDir 'src/main/cpp/jni/include'
+          }
+        }
+      }
+      // we want to build the cld2 shared library runs on all platforms
+      targetPlatform "osx_amd64"
+      targetPlatform "linux_amd64"
+      targetPlatform "windows_amd64"
+      targetPlatform "freebsd_amd64"
+
+      // add the shared library output file for each target platform that this
+      // system knows how to compile into the JAR
+      binaries.withType(SharedLibraryBinarySpec) { binary ->
+        if (buildable) {
+          jar.dependsOn binary
+          jar.into("libs/${binary.targetPlatform.name}") {
+            from(binary.sharedLibraryFile)
+          }
+        } else {
+          // ideally the host (i.e., compilation) system will have tool chains
+          // to build for all target platforms. if not, log a warning message
+          logger.warn("Can't build shared library for ${binary.targetPlatform}")
+        }
+      }
+    }
+  }
+
+  // support the common build chains. TODO: mingw / VC++ for Windows?
+  toolChains {
+    gcc(Gcc) {
+      eachPlatform { platform ->
+        cppCompiler.withArguments { args ->
+          args << "-std=c++11"
+          add_cc_args(platform.platform, args)
+        }
+      }
+    }
+    clang(Clang) {
+      eachPlatform { platform ->
+        cppCompiler.withArguments { args ->
+          add_cc_args(platform.platform, args)
+        }
+      }
+    }
+  }
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // use JUnit for unit testing this library, to avoid creating yet-
+  // another language plugin dependency for this project
+  testCompile("junit:junit:4.11") {
+    exclude group: "org.hamcrest"
+  }
+  testCompile "org.hamcrest:hamcrest-all:1.3"
+
+  // use slf4j with no service provider for logging
+  compile "org.slf4j:slf4j-api:1.7.13"
+}
+
+// task that auto-generates the C JNI headers
+task nativeHeaders(type: Exec) {
+  executable org.gradle.internal.jvm.Jvm.current().getExecutable('javah')
+  args '-d', 'src/main/cpp/jni/include'
+  args '-classpath', sourceSets.main.output.classesDir
+  args 'com.idibon.ml.cld2.CLD2'
+  dependsOn classes
+}
+
+// all of the C++ compiler tasks need the JNI headers generated first
+tasks.withType(CppCompile) { task ->
+  task.dependsOn nativeHeaders
+}
+
+test {
+  testLogging.showStandardStreams = true
+
+  beforeTest { descriptor ->
+    logger.lifecycle("Running test: " + descriptor)
+  }
+
+  // we can't just depend on the built classes and raw resource paths,
+  // due to the build-time packaging of the shared library into the JAR
+  classpath = project.sourceSets.test.runtimeClasspath + files(jar.archivePath)
+  dependsOn jar
+}

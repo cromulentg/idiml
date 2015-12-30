@@ -2,6 +2,12 @@
 apply plugin: 'idea'
 
 subprojects {
+
+  if (project.name.equals("cld2")) {
+    // CLD2 uses no common configuration properties.
+    return
+  }
+
   version = "0.0.1-SNAPSHOT"
 
   apply plugin: 'scala'

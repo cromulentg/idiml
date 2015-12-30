@@ -1,3 +1,4 @@
+include ':cld2'
 include ':predict'
 include ':train'
 include ':ml-app'
