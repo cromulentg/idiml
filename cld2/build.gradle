@@ -130,6 +130,9 @@ dependencies {
 
   // use slf4j with no service provider for logging
   compile "org.slf4j:slf4j-api:1.7.13"
+
+  // and bind to the slf4j-simple provider for testing
+  testRuntime "org.slf4j:slf4j-simple:1.7.13"
 }
 
 // task that auto-generates the C JNI headers

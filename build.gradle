@@ -20,17 +20,11 @@ subprojects {
     scalaVersion = '2.11'
     scalaCompilerBuild = '7'
     sparkVersion = '1.5.2'
-    log4jVersion = '2.5'
+    slf4jVersion = '1.7.13'
   }
 
   repositories {
     mavenCentral()
-  }
-
-  configurations {
-    // exclude the log4j 1.2-compatible bindings that come by default
-    // with SLF4J (which comes with scala-logging). we use log4j 2
-    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
   }
 
   dependencies {
@@ -38,19 +32,29 @@ subprojects {
     compile "org.scala-lang:scala-library:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 
     // Common Spark / Spark MLLib dependencies
-    compile group: 'org.apache.spark', name: "spark-core_${project.ext.scalaVersion}", version: project.ext.sparkVersion
-    compile group: 'org.apache.spark', name: "spark-mllib_${project.ext.scalaVersion}", version: project.ext.sparkVersion
+    compile("org.apache.spark:spark-core_${project.ext.scalaVersion}:${project.ext.sparkVersion}") {
+      // Spark (and its transitive dependencies) aren't the best slf4j
+      // citizens; they should only include slf4j-api, but some library
+      // is also including log4j and the slf4j minimal-log4j implementation.
+      // exclude these dependencies so that logging backends don't conflict
+      exclude group: "org.slf4j", module: "slf4j-log4j12"
+      exclude group: "log4j"
+    }
+
+    compile("org.apache.spark:spark-mllib_${project.ext.scalaVersion}:${project.ext.sparkVersion}") {
+      // see comment above about excluding these dependencies
+      exclude group: "org.slf4j", module: "slf4j-log4j12"
+      exclude group: "log4j"
+    }
 
     // Json 4 Scala (Json4s)
     compile group: 'org.json4s', name: "json4s-native_${project.ext.scalaVersion}", version: '3.3.0'
 
     // Scala logging (https://github.com/typesafehub/scala-logging),
-    compile group: 'com.typesafe.scala-logging', name: "scala-logging_${project.ext.scalaVersion}", version: '3.1.0'
+    compile("com.typesafe.scala-logging:scala-logging_${project.ext.scalaVersion}:3.1.0")
 
-    // log4j2 + slf4j bindings
-    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: "${project.ext.log4jVersion}"
-    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: "${project.ext.log4jVersion}"
-    compile group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: "${project.ext.log4jVersion}"
+    // SLF4J (http://www.slf4j.org)
+    compile "org.slf4j:slf4j-api:${project.ext.slf4jVersion}"
 
     // ScalaTest framework
     testCompile "org.scalatest:scalatest_${project.ext.scalaVersion}:2+"
@@ -60,5 +64,8 @@ subprojects {
 
     // Generates an HTML report for tests in ../build/reports/tests/index.html
     testRuntime 'org.pegdown:pegdown:1.1.0'
+
+    // use simple slf4j bindings for testing
+    testRuntime "org.slf4j:slf4j-simple:${project.ext.slf4jVersion}"
   }
 }
