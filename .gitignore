@@ -1,6 +1,8 @@
 .gradle/
 build/
 */build/
+*.iml
 *.iws
-.idea/workspace.xml
-.idea/tasks.xml
+*.ipr
+.idea/
+.idea_modules/
