@@ -5,16 +5,37 @@ import org.scalatest.{Matchers, FunSpec}
 
 class ICUTokenizerSpec extends FunSpec with Matchers {
 
-  def !!(x: String, l: ULocale) = {
+  /** Returns tokenized content, minus whitespace */
+  def !!(x: String, l: ULocale = ULocale.US) = {
     ICUTokenizer.tokenize(x, l)
       .filter(_.tag != Tag.Whitespace)
       .map(_.content)
   }
 
-  def !!(x: String) = {
-    ICUTokenizer.tokenize(x)
-      .filter(_.tag != Tag.Whitespace)
-      .map(_.content)
+  /** Returns tokenized content, including whitespace */
+  def ??(x: String, l: ULocale = ULocale.US) = {
+    ICUTokenizer.tokenize(x, l).map(_.content)
+  }
+
+  /** Returns tuples of start and length for all tokens */
+  def <<(x: String, l: ULocale = ULocale.US) = {
+    ICUTokenizer.tokenize(x, l).map(t => (t.offset, t.length))
+  }
+
+  describe("weird") {
+    it("should group CRLF") {
+      ??("\r\n") shouldBe List("\r\n")
+      ??("\n\n") shouldBe List("\n", "\n")
+      ??("\r\n\r\n") shouldBe List("\r\n", "\r\n")
+    }
+
+    it("should tokenize whitespace") {
+      ??("\t  \t") shouldBe List("\t", " ", " ", "\t")
+    }
+
+    it("should handle empty strings") {
+      ??("") shouldBe empty
+    }
   }
 
   describe("english") {
@@ -54,7 +75,7 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
       !!("amper.sand") shouldBe List("amper", ".", "sand")
     }
 
-    ignore("should group ampersands in abbrebiations") {
+    ignore("should group ampersands in abbreviations") {
       !!("AT&T") shouldBe List("AT&T")
       !!("at&t") shouldBe List("at&t")
     }
@@ -70,6 +91,13 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
     ignore("should group full-width numbers") {
       !!("１２３４５", ULocale.JAPAN) shouldBe List("１２３４５")
     }
+  }
 
+  describe("surrogate pairs") {
+
+    ignore("should account for surrogate pairs in returned locations") {
+      <<("happy \ud83d\ude00\ud83d\udc31") shouldBe
+        List((0,5), (5, 1), (6, 1), (7, 1))
+    }
   }
 }

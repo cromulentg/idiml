@@ -44,10 +44,15 @@ package com.idibon.ml.feature.tokenizer {
 
         /* iterate through neighboring pairs of segment boundaries to
          * generate the tokens */
-        boundaries.zip(boundaries.tail).map({ case (first, last) => {
-          val text = content.substring(first, last)
-          new Token(text, Tag.of(text), first, last - first)
-        }})
+        boundaries.sliding(2).map(_ match {
+          case first :: last :: Nil => {
+            val text = content.substring(first, last)
+            Token(text, Tag.of(text), first, last - first)
+          }
+          /* the only case where sliding(2) will not generate exactly
+           * two entries is when tokenizing an empty string */
+          case _ => Token("", Tag.Whitespace, 0, 0)
+        }).filter(_.length > 0).toList
       })
     }
 
@@ -61,22 +66,21 @@ package com.idibon.ml.feature.tokenizer {
       * @return the primary locale for the document, or None if detection fails
       */
     private[tokenizer] def identifyLocale(content: String,
-      documentMode: CLD2.DocumentMode): Option[ULocale] = {
+      documentMode: CLD2.DocumentMode) = Try {
 
       /* if CLD2 initialization fails, or detection throws an exception for
-       * some reason, return None */
-      Try { CLD2.detect(content, documentMode) match {
-        case LangID.ENGLISH => Some(ULocale.US)
-        case LangID.CHINESE => Some(ULocale.CHINA)
-        case LangID.CHINESE_T => Some(ULocale.TAIWAN)
-        case LangID.JAPANESE => Some(ULocale.JAPAN)
-        case LangID.KOREAN => Some(ULocale.KOREA)
-        case LangID.FRENCH => Some(ULocale.FRANCE)
-        case LangID.GERMAN => Some(ULocale.GERMANY)
-        case LangID.ITALIAN => Some(ULocale.ITALY)
-        case _ => None
-      } }.getOrElse(None)
-    }
+       * some reason, return None. fall-through cases are handled by the
+       * thrown MatchNotFound exception */
+      (CLD2.detect(content, documentMode): @unchecked) match {
+        case LangID.ENGLISH => ULocale.US
+        case LangID.CHINESE => ULocale.CHINA
+        case LangID.CHINESE_T => ULocale.TAIWAN
+        case LangID.JAPANESE => ULocale.JAPAN
+        case LangID.KOREAN => ULocale.KOREA
+        case LangID.FRENCH => ULocale.FRANCE
+        case LangID.GERMAN => ULocale.GERMANY
+        case LangID.ITALIAN => ULocale.ITALY
+      } }.toOption
 
     /** Calls a user-provided function with a break iterator
       *
