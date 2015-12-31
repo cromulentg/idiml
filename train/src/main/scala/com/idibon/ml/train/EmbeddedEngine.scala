@@ -1,13 +1,15 @@
 package com.idibon.ml.train
 
 import com.idibon.ml.alloy.IntentAlloy
+import com.idibon.ml.feature.{DocumentExtractor, FeaturePipeline, FeaturePipelineBuilder}
+import com.idibon.ml.feature.indexer.IndexTransformer
+import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.predict.Engine
-import com.idibon.ml.feature.FeaturePipeline
 
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.json4s._
-import org.json4s.native.JsonMethods.{compact, parse, render}
 import org.json4s.JsonDSL._
+import org.json4s.native.JsonMethods.{compact, parse, render}
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
@@ -28,7 +30,11 @@ class EmbeddedEngine extends Engine {
 
     val alloy = new IntentAlloy()
 
-    val pipeline = (new FeaturePipeline).load(alloy.reader(), Some(pipelineConfig))
+    val pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
+      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
+      += (FeaturePipelineBuilder.entry("contentExtractor", new DocumentExtractor, "$document"))
+      := ("convertToIndex"))
 
     val doc : JObject = ( "content" -> "colorless green ideas sleep furiously" )
 
@@ -71,6 +77,11 @@ class EmbeddedEngine extends Engine {
     // This should be the same as $results
     val results2 = newPipeline2(doc)
     println(s"results2: $results2")
+
+    // This should prove to me that my training data is intact (index values are being referenced)
+    val doc2 : JObject = ( "content" -> "some kind of crazy document with made-up words like fdsafafa and feafdasfdas")
+    val results3 = newPipeline2(doc2)
+    println(s"results3: $results3")
 
   }
 }
