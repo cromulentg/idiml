@@ -1,5 +1,4 @@
 import java.io.{DataInputStream, DataOutputStream}
-import org.apache.spark.mllib.linalg.Vector
 
 import com.ibm.icu.lang.UCharacter
 import com.ibm.icu.lang.UCharacterEnums.ECharacterCategory._

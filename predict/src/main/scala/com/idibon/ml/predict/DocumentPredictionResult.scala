@@ -21,8 +21,9 @@ class DocumentPredictionResult(probabilities: Map[Int, Double],
 
 class DocumentPredictionResultBuilder() {
 
-  val probabilities = mutable.HashMap[Int, Double]()
-  val significantFeatures = mutable.HashMap[Int, List[(Int, Double)]]()
+  private val probabilities = mutable.HashMap[Int, Double]()
+  private val significantFeatures = mutable.HashMap[Int, List[(Int, Double)]]()
+  private var matchCount: Double = 0.0
 
   /**
     * Add a prediction result for a document.
@@ -31,11 +32,17 @@ class DocumentPredictionResultBuilder() {
     * @param labelSignificantFeatures
     */
   def addDocumentPredictResult(labelIndex: Int, probability: Double,
-                               labelSignificantFeatures: List[(Int, Double)]): Unit = {
+                               labelSignificantFeatures: List[(Int, Double)]): DocumentPredictionResultBuilder = {
     probabilities.put(labelIndex, probability)
     if (labelSignificantFeatures != null && !labelSignificantFeatures.isEmpty) {
       significantFeatures.put(labelIndex, labelSignificantFeatures)
     }
+    this
+  }
+
+  def setMatchCount(matchCount: Double): DocumentPredictionResultBuilder = {
+    this.matchCount = matchCount
+    this
   }
 
   /**
