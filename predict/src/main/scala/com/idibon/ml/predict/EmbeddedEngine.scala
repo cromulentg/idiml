@@ -1,11 +1,15 @@
 package com.idibon.ml.predict
 
+import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.bagofwords.BagOfWordsTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
-import com.idibon.ml.feature.StringFeature
+import com.idibon.ml.feature.{FeaturePipeline, StringFeature}
 import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.feature
+import org.json4s._
+import org.json4s.native.JsonMethods._
+
 
 /**
   * Toy engine class that stitches together Idibon's feature pipeline and Spark's LR
@@ -13,6 +17,9 @@ import org.apache.spark.mllib.feature
   */
 class EmbeddedEngine extends Engine {
 
+  /**
+    * Very crude POC. This will change as we add more to the code base.
+    */
   def start() = {
     println("Called from Scala")
 
@@ -39,7 +46,28 @@ class EmbeddedEngine extends Engine {
     idibonModel.lrm = sparkLRModel
 
     println(sparkLRModel.predictProbability(hashedIndexes))
-    println(idibonModel.predict(hashedIndexes, false).toString)
-
+    println(idibonModel.predict(hashedIndexes, false, 0.0).toString)
   }
+
+  /**
+    * Next iteration of the above. WIP. Need Gary's branch...
+    * @return
+    */
+  def realisticExample() = {
+    val json = parse(
+      """{
+"transforms":[
+  {"name":"A","class":"com.idibon.ml.feature.tokenizer.TokenTransformer"},
+  {"name":"B","class":"com.idibon.ml.feature.bagofwords.BagOfWordsTransformer"},
+  {"name":"C","class":"com.idibon.ml.feature.indexer.IndexTransformer"}],
+"pipeline":[
+  {"name":"A","inputs":["$document"]},
+  {"name":"B","inputs":["A"]},
+  {"name":"C","inputs":["B"]},
+  {"name":"$output","inputs":["C"]}]}""").asInstanceOf[JObject]
+    val pipeline = new FeaturePipeline()
+    val reader = new IntentAlloy() //TODO create pipeline via "builder"
+    pipeline.load(reader.reader(), Some(json.asInstanceOf[JObject]))
+  }
+
 }

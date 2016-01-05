@@ -1,10 +1,7 @@
 package com.idibon.ml.predict
 
-import java.io.DataInputStream
-
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import org.apache.spark.mllib.linalg.Vector
-import org.codehaus.jettison.json.JSONObject
 import org.json4s.JObject
 
 
@@ -12,27 +9,35 @@ import org.json4s.JObject
   * Ensemble Model is comprised of several models
   * underneath.
   *
+  * @param models
+  * @param combinerLogic
   */
-class EnsembleModel extends PredictModel {
-
-  var models: List[PredictModel] = null
-  var combinerLogic: Any = null //TODO: flesh this out more.
+class EnsembleModel(models: List[PredictModel], combinerLogic: Any) extends PredictModel {
 
   /**
-    * THe method used to predict FROM A DOCUMENT!
-    * @param document
-    * @param significantFeatures
+    * The method used to predict from a FULL DOCUMENT!
+    *
+    * The model needs to handle "featurization" here.
+    *
+    * @param document the JObject to pull from.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  override def predict(document: JObject, significantFeatures: Boolean): DocumentPredictionResult = ???
+  override def predict(document: JObject,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = ???
 
   /**
-    * The method used to predict.
+    * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @return Vector where the index corresponds to a label and the value the
-    *         probability for that label.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
+    * @return
     */
-  override def predict(features: Vector, significantFeatures: Boolean): DocumentPredictionResult = {
+  override def predict(features: Vector,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = {
     //TODO: how to combine results?
     null
   }

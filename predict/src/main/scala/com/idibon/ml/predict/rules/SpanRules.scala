@@ -12,12 +12,15 @@ import org.json4s.JObject
   */
 class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel(label, rules) {
   /**
-    * The method used to predict.
+    * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @return Vector where the index corresponds to a label and the value the
-    *         probability for that label.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
+    * @return
     */
-  override def predict(features: Vector, significantFeatures: Boolean): DocumentPredictionResult = ???
+  override def predict(features: Vector,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = ???
 
   /**
     * Returns the type of model.
@@ -62,10 +65,16 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel(la
   override def save(writer: Writer): Option[JObject] = ???
 
   /**
-    * THe method used to predict FROM A DOCUMENT!
-    * @param document
-    * @param significantFeatures
+    * The method used to predict from a FULL DOCUMENT!
+    *
+    * The model needs to handle "featurization" here.
+    *
+    * @param document the JObject to pull from.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  override def predict(document: JObject, significantFeatures: Boolean): DocumentPredictionResult = ???
+  override def predict(document: JObject,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = ???
 }

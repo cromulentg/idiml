@@ -15,6 +15,8 @@ class DocumentPredictionResult(probabilities: Map[Int, Double],
                                significantFeatures: Map[Int, List[(Int, Double)]]) {
 
   override def toString: String = probabilities.toString()
+
+  def size: Int = probabilities.size
 }
 
 class DocumentPredictionResultBuilder() {
@@ -30,25 +32,6 @@ class DocumentPredictionResultBuilder() {
     */
   def addDocumentPredictResult(labelIndex: Int, probability: Double,
                                labelSignificantFeatures: List[(Int, Double)]): Unit = {
-    probabilities.put(labelIndex, probability)
-    if (labelSignificantFeatures != null && !labelSignificantFeatures.isEmpty) {
-      significantFeatures.put(labelIndex, labelSignificantFeatures)
-    }
-  }
-
-  /**
-    * Add a prediction result for a span.
-    * @param labelIndex
-    * @param probability
-    * @param tokenOffsetStart the token we want to start at.
-    * @param tokenOffsetLength the number of tokens we want to end at.
-    * @param tokenCharOffsetStart the charachter we want to start within the starting token.
-    * @param tokenCharLength the number of characters we want to end at.
-    * @param labelSignificantFeatures
-    */
-  def addSpanPredictResult(labelIndex: Int, probability: Double, tokenOffsetStart: Int,
-                           tokenOffsetLength: Int, tokenCharOffsetStart: Int, tokenCharLength: Int,
-                           labelSignificantFeatures: List[(Int, Double)]): Unit = {
     probabilities.put(labelIndex, probability)
     if (labelSignificantFeatures != null && !labelSignificantFeatures.isEmpty) {
       significantFeatures.put(labelIndex, labelSignificantFeatures)

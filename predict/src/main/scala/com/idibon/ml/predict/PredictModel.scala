@@ -12,20 +12,25 @@ import org.json4s._
 trait PredictModel extends Archivable {
 
   /**
-    * The method used to predict.
+    * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @return Vector where the index corresponds to a label and the value the
-    *         probability for that label.
-    */
-  def predict(features: Vector, significantFeatures: Boolean): DocumentPredictionResult
-
-  /**
-    * THe method used to predict FROM A DOCUMENT!
-    * @param document
-    * @param significantFeatures
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  def predict(document: JObject, significantFeatures: Boolean): DocumentPredictionResult
+  def predict(features: Vector, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
+
+  /**
+    * The method used to predict from a FULL DOCUMENT!
+    *
+    * The model needs to handle "featurization" here.
+    *
+    * @param document the JObject to pull from.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
+    * @return
+    */
+  def predict(document: JObject, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
 
   /**
     * Returns the type of model.

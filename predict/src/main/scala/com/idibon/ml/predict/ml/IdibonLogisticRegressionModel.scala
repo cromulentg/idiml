@@ -20,27 +20,38 @@ class IdibonLogisticRegressionModel extends MLModel {
   var lrm: IdibonSparkLogisticRegressionModelWrapper = null
 
   /**
-    * THe method used to predict FROM A DOCUMENT!
-    * @param document
-    * @param significantFeatures
+    * The method used to predict from a FULL DOCUMENT!
+    *
+    * The model needs to handle "featurization" here.
+    *
+    * @param document the JObject to pull from.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  override def predict(document: JObject, significantFeatures: Boolean): DocumentPredictionResult = ???
+  override def predict(document: JObject,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = ???
 
   /**
-    * The method used to predict.
+    * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @return Vector where the index corresponds to a label and the value the
-    *         probability for that label.
+    * @param significantFeatures whether to return significant features.
+    * @param significantThreshold if returning significant features the threshold to use.
+    * @return
     */
-  override def predict(features: Vector, significantFeatures: Boolean): DocumentPredictionResult = {
-    val results = lrm.predictProbability(features)
+  override def predict(features: Vector,
+                       significantFeatures: Boolean,
+                       significantThreshold: Double): DocumentPredictionResult = {
+    val results: Vector = lrm.predictProbability(features)
     val builder = new DocumentPredictionResultBuilder()
-    // TODO iterate over results and add them to the map
-    builder.addDocumentPredictResult(0, 0.5, null)
-    builder.addDocumentPredictResult(1, 0.5, null)
-    if (significantFeatures) {
-      // get significant
+    for (labelIndex <- 0 until results.size) {
+      builder.addDocumentPredictResult(labelIndex, results.apply(labelIndex), null)
+      if (significantFeatures) {
+        // TODO: get significant features.
+        // e.g. we need to find all the features that have a weight above X.
+        // We should also check whether we need to take any transform on the weights. e.g. exp ?
+      }
     }
     builder.build()
   }
