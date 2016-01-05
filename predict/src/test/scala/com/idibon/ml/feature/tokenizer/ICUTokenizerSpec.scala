@@ -1,6 +1,7 @@
 package com.idibon.ml.feature.tokenizer
 
 import com.ibm.icu.util.ULocale
+import com.ibm.icu.text.BreakIterator
 import org.scalatest.{Matchers, FunSpec}
 
 class ICUTokenizerSpec extends FunSpec with Matchers {
@@ -98,6 +99,28 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
     ignore("should account for surrogate pairs in returned locations") {
       <<("happy \ud83d\ude00\ud83d\udc31") shouldBe
         List((0,5), (5, 1), (6, 1), (7, 1))
+    }
+  }
+
+  describe("breaking") {
+
+    it("should cache break iterators per locale") {
+      val it = ICUTokenizer.breaking(ULocale.US, (b: BreakIterator) => b)
+      ICUTokenizer.breaking(ULocale.US, (b: BreakIterator) => b) shouldBe theSameInstanceAs(it)
+      ICUTokenizer.breaking(ULocale.JAPAN, (b: BreakIterator) => b) shouldNot be theSameInstanceAs(it)
+    }
+
+    it("should create multiple break iterators as-needed") {
+      // create 3 threads to test contended usage
+      val iterators = (1 to 3).toList.par.map(i => {
+        ICUTokenizer.breaking(ULocale.US, (b: BreakIterator) => {
+          Thread.sleep(25)
+          b
+        })
+      })
+
+      for (it <- iterators.tail)
+        iterators(0) shouldNot be theSameInstanceAs(it)
     }
   }
 }

@@ -22,6 +22,11 @@ package com.idibon.ml.feature.tokenizer {
       Punctuation,
       Whitespace = Value
 
+    /** Return the Tag (type) of the provided token content.
+      *
+      * @param content the content within the token
+      * @return the Tag of the token
+      */
     def of(content: String) = {
       if (content.forall(UCharacter.isUWhiteSpace(_)))
         Whitespace

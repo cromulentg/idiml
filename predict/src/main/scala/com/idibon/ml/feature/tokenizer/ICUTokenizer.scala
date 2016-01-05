@@ -66,7 +66,7 @@ package com.idibon.ml.feature.tokenizer {
       * @return the primary locale for the document, or None if detection fails
       */
     private[tokenizer] def identifyLocale(content: String,
-      documentMode: CLD2.DocumentMode) = Try {
+      documentMode: CLD2.DocumentMode) = Try({
 
       /* if CLD2 initialization fails, or detection throws an exception for
        * some reason, return None. fall-through cases are handled by the
@@ -80,7 +80,8 @@ package com.idibon.ml.feature.tokenizer {
         case LangID.FRENCH => ULocale.FRANCE
         case LangID.GERMAN => ULocale.GERMANY
         case LangID.ITALIAN => ULocale.ITALY
-      } }.toOption
+      }
+    }).toOption
 
     /** Calls a user-provided function with a break iterator
       *
