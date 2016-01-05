@@ -1,45 +1,17 @@
 package com.idibon.ml.feature.word2vec
 
-/**
-  *
-  * Code to deal with SparkContext taken from
-  * https://github.com/apache/spark/blob/master/mllib/src/test/scala/org/apache/spark/mllib/util/MLlibTestSparkContext.scala
-  *
-  */
-
 import org.apache.spark.mllib.linalg._
-import org.apache.spark.{SparkConf, SparkContext}
+import com.idibon.ml.test.Spark
 
-import org.scalatest._
+import org.scalatest.{FunSpec, Matchers}
 
-trait Word2VecSparkContext extends BeforeAndAfterAll { self: Suite =>
-  @transient var sc: SparkContext = _
-  @transient var transform: Word2VecTransformer = _
-
-  override def beforeAll() {
-    super.beforeAll()
-    val conf = new SparkConf()
-      .setMaster("local[2]")
-      .setAppName("Word2VecSpec")
-    sc = new SparkContext(conf)
-    transform = new Word2VecTransformer(sc,"src/test/resources/fixtures/model")
-  }
-
-  override def afterAll() {
-    if (sc != null) {
-      sc.stop()
-    }
-    sc = null
-    super.afterAll()
-  }
-}
-
-class Word2VecSpec extends FunSpec with Matchers with Word2VecSparkContext {
+class Word2VecSpec extends FunSpec with Matchers {
 
   describe("Word2Vec") {
 
-    it("should return an empty sparse vector of size 100 on empty input") {
+    val transform = new Word2VecTransformer(Spark.sc,"src/test/resources/fixtures/model")
 
+    it("should return an empty sparse vector of size 100 on empty input") {
       val expected = Vectors.sparse(100, Array.empty[Int], Array.empty[Double])
       transform(Seq[String]()) shouldBe expected
     }
