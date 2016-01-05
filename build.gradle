@@ -71,6 +71,9 @@ subprojects {
     // Use Scala version 2.11
     compile "org.scala-lang:scala-library:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 
+    // Scala Parser Combinators
+    compile "org.scala-lang:scala-parser-combinators:${project.ext.scalaVersion}.0-M4"
+
     // Common Spark / Spark MLLib dependencies
     compile("org.apache.spark:spark-core_${project.ext.scalaVersion}:${project.ext.sparkVersion}") {
       // Spark (and its transitive dependencies) aren't the best slf4j
@@ -95,6 +98,9 @@ subprojects {
 
     // SLF4J (http://www.slf4j.org)
     compile "org.slf4j:slf4j-api:${project.ext.slf4jVersion}"
+
+    // Log4j Implemented Over SLF4J
+    compile "org.slf4j:log4j-over-slf4j:1.7.13"
 
     // ICU4J
     compile group: 'com.ibm.icu', name: 'icu4j', version: '56.1'
