@@ -1,9 +1,48 @@
 // Common configuration for all subprojects listed in settings.gradle
 apply plugin: 'idea'
 
+// returns true if there are no uncommitted changes to the index
+def isClean() {
+  "git status --porcelain".execute().text.isEmpty()
+}
+
+// returns true if the current HEAD matches a release tag
+def isOfficialRelease() {
+  def releases = "git tag -l v[0-9]*".execute().text
+  def headRef = "git rev-parse HEAD".execute().text.trim()
+  def official = false
+
+  releases.eachLine { tag ->
+    def tagRef = "git rev-parse ${tag}".execute().text.trim()
+    def test = tagRef == headRef
+    official = official || test
+  }
+
+  official
+}
+
+// generates a version string from the provided raw version number
+// by appending -DIRTY or -SNAPSHOT based on the state of the build
+// machine relative to Git.
+def getVersionString(String baseVersion) {
+  def version = baseVersion
+
+  def circleBranch = System.getenv("CIRCLE_BRANCH") ?: ""
+  if (circleBranch == "master") circleBranch == ""
+
+  if (!circleBranch.isEmpty()) version += "-${circleBranch}"
+  if (!isClean()) version += '-DIRTY'
+  if (!isOfficialRelease()) version += '-SNAPSHOT'
+  version
+}
+
+version = getVersionString("0.0.1")
+
+println "Current Version: ${version}"
+
 subprojects {
 
-  version = "0.0.1-SNAPSHOT"
+  version = parent.version
   apply from: (new File(parent.projectDir, 'maven.gradle')).getAbsolutePath()
 
   if (project.name.equals("cld2")) {
