@@ -1,13 +1,13 @@
 apply plugin: 'cpp'
 apply plugin: 'java'
 
+description = "Java wrapper for Google Compact Langauge Detector 2 Library"
+
 // JNI module build adapted from
 // https://github.com/adammurdoch/native-platform/blob/master/build.gradle
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-
-version = "1.0"
 
 // adds common include directory and optimizer flags to the
 // cc / c++ command line, so that this won't have to be repeated

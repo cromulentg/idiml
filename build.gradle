@@ -3,12 +3,13 @@ apply plugin: 'idea'
 
 subprojects {
 
+  version = "0.0.1-SNAPSHOT"
+  apply from: (new File(parent.projectDir, 'maven.gradle')).getAbsolutePath()
+
   if (project.name.equals("cld2")) {
-    // CLD2 uses no common configuration properties.
+    // don't include Scala or Spark configuration for the JNI wrapper
     return
   }
-
-  version = "0.0.1-SNAPSHOT"
 
   apply plugin: 'scala'
 
