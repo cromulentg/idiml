@@ -9,6 +9,7 @@ dependencies {
   compile project(':predict')
   compile project(':train')
   runtime "org.scala-lang:scala-compiler:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
+  runtime "org.slf4j:slf4j-simple:1.7.13"
   scoverage 'org.scoverage:scalac-scoverage-plugin_2.11:1.1.0', 'org.scoverage:scalac-scoverage-runtime_2.11:1.1.0'
 }
 
