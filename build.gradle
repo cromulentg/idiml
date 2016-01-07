@@ -28,7 +28,7 @@ def getVersionString(String baseVersion) {
   def version = baseVersion
 
   def circleBranch = System.getenv("CIRCLE_BRANCH") ?: ""
-  if (circleBranch == "master") circleBranch == ""
+  if (circleBranch == "master") circleBranch = ""
 
   if (!circleBranch.isEmpty()) version += "-${circleBranch}"
   if (!isClean()) version += '-DIRTY'
