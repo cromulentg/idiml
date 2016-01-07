@@ -1,0 +1,48 @@
+/* Gradle configuration for deploying the built artifacts to a
+ * private maven repo in S3
+ */
+apply plugin: 'maven'
+apply plugin: 'java'
+
+group = "com.idibon.${project.parent.name}"
+archivesBaseName = "${project.parent.name}-${project.name}"
+
+configurations {
+  mavenDeployment
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // needed to deploy the compiled JAR to S3 maven bucket
+  mavenDeployment "org.kuali.maven.wagons:maven-s3-wagon:1.2.1+"
+}
+
+// configure the uploadArchives task to deploy compiled JARs to the
+// private maven repo on S3. authentication is handled by the wagon,
+// as outlined at https://github.com/jcaddel/maven-s3-wagon/wiki/Authentication
+uploadArchives {
+  // execute the POM closure after all of the project files are evaluated,
+  // to ensure that all project configuration variables (like the description)
+  // have a chance to be assigned
+  afterEvaluate { project ->
+    repositories {
+      mavenDeployer {
+        configuration = configurations.mavenDeployment
+
+        repository(url: "s3://idiml-maven/repo/releases")
+
+        snapshotRepository(url: "s3://idiml-maven/repo/snapshots")
+
+        pom.project {
+          name "${project.parent.name} - ${project.name}"
+          description "${project.description}"
+          packaging "jar"
+          url "https://github.com/idibon/idiml"
+        }
+      }
+    }
+  }
+}

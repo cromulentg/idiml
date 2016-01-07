@@ -6,3 +6,5 @@ plugins {
 dependencies {
   compile project(':predict')
 }
+
+description = "Idibon ML Training and Cross-Validation Library"

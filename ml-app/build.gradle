@@ -8,5 +8,15 @@ dependencies {
   runtime "org.scala-lang:scala-compiler:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 }
 
+description = "Idibon ML CLI Utilities and Application Libraries"
 apply plugin: 'application'
 mainClassName = 'com.idibon.ml.app.App'
+
+/* the "application" plugin builds distribution ZIP and JAR files by
+ * default. we don't want to publish these, since that adds ~140M to
+ * every maven deploy with transient dependencies that don't change.
+ */
+configurations.archives.artifacts
+  .findAll { it.buildDependencies.getDependencies(uploadArchives)
+               .any { it.name == "distZip" || it.name == "distTar" } }
+  .each { configurations.archives.artifacts.remove(it) }
