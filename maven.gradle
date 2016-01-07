@@ -1,3 +1,6 @@
+/* Gradle configuration for deploying the built artifacts to a
+ * private maven repo in S3
+ */
 apply plugin: 'maven'
 apply plugin: 'java'
 
