@@ -15,3 +15,14 @@ general:
     # JARs
     - "predict/build/libs"
     - "train/build/libs"
+
+deployment:
+  development:
+    branch: /.*/
+    commands:
+      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew uploadArchives
+
+  release:
+    tag: /v[0-9][0-9.]+/
+    commands:
+      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew uploadArchives
