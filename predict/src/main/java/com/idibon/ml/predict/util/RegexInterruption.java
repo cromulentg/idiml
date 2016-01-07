@@ -6,19 +6,12 @@ package com.idibon.ml.predict.util;
  */
 public class RegexInterruption extends RuntimeException {
 
-    private int backtracks;
-    private long duration;
+    public final int backtracks;
+    public final long duration;
 
     public RegexInterruption(int backtracks, long duration) {
         this.backtracks = backtracks;
         this.duration = duration;
     }
 
-    public int getBacktracks() {
-        return backtracks;
-    }
-
-    public long getDuration() {
-        return duration;
-    }
 }

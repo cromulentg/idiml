@@ -23,11 +23,11 @@ public class SafeCharSequence implements CharSequence {
     */
     public static final int MAX_REGEX_BACKTRACKS = 25000;
 
-    private String sequence;
-    private int backtrackLimit;
-    private int backtracks;
-    private int lastIndex;
-    private long startTime;
+    private final String _sequence;
+    private final int _backtrackLimit;
+    private int _backtracks;
+    private int _lastIndex;
+    private final long _startTime;
 
     /**
      * Constructor.
@@ -35,15 +35,15 @@ public class SafeCharSequence implements CharSequence {
      * @param backtrackLimit The backtrack limit to enforce.
      */
     public SafeCharSequence(String sequence, int backtrackLimit) {
-        this.sequence = sequence;
-        this.backtrackLimit = backtrackLimit;
-        this.backtracks = this.backtrackLimit;
-        this.lastIndex = -1;
-        this.startTime = System.currentTimeMillis();
+        _sequence = sequence;
+        _backtrackLimit = backtrackLimit;
+        _backtracks = _backtrackLimit;
+        _lastIndex = -1;
+        _startTime = System.currentTimeMillis();
     }
 
     @Override public int length() {
-        return this.sequence.length();
+        return _sequence.length();
     }
 
     /**
@@ -59,22 +59,22 @@ public class SafeCharSequence implements CharSequence {
          * backtrack counter. If it reaches zero, we raise an exception and
          * bail out of the matcher.
          */
-        if (index < this.lastIndex) {
-            this.backtracks -= 1;
-            if (this.backtracks <= 0) {
-                long duration = System.currentTimeMillis() - this.startTime;
-                throw new RegexInterruption(this.backtracks, duration);
+        if (index < _lastIndex) {
+            _backtracks -= 1;
+            if (_backtracks <= 0) {
+                long duration = System.currentTimeMillis() - _startTime;
+                throw new RegexInterruption(_backtracks, duration);
             }
         }
-        this.lastIndex = index;
-        return sequence.charAt(index);
+        _lastIndex = index;
+        return _sequence.charAt(index);
     }
 
     @Override public CharSequence subSequence(int start, int end) {
-        return new SafeCharSequence(sequence.substring(start, end), this.backtrackLimit);
+        return new SafeCharSequence(_sequence.substring(start, end), _backtrackLimit);
     }
 
     @Override public String toString() {
-        return this.sequence;
+        return _sequence;
     }
 }

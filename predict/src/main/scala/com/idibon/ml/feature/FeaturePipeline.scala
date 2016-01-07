@@ -132,7 +132,7 @@ package com.idibon.ml.feature {
       *
       * @param reader        an Alloy.Reader configured for loading all of the
       *   resources for this FeatureTransformer
-      * @param transformDef  the instance information for this transform -
+      * @param entry  the instance information for this transform -
       *   name, class and optional configuration information.
       * @return   tuple of the transformer name and the reified object
       */

@@ -1,5 +1,7 @@
 package com.idibon.ml.alloy;
 
+
+
 import java.io.*;
 
 /**
@@ -8,47 +10,63 @@ import java.io.*;
  * @author Michelle Casbon <michelle@idibon.com>
  */
 public class IntentAlloy implements Alloy {
+
+    private String _path;
+    private double _random;
+
+    public IntentAlloy() {
+        this("/tmp");
+    }
+
+    public IntentAlloy(String path) {
+        _path = path;
+        _random = Math.random();
+    }
+
     public Alloy.Reader reader() {
-        return new IntentReader("/tmp");
+        return new IntentReader(_path, _random);
     }
 
     class IntentReader implements Alloy.Reader {
-        IntentReader(String path) {
+        IntentReader(String path, double random) {
             _path = path;
+            _random = random;
         }
 
         public DataInputStream resource(String resourceName) throws IOException {
-            String filename = _path + "/" + resourceName;
+            String filename = _path + "/" + _random + "_" + resourceName;
             FileInputStream fis = new FileInputStream(filename);
             return new DataInputStream(fis);
         }
 
         public Alloy.Reader within(String namespace) throws IOException {
-            return new IntentReader(_path + "/" + namespace);
+            return new IntentReader(_path + "/" + namespace, _random);
         }
 
         private final String _path;
     }
 
     public Alloy.Writer writer() {
-        return new IntentWriter("/tmp");
+        return new IntentWriter(_path, _random);
     }
 
     class IntentWriter implements Alloy.Writer {
-        IntentWriter(String path) {
+        IntentWriter(String path, double random) {
             _path = path;
+            _random = random;
         }
 
         public DataOutputStream resource(String resourceName) throws IOException {
-            String filename = _path + "/" + resourceName;
+            String filename = _path + "/" + _random + "_" + resourceName;
             FileOutputStream fos = new FileOutputStream(filename);
             return new DataOutputStream(fos);
         }
 
         public Alloy.Writer within(String namespace) throws IOException {
-            return new IntentWriter(_path + "/" + namespace);
+            return new IntentWriter(_path + "/" + namespace, _random);
         }
 
         private final String _path;
+        private final double _random;
     }
 }
