@@ -1,8 +1,7 @@
 package com.idibon.ml.alloy;
 
-
-
 import java.io.*;
+import java.util.logging.Logger;
 
 /**
  * A basic shell created for the purpose of writing tests
@@ -10,7 +9,7 @@ import java.io.*;
  * @author Michelle Casbon <michelle@idibon.com>
  */
 public class IntentAlloy implements Alloy {
-
+    private static Logger logger = Logger.getLogger(IntentAlloy.class.getName());
     private String _path;
     private double _random;
 
@@ -21,6 +20,7 @@ public class IntentAlloy implements Alloy {
     public IntentAlloy(String path) {
         _path = path;
         _random = Math.random();
+        logger.info("IA: _path:" + _path + " ; random=" + _random);
     }
 
     public Alloy.Reader reader() {
@@ -31,6 +31,7 @@ public class IntentAlloy implements Alloy {
         IntentReader(String path, double random) {
             _path = path;
             _random = random;
+            logger.info("IR: _path:" + _path + " ; random=" + _random);
         }
 
         public DataInputStream resource(String resourceName) throws IOException {
@@ -54,9 +55,12 @@ public class IntentAlloy implements Alloy {
         IntentWriter(String path, double random) {
             _path = path;
             _random = random;
+            logger.info("IW: _path:" + _path + " ; random=" + _random);
         }
 
         public DataOutputStream resource(String resourceName) throws IOException {
+            File dir = new File(_path + "/");
+            dir.mkdirs();
             String filename = _path + "/" + _random + "_" + resourceName;
             FileOutputStream fos = new FileOutputStream(filename);
             return new DataOutputStream(fos);

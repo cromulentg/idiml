@@ -18,7 +18,7 @@ trait PredictModel extends Archivable {
     * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  def predict(features: Vector, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
+  def predict(features: Vector, significantFeatures: Boolean, significantThreshold: Double): PredictResult
 
   /**
     * The method used to predict from a FULL DOCUMENT!
@@ -30,7 +30,7 @@ trait PredictModel extends Archivable {
     * @param significantThreshold if returning significant features the threshold to use.
     * @return
     */
-  def predict(document: JObject, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
+  def predict(document: JObject, significantFeatures: Boolean, significantThreshold: Double): PredictResult
 
   /**
     * Returns the type of model.

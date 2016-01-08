@@ -1,7 +1,7 @@
 package com.idibon.ml.predict.rules
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.predict.DocumentPredictionResult
+import com.idibon.ml.predict.{PredictResult}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
 
@@ -20,7 +20,7 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
     */
   override def predict(features: Vector,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       significantThreshold: Double): PredictResult = ???
 
   /**
     * Returns the type of model.
@@ -76,5 +76,5 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
     */
   override def predict(document: JObject,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       significantThreshold: Double): PredictResult = ???
 }

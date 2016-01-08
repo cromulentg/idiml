@@ -3,7 +3,7 @@ package com.idibon.ml.predict.ml
 import java.io.DataInputStream
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
-import com.idibon.ml.predict.{DocumentPredictionResultBuilder, DocumentPredictionResult}
+import com.idibon.ml.predict.{SingleLabelDocumentResultBuilder, PredictResult}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.Vector
 import org.codehaus.jettison.json.JSONObject
@@ -15,7 +15,7 @@ import org.json4s.JObject
   * This class implements our LogisticRegressionModel.
   */
 class IdibonLogisticRegressionModel extends MLModel {
-
+  //TODO: feature pipeline stuff
 
   var lrm: IdibonSparkLogisticRegressionModelWrapper = null
 
@@ -31,7 +31,7 @@ class IdibonLogisticRegressionModel extends MLModel {
     */
   override def predict(document: JObject,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       significantThreshold: Double): PredictResult = ???
 
   /**
     * The method used to predict from a vector of features.
@@ -42,11 +42,11 @@ class IdibonLogisticRegressionModel extends MLModel {
     */
   override def predict(features: Vector,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       significantThreshold: Double): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
-    val builder = new DocumentPredictionResultBuilder()
+    val builder = new SingleLabelDocumentResultBuilder(this.getType(), -1)
     for (labelIndex <- 0 until results.size) {
-      builder.addDocumentPredictResult(labelIndex, results.apply(labelIndex), null)
+      builder.setProbability(results.apply(labelIndex))
       if (significantFeatures) {
         // TODO: get significant features.
         // e.g. we need to find all the features that have a weight above X.
@@ -99,4 +99,18 @@ class IdibonLogisticRegressionModel extends MLModel {
     * @return this object
     */
   override def load(reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel.this.type = ???
+
+  /**
+    * Override equals so that we can make unit tests simpler.
+    * @param that
+    * @return
+    */
+  override def equals(that: scala.Any): Boolean = {
+    that match {
+      case that: IdibonLogisticRegressionModel => {
+        this.lrm.equals(that.lrm)
+      }
+      case _ => false
+    }
+  }
 }

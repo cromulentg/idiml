@@ -6,7 +6,7 @@ import java.util.regex.{Matcher, Pattern}
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict.util.SafeCharSequence
-import com.idibon.ml.predict.{DocumentPredictionResultBuilder, DocumentPredictionResult}
+import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.linalg.{SparseVector, Vector}
 import org.json4s._
@@ -31,6 +31,13 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   val rulesCache: ConcurrentHashMap[String, Try[Pattern]] = new ConcurrentHashMap[String, Try[Pattern]]()
   // Compile the rules and populate the rule cache; this could be slow, but there's no way around this...
   populateCache()
+
+  /**
+    * Constructor for making load easy.
+    */
+  def this() = {
+    this(-1, List())
+  }
 
   /**
     * Helper method to compile the rules into regular expressions.
@@ -58,7 +65,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     */
   override def predict(features: Vector,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       significantThreshold: Double): PredictResult = {
     throw new RuntimeException("Not implemented for rules.")
   }
 
@@ -91,7 +98,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     this.label = (config.get \ "label").extract[Int]
     val jsonObject: JValue = parse(Codec.String.read(reader.resource(RULE_RESOURCE_NAME)))
     val ruleJsonValue = jsonObject.extract[List[Map[String, Double]]]
-    this.rules = ruleJsonValue.map(x => x.toList).flatten
+    this.rules = ruleJsonValue.flatMap(x => x.toList)
     this.ruleWeightMap = rules.toMap
     this.rulesCache.clear()
     populateCache()
@@ -120,7 +127,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     logger.debug(jsonString)
     // write to the output stream via the codec.
     Codec.String.write(output, jsonString)
-    Some(new JObject(List("label" -> this.label)))
+    Some(new JObject(List(JField("label", JInt(this.label)))))
   }
 
   /**
@@ -135,7 +142,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     */
   override def predict(document: JObject,
                        significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       significantThreshold: Double): PredictResult = {
     // Takes $document out of the JObject and runs rules over them.
     val content: String = (document \ "content").asInstanceOf[JString].s
     docPredict(content, significantFeatures)
@@ -147,8 +154,8 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * @param significantFeatures
     * @return
     */
-  def docPredict(content: String, significantFeatures: Boolean): DocumentPredictionResult = {
-    val dpr = new DocumentPredictionResultBuilder()
+  def docPredict(content: String, significantFeatures: Boolean): SingleLabelDocumentResult = {
+    val dpr = new SingleLabelDocumentResultBuilder(this.getType(), this.label)
     val matchesCount: Map[String, Int] = getDocumentMatchCounts(content)
     // calculate pseudo prob.
     val (psuedoProb, totalCount, whiteOrBlackRule) = calculatePseudoProbability(matchesCount)
@@ -169,9 +176,10 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     } else {
       List()
     }
-    dpr.addDocumentPredictResult(label, psuedoProb, sigFeatures)
+    dpr.setProbability(psuedoProb)
+      .addSignificantFeatures(sigFeatures)
       .setMatchCount(totalCount)
-      .setFlags(DocumentPredictionResult.WHITELIST_OR_BLACKLIST, whiteOrBlackRule)
+      .setFlags(PredictResult.WHITELIST_OR_BLACKLIST, whiteOrBlackRule)
     dpr.build()
   }
 
@@ -283,6 +291,20 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
       }
       // remove 0 counts, remove parallel-ness, make it a map
     }.filter(tup => tup._2 != 0).toList.toMap
+  }
+
+  /**
+    * Override equals so that we can make unit tests simpler.
+    * @param that
+    * @return
+    */
+  override def equals(that: scala.Any): Boolean = {
+    that match {
+      case that: DocumentRules => {
+        this.label == that.label && this.rules.equals(that.rules)
+      }
+      case _ => false
+    }
   }
 
   private val RULE_RESOURCE_NAME: String = "rules.json"

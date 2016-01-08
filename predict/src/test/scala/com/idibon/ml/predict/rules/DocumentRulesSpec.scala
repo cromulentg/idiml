@@ -3,6 +3,7 @@ package com.idibon.ml.predict.rules
 import java.util.regex.Pattern
 
 import com.idibon.ml.alloy.IntentAlloy
+import com.idibon.ml.predict.SingleLabelDocumentResult
 import org.apache.spark.mllib.linalg.SparseVector
 import org.json4s._
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
@@ -72,6 +73,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val alloy = new IntentAlloy()
       val docRules = new DocumentRules(1, List())
       val jsonConfig = docRules.save(alloy.writer())
+      jsonConfig shouldBe Some(JObject(List(("label", JInt(1)))))
       //bogus stuff that should be overwritten
       val docRulesLoad = new DocumentRules(-2, List(("is", 1.0)))
       docRulesLoad.load(alloy.reader(), jsonConfig)
@@ -83,8 +85,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("should save a valid map") {
       val alloy = new IntentAlloy()
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.3), ("is", 0.10)))
-      docRules.save(new IntentAlloy().writer())
       val jsonConfig = docRules.save(alloy.writer())
+      jsonConfig shouldBe Some(JObject(List(("label", JInt(2)))))
       //bogus stuff that should be overwritten
       val docRulesLoad = new DocumentRules(-1, List(("is", 1.0)))
       docRulesLoad.load(alloy.reader(), jsonConfig)
@@ -117,7 +119,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("should return a valid list with a valid match") {
       val pat = Pattern.compile("is", Pattern.LITERAL | Pattern.CASE_INSENSITIVE)
       val matcher = pat.matcher("is is is")
-      new DocumentRules(0, List()).getMatches(matcher) shouldBe List[(Int, Int)]((0,2), (3,5), (6,8))
+      new DocumentRules(0, List()).getMatches(matcher) shouldBe List[(Int, Int)]((0, 2), (3, 5), (6, 8))
     }
   }
 
@@ -139,37 +141,37 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should return significant features") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.5), ("is", 0.5)))
       val actual = docRules.docPredict("string matching is working", true)
-      actual.size shouldBe 1
-      actual.getMatchCount() shouldBe 2.0
-      actual.getProbability(2) shouldEqual 0.5
-      actual.getSignificantFeatures(2) shouldEqual List(("/str[ij]ng/", 0.5), ("is", 0.5))
+      actual.label shouldBe 2
+      actual.matchCount shouldBe 2.0
+      actual.probability shouldEqual 0.5
+      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 0.5), ("is", 0.5))
     }
 
     it("Should return whitelist significant feature when whitelist overrides") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 1.0), ("is", 0.5)))
       val actual = docRules.docPredict("string matching is working", true)
-      actual.size shouldBe 1
-      actual.getMatchCount() shouldBe 1.0
-      actual.getProbability(2) shouldEqual 1.0
-      actual.getSignificantFeatures(2) shouldEqual List(("/str[ij]ng/", 1.0))
+      actual.label shouldBe 2
+      actual.matchCount shouldBe 1.0
+      actual.probability shouldEqual 1.0
+      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 1.0))
     }
 
     it("Should return whitelist significant feature when blacklist overrides") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.0), ("is", 0.5)))
       val actual = docRules.docPredict("string strjng matching is working", true)
-      actual.size shouldBe 1
-      actual.getMatchCount() shouldBe 2.0
-      actual.getProbability(2) shouldEqual 0.0
-      actual.getSignificantFeatures(2) shouldEqual List(("/str[ij]ng/", 0.0))
+      actual.label shouldBe 2
+      actual.matchCount shouldBe 2.0
+      actual.probability shouldEqual 0.0
+      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 0.0))
     }
 
     it("Should return a document prediction result") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.5), ("is", 0.5)))
       val actual = docRules.docPredict("string matching is working", false)
-      actual.size shouldBe 1
-      actual.getMatchCount() shouldBe 2.0
-      actual.getProbability(2) shouldEqual 0.5
-      actual.getSignificantFeatures(2) shouldEqual List()
+      actual.label shouldBe 2
+      actual.matchCount shouldBe 2.0
+      actual.probability shouldEqual 0.5
+      actual.significantFeatures shouldEqual List()
     }
   }
 
@@ -188,7 +190,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
   describe("calculatePseudoProbability") {
     it("should skip 0 values in count map") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.5), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 0), ("is", 0))
+      val countMap = Map[String, Int](("/str[ij]ng/", 0), ("is", 0))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.0
       count shouldBe 0.0
@@ -197,7 +199,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should return correctly with no whitelist or blacklist hit when a normal rule is hit") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.5), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 1), ("is", 1))
+      val countMap = Map[String, Int](("/str[ij]ng/", 1), ("is", 1))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.5
       count shouldBe 2.0
@@ -206,7 +208,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should return whitelist correctly") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 1.0), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 1))
+      val countMap = Map[String, Int](("/str[ij]ng/", 1))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 1.0
       count shouldBe 1.0
@@ -215,7 +217,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should return blacklist correctly") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.0), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 1))
+      val countMap = Map[String, Int](("/str[ij]ng/", 1))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.0
       count shouldBe 1.0
@@ -224,7 +226,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should merge blacklist and whitelist correctly if both present") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.0), ("is", 1.0)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 2), ("is", 8))
+      val countMap = Map[String, Int](("/str[ij]ng/", 2), ("is", 8))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.8
       count shouldBe 10.0
@@ -233,7 +235,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should handle overriding rule hits if blacklist matched") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.0), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 2), ("is", 8))
+      val countMap = Map[String, Int](("/str[ij]ng/", 2), ("is", 8))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.0
       count shouldBe 2.0
@@ -242,7 +244,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should handle overriding rule hits if whitelist matched") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 1.0), ("is", 0.5)))
-      val countMap = Map[String,Int](("/str[ij]ng/", 2), ("is", 8))
+      val countMap = Map[String, Int](("/str[ij]ng/", 2), ("is", 8))
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 1.0
       count shouldBe 2.0
@@ -251,7 +253,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should return correctly when map passed is empty") {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 1.0), ("is", 0.5)))
-      val countMap = Map[String,Int]()
+      val countMap = Map[String, Int]()
       val (prob, count, worb) = docRules.calculatePseudoProbability(countMap)
       prob shouldBe 0.0
       count shouldBe 0.0
@@ -271,17 +273,17 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should predict properly when there is a match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules(0, List(("/str[ij]ng/", 1.0), ("is", 1.0)))
-      val actual = model.predict(doc, false, 0.0)
-      actual.size shouldBe 1
-      actual.getProbability(0) shouldBe 1.0
+      val actual = model.predict(doc, false, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      actual.label shouldBe 0
+      actual.probability shouldBe 1.0
     }
 
     it("Should predict properly when there is no match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules(0, List(("/str[ij]ng/", 1.0), ("/no[thing].*/", 1.0)))
-      val actual = model.predict(doc, false, 0.0)
-      actual.size shouldBe 1
-      actual.getProbability(0) shouldBe 0.0
+      val actual = model.predict(doc, false, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      actual.label shouldBe 0
+      actual.probability shouldBe 0.0
     }
   }
 
