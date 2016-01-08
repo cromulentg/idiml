@@ -77,9 +77,9 @@ import org.json4s._
       */
     private[indexer] def createFeatureIndex(features: Seq[Feature[_]]): Int = {
 
-      val allIndexes = features.map(t => lookupOrAddToFeatureIndex(t))
+      features.map(t => lookupOrAddToFeatureIndex(t))
 
-      allIndexes.max + 1
+      featureIndex.size + 1
     }
 
     /**

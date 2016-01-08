@@ -59,7 +59,7 @@ subprojects {
   ext {
     scalaVersion = '2.11'
     scalaCompilerBuild = '7'
-    sparkVersion = '1.5.2'
+    sparkVersion = '1.6.0'
     slf4jVersion = '1.7.13'
   }
 

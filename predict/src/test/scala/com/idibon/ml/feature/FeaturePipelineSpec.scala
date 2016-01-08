@@ -101,7 +101,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val dummyAlloy = createMockReader
       val json = parse("""{
 "transforms":[
-  {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
+  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
   {"name":"$featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],
 "pipeline":[
   {"name":"$output","inputs":["$featureVector"]},
@@ -117,7 +117,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val dummyAlloy = createMockReader
       val json = parse("""{
 "transforms":[
-  {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
+  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
   {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
   {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
   {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],
