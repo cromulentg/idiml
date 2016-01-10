@@ -87,6 +87,8 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     logger.debug(jsonString)
     // write to the output stream via the codec.
     Codec.String.write(output, jsonString)
+    // close the stream
+    output.close()
     Some(new JObject(List(JField("label", JString(this.label)))))
   }
 
