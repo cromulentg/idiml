@@ -1,6 +1,5 @@
-import com.idibon.ml.feature.{Archivable,Feature,FeatureTransformer}
+import com.idibon.ml.feature._
 import org.apache.spark.mllib.linalg.{IdibonBLAS, Vector, Vectors}
-import scala.reflect.runtime.universe._
 
 package com.idibon.ml.feature.indexer {
 
@@ -18,7 +17,7 @@ import org.json4s._
     *   - creates V-dimensional SparseVector for each input feature in the vocabulary, where each vector is defined a
     *     vector[j] = { 1 if map[feature] == j, else 0 }
     *   - sums the vectors to produce the returned vector
-    *   
+    *
     *   @author Michelle Casbon <michelle@idibon.com>
     */
   class IndexTransformer extends FeatureTransformer with Archivable {
@@ -28,18 +27,16 @@ import org.json4s._
     def getFeatureIndex = featureIndex
 
     def save(writer: Alloy.Writer) = {
-      val dos = writer.resource("featureIndex")
+      val fos = new FeatureOutputStream(writer.resource("featureIndex"))
 
       // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
-      Codec.VLuint.write(dos, featureIndex.size)
+      Codec.VLuint.write(fos, featureIndex.size)
 
-      // Store each key/value pair in sequence
-      // Since we don't know the concrete type of the key, store the class name, then have the feature save itself
+      // Store each key (feature) / value (index) pair in sequence
       featureIndex.foreach{
         case (key, value) => {
-          Codec.String.write(dos, key.getClass.getName)
-          key.save(dos)
-          Codec.VLuint.write(dos, value)
+          fos.writeFeature(key)
+          Codec.VLuint.write(fos, value)
         }
       }
 
@@ -48,27 +45,17 @@ import org.json4s._
     }
 
     def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
-      val dis = reader.resource("featureIndex")
+      val fis = new FeatureInputStream(reader.resource("featureIndex"))
 
       featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
 
       // Retrieve the number of elements in the featureIndex map
-      val size = Codec.VLuint.read(dis)
+      val size = Codec.VLuint.read(fis)
 
       1 to size foreach { _ =>
-        // Retrieve the class name
-        val featureClass = Codec.String.read(dis)
-        // Retrieve the feature
-        // To instantiate the saved feature, it must have a parameterless constructor defined. Since we will
-        // immediately load the saved values, default constructor values are fine
-        var key : Feature[_] = Class.forName(featureClass).newInstance().asInstanceOf[Feature[_]]
-
-        // Load feature contents
-        key.load(dis)
-        // Load the index value for this feature
-        val value = Codec.VLuint.read(dis)
-
-        featureIndex(key) = value
+        val feature = fis.readFeature
+        val value = Codec.VLuint.read(fis)
+        featureIndex += (feature -> value)
       }
 
       this
@@ -81,11 +68,8 @@ import org.json4s._
       * @return unique index
       */
     private[indexer] def lookupOrAddToFeatureIndex(feature: Feature[_]): Int = {
-      if (featureIndex.isEmpty) {
-        featureIndex(feature) = 0
-      }
-      else if (!featureIndex.contains(feature)) {
-        featureIndex(feature) = featureIndex.size
+      if (!featureIndex.contains(feature)) {
+        featureIndex += (feature -> featureIndex.size)
       }
 
       featureIndex(feature)
