@@ -41,6 +41,8 @@ trait Feature[+R] {
 case class StringFeature(var value: String) extends Feature[String] {
   def get = value
 
+  def this() = this("")
+
   def save(output: DataOutputStream) {
     Codec.String.write(output, value)
   }
