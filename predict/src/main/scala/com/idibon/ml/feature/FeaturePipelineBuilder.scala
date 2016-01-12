@@ -22,7 +22,7 @@ package com.idibon.ml.feature {
       val pipeline = (_entries.map(e => new PipelineEntry(e.name, e.inputs))
         :+ (new PipelineEntry(FeaturePipeline.OutputStage, outputNames.toList)))
 
-      (new FeaturePipeline).bind(transforms, pipeline)
+      FeaturePipeline.bind(transforms, pipeline)
     }
 
     /** Adds a transformer to the pipeline

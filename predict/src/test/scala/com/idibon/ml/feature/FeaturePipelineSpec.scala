@@ -57,7 +57,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val dummyReader = createMockReader
       val dummyWriter = createMockWriter
       val json = parse(unparsed).asInstanceOf[JObject]
-      val pipeline = (new FeaturePipeline).load(dummyReader, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(dummyReader, Some(json))
       val result = pipeline.save(dummyWriter)
         .map(j => compact(render(j))).getOrElse("")
       result shouldBe unparsed
@@ -87,7 +87,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"B","inputs":[]},
   {"name":"$output","inputs":["A","B"]}]}""").asInstanceOf[JObject]
 
-      val pipeline = (new FeaturePipeline).load(dummyAlloy, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(dummyAlloy, Some(json))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
         List(Vectors.dense(1.0, 0.0, 1.0), Vectors.dense(0.0, -1.0, 0.5))
@@ -109,7 +109,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
 
-      (new FeaturePipeline).load(dummyAlloy, Some(json.asInstanceOf[JObject]))
+      (new FeaturePipelineLoader).load(dummyAlloy, Some(json.asInstanceOf[JObject]))
       loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
     }
 
@@ -129,8 +129,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"featureVector","inputs":["contentExtractor"]}]
 }""")
 
-      val pipeline = new FeaturePipeline
-      pipeline.load(dummyAlloy, Some(json.asInstanceOf[JObject]))
+      val pipeline = (new FeaturePipelineLoader)
+        .load(dummyAlloy, Some(json.asInstanceOf[JObject]))
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
@@ -394,10 +394,9 @@ private [this] class DocumentExtractor extends FeatureTransformer {
   }
 }
 
-private [this] class ArchivableTransform extends FeatureTransformer
-    with Archivable {
-
-  var suppliedConfig: Option[JObject] = None
+private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
+    extends FeatureTransformer
+    with Archivable[ArchivableTransform, ArchivableTransformLoader] {
 
   def apply: Vector = {
     suppliedConfig.map(config => {
@@ -407,10 +406,13 @@ private [this] class ArchivableTransform extends FeatureTransformer
     }).getOrElse(Vectors.dense(1.0, 0.0, 1.0))
   }
 
-  def load(r: Alloy.Reader, config: Option[JObject]): this.type = {
-    suppliedConfig = config
-    this
-  }
-
   def save(w: Alloy.Writer): Option[JObject] = suppliedConfig
+}
+
+private [this] class ArchivableTransformLoader
+    extends ArchiveLoader[ArchivableTransform] {
+
+  def load(r: Alloy.Reader, config: Option[JObject]): ArchivableTransform = {
+    new ArchivableTransform(config)
+  }
 }

@@ -59,8 +59,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
 
     it("should work in the case a rule is not in the cache") {
-      val docRules = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("is", 1.0f)))
-      docRules.rulesCache.remove("is") //remove is from cache.
+      val docRules = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("/is\\u{1FFFF}/", 1.0f)))
       val results = docRules.getDocumentMatchCounts("this is a string with is")
       results.size shouldBe 1
       results.get("/str[ij]ng/") shouldBe Some(1)
@@ -75,8 +74,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = new DocumentRules("b-label", List(("is", 1.0f)))
-      docRulesLoad.load(alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(alloy.reader(), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file
@@ -88,24 +86,10 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = new DocumentRules("b-label", List(("is", 1.0f)))
-      docRulesLoad.load(alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(alloy.reader(), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file
-    }
-  }
-
-  describe("populateCache") {
-    it("should populate the cache correctly with the right types") {
-      val docRules = new DocumentRules("a-label", List())
-      docRules.rulesCache.size shouldBe 0
-      docRules.rules = List(("/str[ij]ng/", 0.3f), ("is", 0.5f), ("/@#q54i7^<>(&^&?]]/", 0.5f))
-      docRules.populateCache()
-      docRules.rulesCache.size shouldBe 3
-      docRules.rulesCache.get("/str[ij]ng/").isSuccess shouldBe true
-      docRules.rulesCache.get("is").isSuccess shouldBe true
-      docRules.rulesCache.get("/@#q54i7^<>(&^&?]]/").isFailure shouldBe true
     }
   }
 
@@ -127,13 +111,11 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should not filter out good rule weights") {
       val docRules = new DocumentRules("b-label", List(("/str[ij]ng/", 1.0f), ("is", 0.0f), ("mon", 0.5f)))
       docRules.rulesCache.size shouldBe 3
-      docRules.invalidRules.size shouldBe 0
     }
 
     it("Should filter out bad rule weights") {
       val docRules = new DocumentRules("b-label", List(("/str[ij]ng/", 1.5f), ("is", -0.5f)))
       docRules.rulesCache.size shouldBe 0
-      docRules.invalidRules.size shouldBe 2
     }
   }
 
@@ -144,7 +126,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "b-label"
       actual.matchCount shouldBe 2
       actual.probability shouldEqual 0.5f
-      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 0.5f), ("is", 0.5f))
+      actual.significantFeatures should contain theSameElementsAs List(("/str[ij]ng/", 0.5f), ("is", 0.5f))
     }
 
     it("Should return whitelist significant feature when whitelist overrides") {
@@ -177,13 +159,13 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe("isRegexRule") {
     it("correctly identifies regular expression") {
-      new DocumentRules("a-label", List()).isRegexRule("/str[ij]ng/") shouldBe true
+      DocumentRules.isRegexRule("/str[ij]ng/") shouldBe true
     }
 
     it("correctly identifies non-regular expression") {
-      new DocumentRules("a-label", List()).isRegexRule("/str[ij]ng") shouldBe false
-      new DocumentRules("a-label", List()).isRegexRule("str[ij]ng") shouldBe false
-      new DocumentRules("a-label", List()).isRegexRule(null) shouldBe false
+      DocumentRules.isRegexRule("/str[ij]ng") shouldBe false
+      DocumentRules.isRegexRule("str[ij]ng") shouldBe false
+      DocumentRules.isRegexRule(null) shouldBe false
     }
   }
 

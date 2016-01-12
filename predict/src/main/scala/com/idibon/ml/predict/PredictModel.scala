@@ -1,6 +1,5 @@
 package com.idibon.ml.predict
 
-import com.idibon.ml.feature.Archivable
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -9,7 +8,7 @@ import org.json4s._
   * "Interface" for prediction. Extends alloy reader and writer.
   *
   */
-trait PredictModel extends Archivable {
+trait PredictModel {
 
   /**
     * The method used to predict from a vector of features.

@@ -28,8 +28,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("0",JString("com.idibon.ml.predict.rules.DocumentRules")),
           ("1",JString("com.idibon.ml.predict.rules.DocumentRules"))))))))
       metadata shouldBe expectedMetadata
-      val ensemble2 = new EnsembleModel()
-      ensemble2.load(alloy.reader(), metadata)
+      val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
       ensemble shouldBe ensemble2
     }
 
@@ -49,8 +48,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("0",JString("com.idibon.ml.predict.rules.DocumentRules")),
           ("1",JString("com.idibon.ml.predict.rules.DocumentRules"))))))))
       metadata shouldBe expectedMetadata
-      val ensemble2 = new EnsembleModel()
-      ensemble2.load(alloy.reader(), metadata)
+      val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
       ensemble shouldBe ensemble2
     }
   }
@@ -82,7 +80,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "blabel"
       actual.matchCount shouldBe 3
       actual.probability shouldEqual 0.45f +- 0.0001f // acount for floating point values
-      actual.significantFeatures shouldEqual List(("/str[ij]ng/",0.5f), ("is",0.5f), ("/ma[th]ching/",0.35f))
+      actual.significantFeatures should contain theSameElementsAs List(("/str[ij]ng/",0.5f), ("is",0.5f), ("/ma[th]ching/",0.35f))
     }
 
     it("works as intended taking first model with black/white list trigger") {
@@ -98,7 +96,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "blabel"
       actual.matchCount shouldBe 2
       actual.probability shouldEqual 0.5f
-      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 0.0f), ("is", 1.0f))
+      actual.significantFeatures should contain theSameElementsAs List(("/str[ij]ng/", 0.0f), ("is", 1.0f))
     }
 
   }

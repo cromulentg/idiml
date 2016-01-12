@@ -22,20 +22,22 @@ import org.json4s._
     *   @author Michelle Casbon <michelle@idibon.com>
     */
   class IndexTransformer extends FeatureTransformer
-      with Archivable with StrictLogging {
+      with Archivable[IndexTransformer, IndexTransformLoader]
+      with StrictLogging {
 
-    private[indexer] var featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
+    private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
 
     def getFeatureIndex = featureIndex
 
     def save(writer: Alloy.Writer) = {
-      val fos = new FeatureOutputStream(writer.resource("featureIndex"))
+      val fos = new FeatureOutputStream(
+        writer.resource(IndexTransformer.INDEX_RESOURCE_NAME))
 
       // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
       Codec.VLuint.write(fos, featureIndex.size)
 
       // Store each key (feature) / value (index) pair in sequence
-      featureIndex.foreach{
+      featureIndex.foreach {
         case (key, value) => {
           key match {
             case f: Feature[_] with Buildable[_, _] => {
@@ -51,23 +53,6 @@ import org.json4s._
 
       // No config to return
       None
-    }
-
-    def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
-      val fis = new FeatureInputStream(reader.resource("featureIndex"))
-
-      featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
-
-      // Retrieve the number of elements in the featureIndex map
-      val size = Codec.VLuint.read(fis)
-
-      1 to size foreach { _ =>
-        val feature = fis.readFeature
-        val value = Codec.VLuint.read(fis)
-        featureIndex += (feature -> value)
-      }
-
-      this
     }
 
     /** This function performs a lookup on the provided feature. It returns the unique index associated with the
@@ -126,5 +111,32 @@ import org.json4s._
         getFeatureVector(features)
       }
     }
+  }
+
+  /** Paired loader class for IndexTransformer */
+  class IndexTransformLoader extends ArchiveLoader[IndexTransformer] {
+
+    /** Loads the IndexTransformer from an Alloy */
+    def load(reader: Alloy.Reader, config: Option[JObject]): IndexTransformer = {
+      val fis = new FeatureInputStream(
+        reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
+
+      // Retrieve the number of elements in the featureIndex map
+      val size = Codec.VLuint.read(fis)
+
+      val transformer = new IndexTransformer
+
+      1 to size foreach { _ =>
+        val feature = fis.readFeature
+        val value = Codec.VLuint.read(fis)
+        transformer.featureIndex += (feature -> value)
+      }
+
+      transformer
+    }
+  }
+
+  private[this] object IndexTransformer {
+    val INDEX_RESOURCE_NAME = "featureIndex"
   }
 }
