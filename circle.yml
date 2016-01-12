@@ -2,6 +2,10 @@ machine:
   java:
     version: oraclejdk8
 
+test:
+  override:
+    - ./gradlew reportScoverage
+
 general:
   branches:
     ignore:
@@ -15,6 +19,11 @@ general:
     # JARs
     - "predict/build/libs"
     - "train/build/libs"
+
+dependencies:
+  cache_directories:
+    # cache maven jars
+    - ~/.m2
 
 deployment:
   development:

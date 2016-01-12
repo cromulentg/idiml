@@ -1,11 +1,14 @@
 plugins {
   // enable the ScalaTest test runner
   id "com.github.maiflai.scalatest" version "0.10"
+  // Test coverage
+  id "org.scoverage" version "2.0.0"
 }
 
 dependencies {
   compile project(':predict')
   runtime "org.scala-lang:scala-compiler:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
+  scoverage 'org.scoverage:scalac-scoverage-plugin_2.11:1.1.0', 'org.scoverage:scalac-scoverage-runtime_2.11:1.1.0'
 }
 
 description = "Idibon ML CLI Utilities and Application Libraries"
