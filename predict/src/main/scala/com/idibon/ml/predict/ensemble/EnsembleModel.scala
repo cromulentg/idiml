@@ -34,10 +34,10 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
     // create list of (index, model)
     val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
-    val results: List[(Int, String, PredictResult)] = zipped.par.map(m =>
-      (m._1, m._2.getType(), m._2.predict(document, options))).toList
+    val results: List[(Int, PredictResult)] = zipped.par.map(m =>
+      (m._1, m._2.predict(document, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
-    combineResults(results.sortBy(_._1).map(_._3))
+    combineResults(results.sortBy(_._1).map(_._2))
   }
 
   /**
@@ -51,10 +51,10 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
     // create list of (index, model)
     val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
-    val results: List[(Int, String, PredictResult)] = zipped.par.map(m =>
-      (m._1, m._2.getType(), m._2.predict(features, options))).toList
+    val results: List[(Int, PredictResult)] = zipped.par.map(m =>
+      (m._1, m._2.predict(features, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
-    combineResults(results.sortBy(_._1).map(_._3))
+    combineResults(results.sortBy(_._1).map(_._2))
   }
 
   /**
@@ -103,9 +103,9 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
   override def save(writer: Writer): Option[JObject] = {
     implicit val formats = org.json4s.DefaultFormats
     // create list of model types
-    val modelTypes = models.map(_.getType())
+    val modelClasses = models.map(_.getClass().getCanonicalName())
     // zip it together
-    val modelTriple = (models.indices, models, modelTypes).zipped.toList
+    val modelTriple = (models.indices, models, modelClasses).zipped.toList
     // save each model into it's own space: just use the index as the identifier
     val modelMetadata: List[JField] = modelTriple.map {
       case (index, mod, typ) => {

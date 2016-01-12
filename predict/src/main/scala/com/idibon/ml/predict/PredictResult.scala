@@ -14,7 +14,7 @@ import scala.collection.mutable
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   *
-  * @param modelIdentifier a string representing a path to a model.
+  * @param modelIdentifier a string representing a model, right now the class name.
   * @param topLabel
   * @param topLabelProbability
   * @param topLabelSignificantFeatures
@@ -58,7 +58,7 @@ case class SingleLabelDocumentResult(modelIdentifier: String,
 
 /**
   * Class to build a single label document prediction result.
-  * @param modelIdentifier a string representing a path to a model.
+  * @param modelIdentifier a string representing a model, right now the class name.
   * @param label
   */
 class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
