@@ -14,41 +14,34 @@ import com.idibon.ml.alloy.Codec
   * a Number, a Vector, or even a complex data type like a key-value
   * pair. The Type interface parameter defines the data type for this
   * internal representation.
+  *
+  * Feature implementations may optionally be extended by the Built trait to
+  * support data persistence.
   */
-trait Feature[+R] {
-
+trait Feature[T] {
   /** Returns the internal representation of this feature. */
-  def get: R
-
-  /** Returns the internal representation of this feature.
-    *
-    * Applies a type-safe conversion of the underlying feature
-    * representation.
-    */
-  def getAs[T] = get.asInstanceOf[T]
-
-  /** Stores the feature to an output stream so it may be reloaded later. */
-  def save(output: DataOutputStream)
-
-  /** Reloads a previously saved feature */
-  def load(input: DataInputStream)
+  def get: T
 }
 
-/**
-  * This is the raw feature class if you will.
-  * @param value the raw String value.
+/** Simple feature representing raw string text.
+  *
+  * Each feature represents a bit of text that can be saved and re-loaded.
   */
-case class StringFeature(var value: String) extends Feature[String] {
+case class StringFeature(value: String) extends Feature[String]
+    with Buildable[StringFeature, StringFeatureBuilder] {
+
   def get = value
 
-  def this() = this("")
-
+  /** Saves a StringFeature to an output stream */
   def save(output: DataOutputStream) {
     Codec.String.write(output, value)
   }
-
-  def load(input: DataInputStream) {
-    value = Codec.String.read(input)
-  }
 }
 
+/** Paired builder class for StringFeature */
+class StringFeatureBuilder extends Builder[StringFeature] {
+  /** Loads a StringFeature from an input stream */
+  def build(input: DataInputStream) = {
+    new StringFeature(Codec.String.read(input))
+  }
+}

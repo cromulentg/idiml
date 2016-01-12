@@ -1,5 +1,6 @@
 import com.idibon.ml.feature._
 import org.apache.spark.mllib.linalg.{IdibonBLAS, Vector, Vectors}
+import com.typesafe.scalalogging.StrictLogging
 
 package com.idibon.ml.feature.indexer {
 
@@ -20,7 +21,8 @@ import org.json4s._
     *
     *   @author Michelle Casbon <michelle@idibon.com>
     */
-  class IndexTransformer extends FeatureTransformer with Archivable {
+  class IndexTransformer extends FeatureTransformer
+      with Archivable with StrictLogging {
 
     private[indexer] var featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
 
@@ -35,8 +37,15 @@ import org.json4s._
       // Store each key (feature) / value (index) pair in sequence
       featureIndex.foreach{
         case (key, value) => {
-          fos.writeFeature(key)
-          Codec.VLuint.write(fos, value)
+          key match {
+            case f: Feature[_] with Buildable[_, _] => {
+              fos.writeFeature(f)
+              Codec.VLuint.write(fos, value)
+            }
+            case _ => {
+              logger.warn(s"Unable to save feature of type ${key.getClass}")
+            }
+          }
         }
       }
 

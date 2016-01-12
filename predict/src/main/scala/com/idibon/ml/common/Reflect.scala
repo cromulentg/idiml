@@ -8,6 +8,17 @@ package com.idibon.ml.common {
     */
   package object Reflect {
 
+    /** Returns the type parameter specialization for a class
+      *
+      * Returns the type parameters used to specialize klass with respect to
+      * a parameterized linear supertype T. Type parameters are converted to
+      * the actual Class instances they represent.
+      */
+    def getTypeParametersAs[T](klass: Class[_])(implicit tag: TypeTag[T]) = {
+      Mirror.classSymbol(klass).toType.baseType(tag.tpe.typeSymbol)
+        .typeArgs.map(p => Mirror.runtimeClass(p.typeSymbol.asClass))
+    }
+
     /** Returns all overloaded variations of method "name" in an object
       *
       * @param obj  object to reflect

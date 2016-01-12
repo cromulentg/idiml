@@ -4,7 +4,7 @@ import com.ibm.icu.lang.UCharacter
 import com.ibm.icu.lang.UCharacterEnums.ECharacterCategory._
 
 import com.idibon.ml.alloy.Codec
-import com.idibon.ml.feature.Feature
+import com.idibon.ml.feature.{Feature, Buildable, Builder}
 
 package com.idibon.ml.feature.tokenizer {
 
@@ -55,12 +55,8 @@ package com.idibon.ml.feature.tokenizer {
     }
   }
 
-  case class Token(var content: String, var tag: Tag.Value,
-    var offset: Int, var length: Int) extends Feature[Token] {
-
-    // Default parameterless constructor for reflection or when you
-    // just want to load a saved Token
-    def this() = this(content = "", tag = Tag.Word, offset = 0, length = 0)
+  case class Token(content: String, tag: Tag.Value, offset: Int, length: Int)
+      extends Feature[Token] with Buildable[Token, TokenBuilder]{
 
     def get = this
 
@@ -70,12 +66,14 @@ package com.idibon.ml.feature.tokenizer {
       Codec.VLuint.write(output, offset)
       Codec.VLuint.write(output, length)
     }
+  }
 
-    def load(input: DataInputStream) {
-      content = Codec.String.read(input)
-      tag = Tag.apply(Codec.VLuint.read(input))
-      offset = Codec.VLuint.read(input)
-      length = Codec.VLuint.read(input)
+  class TokenBuilder extends Builder[Token] {
+    def build(input: DataInputStream) = {
+      new Token(Codec.String.read(input),
+        Tag.apply(Codec.VLuint.read(input)),
+        Codec.VLuint.read(input),
+        Codec.VLuint.read(input))
     }
   }
 }
