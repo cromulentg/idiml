@@ -2,7 +2,7 @@ package com.idibon.ml.predict.ml
 
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
-import com.idibon.ml.predict.{PredictOption, PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
+import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
@@ -42,8 +42,7 @@ class IdibonLogisticRegressionModel extends MLModel {
     for (labelIndex <- 0 until results.size) {
       // spark uses double underneath...
       builder.setProbability(results.apply(labelIndex).toFloat)
-      if (options.options.getOrElse(
-        PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue()) {
+      if (!options.significantFeatureThreshold.isNaN()) {
         // TODO: get significant features.
         // e.g. we need to find all the features that have a weight above X.
         // We should also check whether we need to take any transform on the weights. e.g. exp ?

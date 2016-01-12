@@ -76,7 +76,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working")))
       val actual = ensembleModel.predict(
         doc, new PredictOptionsBuilder()
-          .showSignificantFeatures(0.0)
+          .showSignificantFeatures(0.0f)
           .build())
         .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe "blabel"
@@ -92,7 +92,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working")))
       val actual = ensembleModel.predict(
         doc, new PredictOptionsBuilder()
-          .showSignificantFeatures(0.0)
+          .showSignificantFeatures(0.0f)
           .build())
         .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe "blabel"
