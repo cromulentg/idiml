@@ -1,7 +1,9 @@
 package com.idibon.ml.alloy;
 
 import java.io.*;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A basic shell created for the purpose of writing tests
@@ -9,7 +11,7 @@ import java.util.logging.Logger;
  * @author Michelle Casbon <michelle@idibon.com>
  */
 public class IntentAlloy implements Alloy {
-    private static Logger logger = Logger.getLogger(IntentAlloy.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(IntentAlloy.class);
     private String _path;
     private double _random;
 
@@ -20,7 +22,7 @@ public class IntentAlloy implements Alloy {
     public IntentAlloy(String path) {
         _path = path;
         _random = Math.random();
-        logger.info("IA: _path:" + _path + " ; random=" + _random);
+        logger.info("IA: _path: {} ; random= {}", _path, _random);
     }
 
     public Alloy.Reader reader() {
@@ -31,7 +33,7 @@ public class IntentAlloy implements Alloy {
         IntentReader(String path, double random) {
             _path = path;
             _random = random;
-            logger.info("IR: _path:" + _path + " ; random=" + _random);
+            logger.info("IR: _path: {} ; random= {}", _path, _random);
         }
 
         public DataInputStream resource(String resourceName) throws IOException {
@@ -55,7 +57,7 @@ public class IntentAlloy implements Alloy {
         IntentWriter(String path, double random) {
             _path = path;
             _random = random;
-            logger.info("IW: _path:" + _path + " ; random=" + _random);
+            logger.info("IW: _path: {} ; random= {}", _path, _random);
         }
 
         public DataOutputStream resource(String resourceName) throws IOException {
