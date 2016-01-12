@@ -1,33 +1,25 @@
 package com.idibon.ml.predict
 
-import scala.collection.mutable
-
 /**
   * Class that stores predict options.
   *
   * It's a case class to make it easy to compare against.
   *
-  * @param options the map of options. Casting the value is up to the caller.
+  * @param significantFeatureThreshold Default is NaN (off). Otherwise significant features should
+  *                                    be returned when the value is not NaN. If the model can use
+  *                                    a threshold with significant features, it should use the
+  *                                    value here.
   */
-case class PredictOptions(options: Map[PredictOption.Value, Any])
-//TODO: is there a nicer pattern to get values from this and cast to the right object?
+case class PredictOptions(significantFeatureThreshold: Float = PredictOptions.NO_FEATURES)
 
-/**
-  * Enumeration of options possible during prediction.
-  */
-object PredictOption extends Enumeration {
-  type PredictOption = Value
-  val SignificantFeatures, // Shows significant features
-    SignificantThreshold // Value a feature needs to be >= if the model understands this value.
-    = Value
+object PredictOptions {
+  val NO_FEATURES = Float.NaN
 }
-
 /**
   * Builder class to create a PredictOptions object.
   */
 class PredictOptionsBuilder() {
-  private val options = new mutable.HashMap[PredictOption.Value, Any]()
-
+  private var significantFeatureThreshold = PredictOptions.NO_FEATURES
   /**
     * If invoked, will ensure that significant features are returned, and
     * if the prediction can make use of it, will limit it to values above
@@ -35,14 +27,14 @@ class PredictOptionsBuilder() {
     * @param threshold
     * @return
     */
-  def showSignificantFeatures(threshold: Double): PredictOptionsBuilder = {
-    options += (PredictOption.SignificantFeatures -> true)
-    options += (PredictOption.SignificantThreshold -> threshold)
+  def showSignificantFeatures(threshold: Float): PredictOptionsBuilder = {
+    assert(!threshold.isNaN()) // Float.NaN is our "off" value.
+    significantFeatureThreshold = threshold
     this
   }
 
   def build(): PredictOptions = {
-    new PredictOptions(options.toMap)
+    new PredictOptions(significantFeatureThreshold)
   }
 
 }

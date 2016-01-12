@@ -141,8 +141,7 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
                        options: PredictOptions): PredictResult = {
     // Takes $document out of the JObject and runs rules over them.
     val content: String = (document \ "content").asInstanceOf[JString].s
-    docPredict(content, options.options.getOrElse(
-      PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue())
+    docPredict(content, !options.significantFeatureThreshold.isNaN())
   }
 
   /**
