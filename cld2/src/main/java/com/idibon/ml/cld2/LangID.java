@@ -626,14 +626,14 @@ public enum LangID {
     X_Sora_Sompeng(612, "xx-Sora", "X_Sora_Sompeng"),
     X_Takri(613, "xx-Takr", "X_Takri");
 
-    LangID(int value, String code, String name) {
+    LangID(int value, String code, String languageName) {
         _value = value;
         this.code = code;
-        this.name = name;
+        this.languageName = languageName;
     }
 
     public final String code;
-    public final String name;
+    public final String languageName;
 
     private final int _value;
 
