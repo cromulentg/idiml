@@ -1,10 +1,13 @@
 plugins {
   // ScalaTest test runner plugin
   id "com.github.maiflai.scalatest" version "0.10"
+  // Test coverage
+  id "org.scoverage" version "2.0.0"
 }
 
 dependencies {
   compile project(':predict')
+  scoverage 'org.scoverage:scalac-scoverage-plugin_2.11:1.1.0', 'org.scoverage:scalac-scoverage-runtime_2.11:1.1.0'
 }
 
 description = "Idibon ML Training and Cross-Validation Library"

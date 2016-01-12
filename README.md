@@ -40,6 +40,14 @@ Run unit tests with the `test` task: `./gradlew test`. Unit testing is
 performed with [ScalaTest](http://www.scalatest.org/). HTML test results
 for each project are stored in the project's `build/reports` subdirectory.
 
+# Code Coverage
+
+We use the [gradle-scoverage](https://github.com/scoverage/gradle-scoverage) tool for computing
+code coverage. It is a wrapper around [scalac-scoverage-plugin](https://github.com/scoverage/scalac-scoverage-plugin). 
+To run it:
+
+* `./gradlew reportScoverage` will create the HTML report to view
+
 # Setting up Intellij
 
 There are two ways to setup intellij:
