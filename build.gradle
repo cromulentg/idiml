@@ -13,7 +13,7 @@ def isOfficialRelease() {
   def official = false
 
   releases.eachLine { tag ->
-    def tagRef = "git rev-parse ${tag}".execute().text.trim()
+    def tagRef = "git rev-list -n 1 ${tag}".execute().text.trim()
     def test = tagRef == headRef
     official = official || test
   }
