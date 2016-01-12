@@ -8,14 +8,18 @@ class FeatureInputOutputStreamSpec extends FunSpec with Matchers {
   it("should gracefully handle more classes than the max cache size") {
     val bos = new ByteArrayOutputStream
     val fos = new FeatureOutputStream(bos, 1)
-    val features = List(
+    val features = List[(Int, Feature[_])](
       // encoded size, feature
       (7, new tokenizer.Token("foo", tokenizer.Tag.Word, 0, 3)),
       (4, new StringFeature("bar")),
       (6, new tokenizer.Token(":)", tokenizer.Tag.Punctuation, 3, 2))
     )
 
-    for (f <- features) fos.writeFeature(f._2)
+    for (f <- features) {
+      f._2 match {
+        case b: Feature[_] with Buildable[_, _] => fos.writeFeature(b)
+      }
+    }
 
     val bytes = bos.toByteArray
     var cursor = 0
@@ -33,7 +37,7 @@ class FeatureInputOutputStreamSpec extends FunSpec with Matchers {
   it("should cache class types") {
     val bos = new ByteArrayOutputStream
     val fos = new FeatureOutputStream(bos)
-    val features = List(
+    val features = List[Feature[_]](
       new tokenizer.Token("foo", tokenizer.Tag.Word, 0, 3),
       new tokenizer.Token("bar", tokenizer.Tag.Word, 3, 3),
       new StringFeature("hello"),
@@ -41,7 +45,11 @@ class FeatureInputOutputStreamSpec extends FunSpec with Matchers {
       new tokenizer.Token("foo", tokenizer.Tag.Word, 0, 3)
     )
 
-    for (f <- features) fos.writeFeature(f)
+    for (f <- features) {
+      f match {
+        case b: Feature[_] with Buildable[_, _] => fos.writeFeature(b)
+      }
+    }
 
     val bytes = bos.toByteArray
     // the first byte of each feature should be an "insert at index 0" command

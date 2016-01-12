@@ -3,6 +3,7 @@ package com.idibon.ml.feature
 import java.io._
 import scala.collection.mutable.HashMap
 import com.idibon.ml.alloy.Codec
+import com.idibon.ml.common.Reflect;
 
 /** Adds methods to save Feature instances to OutputStreams
   *
@@ -32,7 +33,7 @@ class FeatureOutputStream(out: OutputStream, maxCacheSize: Int = 128)
     *
     * @param f - Feature to write
     */
-  def writeFeature(f: Feature[_]) {
+  def writeFeature(f: Feature[_] with Buildable[_, _]) {
     val className = f.getClass.getName
     _classNameCache.get(className) match {
       case Some(index) => {
@@ -61,23 +62,25 @@ class FeatureOutputStream(out: OutputStream, maxCacheSize: Int = 128)
   */
 class FeatureInputStream(in: InputStream) extends DataInputStream(in) {
 
-  private[this] val _classNameCache = HashMap[Int, Class[_]]()
+  private[this] val _classNameCache = HashMap[Int, Builder[Feature[_]]]()
 
   /** Reads a Feature from the InputStream
     *
     * @return - the loaded feature
     */
   def readFeature: Feature[_] = {
-    val klass = readByte match {
+    val builder = readByte match {
       case cached if cached < 0 => _classNameCache(128 + cached)
       case uncached => {
-        _classNameCache += (uncached.toInt ->
+        val args = Reflect.getTypeParametersAs[Buildable[_, _]](
           Class.forName(Codec.String.read(this)))
+
+        _classNameCache += (uncached.toInt ->
+          args.last.newInstance.asInstanceOf[Builder[Feature[_]]])
+
         _classNameCache(uncached)
       }
     }
-    val f = klass.newInstance.asInstanceOf[Feature[_]]
-    f.load(this)
-    f
+    builder.build(this)
   }
 }
