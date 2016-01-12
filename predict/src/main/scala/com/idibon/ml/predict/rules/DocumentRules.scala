@@ -17,10 +17,10 @@ import scala.util.{Failure, Try}
 
 /**
   * Class taking care of Document rule models. This could become a trait potentially...
-  * @param label the index of the label these rules are for
+  * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class DocumentRules(var label: Int, var rules: List[(String, Double)])
+class DocumentRules(var label: String, var rules: List[(String, Double)])
   extends RulesModel with StrictLogging {
   val invalidRules = rules.filter(x => x._2 < 0.0 || x._2 > 1.0)
   if (invalidRules.size > 0) logger.info("Filtered out rules with invalid weights: " + invalidRules.toString())
@@ -36,7 +36,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * Constructor for making load easy.
     */
   def this() = {
-    this(-1, List())
+    this("", List())
   }
 
   /**
@@ -93,7 +93,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   override def load(reader: Reader, config: Option[JObject]): DocumentRules.this.type = {
     // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
     implicit val formats = org.json4s.DefaultFormats
-    this.label = (config.get \ "label").extract[Int]
+    this.label = (config.get \ "label").extract[String]
     val jsonObject: JValue = parse(Codec.String.read(reader.resource(RULE_RESOURCE_NAME)))
     val ruleJsonValue = jsonObject.extract[List[Map[String, Double]]]
     this.rules = ruleJsonValue.flatMap(x => x.toList)
@@ -125,7 +125,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     logger.debug(jsonString)
     // write to the output stream via the codec.
     Codec.String.write(output, jsonString)
-    Some(new JObject(List(JField("label", JInt(this.label)))))
+    Some(new JObject(List(JField("label", JString(this.label)))))
   }
 
   /**

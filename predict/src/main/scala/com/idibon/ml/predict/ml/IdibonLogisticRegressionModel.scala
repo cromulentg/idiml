@@ -38,7 +38,7 @@ class IdibonLogisticRegressionModel extends MLModel {
   override def predict(features: Vector,
                        options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
-    val builder = new SingleLabelDocumentResultBuilder(this.getType(), -1)
+    val builder = new SingleLabelDocumentResultBuilder(this.getType(), "")
     for (labelIndex <- 0 until results.size) {
       builder.setProbability(results.apply(labelIndex))
       if (options.options.getOrElse(

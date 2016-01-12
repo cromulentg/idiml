@@ -10,7 +10,7 @@ import com.idibon.ml.predict.{PredictResult, SingleLabelDocumentResultBuilder, S
   * Otherwise this class is tightly coupled to the model types. Since
   * we have to special case black & white list rules.
   */
-class WeightedAverageDocumentPredictionCombiner(modelIdentifier: String, label: Int) {
+class WeightedAverageDocumentPredictionCombiner(modelIdentifier: String, label: String) {
 
   /**
     * Method to combine results using the weighted average method.

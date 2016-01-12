@@ -22,7 +22,7 @@ import scala.collection.mutable
   * @param topLabelFlags
   */
 abstract class PredictResult(modelIdentifier: String,
-                             topLabel: Int,
+                             topLabel: String,
                              topLabelProbability: Double,
                              topLabelSignificantFeatures: List[(String, Double)],
                              topLabelMatchCount: Double,
@@ -44,7 +44,7 @@ object PredictResult {
   * @param flags
   */
 case class SingleLabelDocumentResult(modelIdentifier: String,
-                                     label: Int,
+                                     label: String,
                                      probability: Double,
                                      significantFeatures: List[(String, Double)],
                                      matchCount: Double,
@@ -57,7 +57,7 @@ case class SingleLabelDocumentResult(modelIdentifier: String,
   * @param modelIdentifier a string representing a path to a model.
   * @param label
   */
-class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: Int) {
+class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
   private var probability: Double = 0.0
   private val significantFeatures = scala.collection.mutable.MutableList[(String, Double)]()
   private var matchCount: Double = 0.0

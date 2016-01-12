@@ -7,10 +7,10 @@ import org.json4s.JObject
 
 /**
   * Class taking care of Span rule models. This could become a trait potentially...
-  * @param label the index of the label these rules are for
+  * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
+class SpanRules(label: String, rules: List[(String, Double)]) extends RulesModel {
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.

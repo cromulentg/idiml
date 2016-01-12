@@ -11,13 +11,13 @@ import org.json4s._
   * @param label
   * @param models
   */
-class EnsembleModel(var label: Int, var models: List[PredictModel]) extends PredictModel {
+class EnsembleModel(var label: String, var models: List[PredictModel]) extends PredictModel {
 
   /**
     * Constructor for making load easy.
     */
   def this() {
-    this(-1, List())
+    this("", List())
   }
 
   /**
@@ -123,7 +123,7 @@ class EnsembleModel(var label: Int, var models: List[PredictModel]) extends Pred
     }
     // create the JSON config to return
     val ensembleMetadata = JObject(List(
-      JField("label", JInt(this.label)),
+      JField("label", JString(this.label)),
       JField("size", JInt(this.models.size)),
       JField("model-meta", JObject(modelMetadata)),
       JField("model-index", JObject(indexToModelType))
@@ -142,7 +142,7 @@ class EnsembleModel(var label: Int, var models: List[PredictModel]) extends Pred
     */
   override def load(reader: Reader, config: Option[JObject]): EnsembleModel.this.type = {
     implicit val formats = org.json4s.DefaultFormats
-    this.label = (config.get \ "label").extract[Int]
+    this.label = (config.get \ "label").extract[String]
     val size = (config.get \ "size").extract[Int]
     var models = List[PredictModel]()
     for (i <- 0 until size) {
