@@ -5,6 +5,7 @@ import java.util.regex.{Matcher, Pattern}
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
+import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.util.SafeCharSequence
 import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
@@ -20,41 +21,24 @@ import scala.util.{Failure, Try}
   * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class DocumentRules(var label: String, var rules: List[(String, Float)])
-  extends RulesModel with StrictLogging {
-  val invalidRules = rules.filter(x => x._2 < 0.0 || x._2 > 1.0)
-  if (invalidRules.size > 0) logger.info("Filtered out rules with invalid weights: " + invalidRules.toString())
-  // filter out rules that aren't valid.
-  rules = rules.filter(x => x._2 >= 0.0 && x._2 <= 1.0)
-  var ruleWeightMap = rules.toMap
-  // Rules cache - can contain "Errors"
-  val rulesCache: ConcurrentHashMap[String, Try[Pattern]] = new ConcurrentHashMap[String, Try[Pattern]]()
-  // Compile the rules and populate the rule cache; this could be slow, but there's no way around this...
-  populateCache()
+case class DocumentRules(label: String, rules: List[(String, Float)])
+    extends RulesModel with StrictLogging
+    with Archivable[DocumentRules, DocumentRulesLoader] {
 
-  /**
-    * Constructor for making load easy.
-    */
-  def this() = {
-    this("", List[(String, Float)]())
-  }
+  // log a warning message if any of the rules has an invalid weight
+  rules.filter(r => !DocumentRules.isValidWeight(r._2))
+    .foreach({ case (phrase, weight) => {
+      logger.warn(s"[$this] ignoring invalid weight $weight for $phrase")
+    }})
 
-  /**
-    * Helper method to compile the rules into regular expressions.
-    */
-  def populateCache(): Unit = {
-    // do in parallel
-    for ((rule, weight) <- this.rules.par) {
-      if (isRegexRule(rule)) {
-        val expression = Try(Pattern.compile(rule.substring(1, rule.length() - 1))) // makes it a regex
-        savePatternToCache(rule, expression)
-      } else {
-        // makes it a regex, but we want to interpret everything literally, etc.
-        val expression = Try(Pattern.compile(rule, Pattern.LITERAL | Pattern.CASE_INSENSITIVE))
-        savePatternToCache(rule, expression)
-      }
-    }
-  }
+
+  val ruleWeightMap = rules.filter(r => DocumentRules.isValidWeight(r._2)).toMap
+  val rulesCache = DocumentRules.compileRules(ruleWeightMap.map(_._1))
+
+  // log a warning message if any of the rules fail to compile
+  rulesCache.filter(_._2.isFailure).foreach({ case (p, r) => {
+    logger.warn(s"[$this] unable to compile $p: ${r.failed.get.getMessage}")
+  }})
 
   /**
     * The method used to predict from a vector of features.
@@ -71,7 +55,7 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     * Returns the type of model.
     * @return canonical class name.
     */
-  override def getType(): String = this.getClass().getCanonicalName()
+  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method
@@ -80,28 +64,6 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     *         that were used.
     */
   override def getFeaturesUsed(): Vector = new SparseVector(1, Array(0), Array(0))
-
-  /** Reloads the object from the Alloy
-    *
-    * @param reader location within Alloy for loading any resources
-    *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
-    * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
-    * @return this object
-    */
-  override def load(reader: Reader, config: Option[JObject]): DocumentRules.this.type = {
-    // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
-    implicit val formats = org.json4s.DefaultFormats
-    this.label = (config.get \ "label").extract[String]
-    val jsonObject: JValue = parse(Codec.String.read(reader.resource(RULE_RESOURCE_NAME)))
-    val ruleJsonValue = jsonObject.extract[List[Map[String, Float]]]
-    this.rules = ruleJsonValue.flatMap(x => x.toList)
-    this.ruleWeightMap = rules.toMap
-    this.rulesCache.clear()
-    populateCache()
-    this
-  }
 
   /** Serializes the object within the Alloy
     *
@@ -119,7 +81,7 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     */
   override def save(writer: Writer): Option[JObject] = {
     // create output stream to write to
-    val output = writer.resource(RULE_RESOURCE_NAME)
+    val output = writer.resource(DocumentRules.RULE_RESOURCE_NAME)
     // render the list into a json list of maps.
     val jsonString = compact(render(rules))
     logger.debug(jsonString)
@@ -152,7 +114,7 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     */
   def docPredict(content: String, significantFeatures: Boolean): SingleLabelDocumentResult = {
     val dpr = new SingleLabelDocumentResultBuilder(this.getType(), this.label)
-    val matchesCount: Map[String, Int] = getDocumentMatchCounts(content)
+    val matchesCount = getDocumentMatchCounts(content)
     // calculate pseudo prob.
     val (psuedoProb, totalCount, whiteOrBlackRule) = calculatePseudoProbability(matchesCount)
     // significant features are anything that matched; with the caveat that if white/blacklist rules
@@ -177,27 +139,6 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
       .setMatchCount(totalCount)
       .setFlags(PredictResultFlag.FORCED, whiteOrBlackRule)
     dpr.build()
-  }
-
-  /**
-    * Helper method to answer the question, whether the rule is a regular expression or not.
-    * @param rule
-    * @return
-    */
-  def isRegexRule(rule: String): Boolean = {
-    rule != null && rule.startsWith("/") && rule.endsWith("/") && rule.length() > 2
-  }
-
-  /**
-    * Helper method to save a compilded pattern to the cache.
-    * @param rule the rule we are saving the pattern under.
-    * @param expression The pattern/error we're saving.
-    */
-  private def savePatternToCache(rule: String, expression: Try[Pattern]): Unit = {
-    if (expression.isFailure)
-      this.logger.error("Failed to compile expression [${rule}]: " + expression.failed.get.toString)
-    // stick the result in the cache
-    rulesCache.put(rule, expression)
   }
 
   /**
@@ -266,42 +207,85 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     * @param content the content to match rules against
     * @return immutable map of rule count matches
     */
-  def getDocumentMatchCounts(content: String): Map[String, Int] = {
+  def getDocumentMatchCounts(content: String) = {
 
     // in parallel apply the following & flatten
-    rules.par.flatMap {
-      case (rule, weight) => {
-        //get the rule or create a Failure to continue with chaining functions
-        rulesCache.getOrDefault(rule, Failure(new IllegalStateException("No such rule in cache map.")))
-          .flatMap(
-            pat =>  // create a matcher & catch any exceptions
-              Try(pat.matcher(new SafeCharSequence(content, SafeCharSequence.MAX_REGEX_BACKTRACKS)))
-          ).map(getMatches(_)) //get matches into a list
-          .map(rule -> _.size) //create tuples of rule -> count of matches
-          .recoverWith({
-          //deal with all the rules we failed to apply
-          case error =>
-            this.logger.error(s"Failed to apply rule:[${rule}]; " + error.toString)
-            Failure(error) // since everything else returns a Try this needs to be a Failure
-        }).toOption //changes this into a Some
-      }
-      // remove 0 counts, remove parallel-ness, make it a map
-    }.filter(tup => tup._2 != 0).toList.toMap
+    rulesCache.par.map({ case (rule, pat) => {
+      pat.flatMap(p => {
+        /* create a matcher for the content given the compiled pattern,
+         * and locate all matches; catch any errors thrown (e.g., due to
+         * excessive backtracking */
+        Try(getMatches(p.matcher(new SafeCharSequence(content,
+          SafeCharSequence.MAX_REGEX_BACKTRACKS)))) })
+        // count all of the detected matches for each rule
+        .map(matchList => (rule -> matchList.size))
+      /* only return successful matches that are found
+       * FIXME: this should return errors, so that they can be reported
+       * to the caller
+       */
+    }}).filter(result => result.isSuccess && result.get._2 > 0)
+      .map(_.get).toMap[String, Int].seq
   }
+}
+
+/** Paired loader class for DocumentRules instances */
+class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
+    /** Reloads the object from the Alloy
+    *
+    * @param reader location within Alloy for loading any resources
+    *               previous preserved by a call to
+    *               { @link com.idibon.ml.feature.Archivable#save}
+    * @param config archived configuration data returned by a previous
+    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    * @return this object
+    */
+  override def load(reader: Reader, config: Option[JObject]): DocumentRules = {
+    // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
+    implicit val formats = org.json4s.DefaultFormats
+    val label = (config.get \ "label").extract[String]
+    val jsonObject: JValue = parse(
+      Codec.String.read(reader.resource(DocumentRules.RULE_RESOURCE_NAME)))
+
+    val ruleJsonValue = jsonObject.extract[List[Map[String, Float]]]
+    val rules = ruleJsonValue.map(x => x.toList).flatten
+    new DocumentRules(label, rules)
+  }
+}
+
+/** Constants for DocumentRules */
+private[this] object DocumentRules {
+  val RULE_RESOURCE_NAME: String = "rules.json"
+
+  /** Tests if the user-provided rule weight is valid
+    *
+    * @param w - weight
+    * @return true if the weight is in the valid range, false otherwise
+    */
+  def isValidWeight(w: Float) = w >= 0.0 && w <= 1.0
 
   /**
-    * Override equals so that we can make unit tests simpler.
-    * @param that
+    * Helper method to answer the question, whether the rule is a regular expression or not.
+    * @param rule
     * @return
     */
-  override def equals(that: scala.Any): Boolean = {
-    that match {
-      case that: DocumentRules => {
-        this.label == that.label && this.rules.equals(that.rules)
-      }
-      case _ => false
-    }
+  def isRegexRule(rule: String): Boolean = {
+    rule != null && rule.startsWith("/") && rule.endsWith("/") && rule.length() > 2
   }
 
-  private val RULE_RESOURCE_NAME: String = "rules.json"
+  /** Tries to precompile rule phrases to Pattern instances
+    *
+    * @param rules - rule phrases to compile
+    * @return A map from the raw rule phrase to the compilation results
+    */
+  def compileRules(rules: Iterable[String]) = {
+    rules.par.map(phrase => {
+      val pattern = Try({
+        if (isRegexRule(phrase))
+          Pattern.compile(phrase.substring(1, phrase.length() - 1))
+        else
+          Pattern.compile(phrase, Pattern.LITERAL | Pattern.CASE_INSENSITIVE)
+      })
+      (phrase, pattern)
+    }).toList
+  }
 }

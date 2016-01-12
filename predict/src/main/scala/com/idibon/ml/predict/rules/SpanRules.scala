@@ -2,6 +2,7 @@ package com.idibon.ml.predict.rules
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.predict.{PredictOptions, PredictResult}
+import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
 
@@ -10,7 +11,8 @@ import org.json4s.JObject
   * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class SpanRules(label: String, rules: List[(String, Double)]) extends RulesModel {
+class SpanRules(label: String, rules: List[(String, Double)])
+    extends RulesModel with Archivable[SpanRules, SpanRulesLoader] {
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
@@ -34,17 +36,6 @@ class SpanRules(label: String, rules: List[(String, Double)]) extends RulesModel
     */
   // should return the "raw string" feature index.
   override def getFeaturesUsed(): Vector = ???
-
-  /** Reloads the object from the Alloy
-    *
-    * @param reader location within Alloy for loading any resources
-    *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
-    * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
-    * @return this object
-    */
-  override def load(reader: Reader, config: Option[JObject]): SpanRules.this.type = ???
 
   /** Serializes the object within the Alloy
     *
@@ -73,4 +64,19 @@ class SpanRules(label: String, rules: List[(String, Double)]) extends RulesModel
     */
   override def predict(document: JObject,
                        options: PredictOptions): PredictResult = ???
+}
+
+/** Paired loader class for SpanRules */
+class SpanRulesLoader extends ArchiveLoader[SpanRules] {
+
+  /** Reloads the object from the Alloy
+    *
+    * @param reader location within Alloy for loading any resources
+    *               previous preserved by a call to
+    *               { @link com.idibon.ml.feature.Archivable#save}
+    * @param config archived configuration data returned by a previous
+    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    * @return this object
+    */
+  def load(reader: Reader, config: Option[JObject]): SpanRules = ???
 }

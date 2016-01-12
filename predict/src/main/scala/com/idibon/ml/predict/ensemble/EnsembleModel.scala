@@ -1,7 +1,9 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
+import com.idibon.ml.common.Reflect
 import com.idibon.ml.predict.{PredictOptions, PredictResult, SingleLabelDocumentResult, PredictModel}
+import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -11,14 +13,8 @@ import org.json4s._
   * @param label
   * @param models
   */
-class EnsembleModel(var label: String, var models: List[PredictModel]) extends PredictModel {
-
-  /**
-    * Constructor for making load easy.
-    */
-  def this() {
-    this("", List())
-  }
+case class EnsembleModel(label: String, models: List[PredictModel])
+    extends PredictModel with Archivable[EnsembleModel, EnsembleModelLoader] {
 
   /**
     * The method used to predict from a FULL DOCUMENT!
@@ -103,16 +99,15 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
   override def save(writer: Writer): Option[JObject] = {
     implicit val formats = org.json4s.DefaultFormats
     // create list of model types
-    val modelClasses = models.map(_.getClass().getCanonicalName())
+    val modelClasses = models.map(_.getClass().getName())
     // zip it together
     val modelTriple = (models.indices, models, modelClasses).zipped.toList
     // save each model into it's own space: just use the index as the identifier
     val modelMetadata: List[JField] = modelTriple.map {
       case (index, mod, typ) => {
-        // create the space
-        val modWriter = writer.within(index.toString)
-        // save the model & create tuple of index -> metadataconfig
-        JField(index.toString(), mod.save(modWriter).getOrElse(JNothing))
+        val name = index.toString
+        JField(name,
+          Archivable.save(mod, writer.within(name)).getOrElse(JNothing))
       }
     }
     // create map to tell us what model type is at what index
@@ -130,7 +125,10 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
     ))
     Some(ensembleMetadata)
   }
+}
 
+/** Paired loader class for EnsembleModel objects */
+class EnsembleModelLoader extends ArchiveLoader[EnsembleModel] {
   /** Reloads the object from the Alloy
     *
     * @param reader location within Alloy for loading any resources
@@ -140,39 +138,22 @@ class EnsembleModel(var label: String, var models: List[PredictModel]) extends P
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  override def load(reader: Reader, config: Option[JObject]): EnsembleModel.this.type = {
+  def load(reader: Reader, config: Option[JObject]): EnsembleModel = {
     implicit val formats = org.json4s.DefaultFormats
-    this.label = (config.get \ "label").extract[String]
+    val label = (config.get \ "label").extract[String]
     val size = (config.get \ "size").extract[Int]
-    var models = List[PredictModel]()
-    for (i <- 0 until size) {
+    val models = (0 until size).map(_.toString).map(name => {
       // get model metadata JObject
-      val modelMeta = (config.get \ "model-meta" \ i.toString).extract[JObject]
+      val modelMeta =
+        (config.get \ "model-meta" \ name).extract[Option[JObject]]
       // get model type
-      val modelType = (config.get \ "model-index" \ i.toString).extract[String]
-      // create reader for them from the appropriate place
-      val modelReader = reader.within(i.toString)
-      // create model and load
-      val modelInstance = Class.forName(modelType)
-        .newInstance().asInstanceOf[PredictModel].load(modelReader, Some(modelMeta))
-      // append to models list
-      models = models ::: List(modelInstance)
-    }
-    this.models = models
-    this
-  }
+      val modelType =
+        Class.forName((config.get \ "model-index" \ name).extract[String])
 
-  /**
-    * Override equals so that we can make unit tests simpler.
-    * @param that
-    * @return
-    */
-  override def equals(that: scala.Any): Boolean = {
-    that match {
-      case that: EnsembleModel => {
-        this.label == that.label && this.models.equals(that.models)
-      }
-      case _ => false
-    }
+      ArchiveLoader
+        .reify[PredictModel](modelType, reader.within(name), modelMeta)
+        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel])
+    })
+    new EnsembleModel(label, models.toList)
   }
 }

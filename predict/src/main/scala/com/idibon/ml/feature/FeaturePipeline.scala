@@ -14,7 +14,8 @@ package com.idibon.ml.feature {
 
   /** The feature pipeline transforms documents into feature vectors
     */
-  class FeaturePipeline extends Archivable {
+  class FeaturePipeline(state: LoadState)
+      extends Archivable[FeaturePipeline, FeaturePipelineLoader] {
 
     /** Applies the entire feature pipeline to the provided document.
       *
@@ -22,21 +23,19 @@ package com.idibon.ml.feature {
       * in this pipeline.
       */
     def apply(document: JObject): Seq[Vector] = {
-      _state.map(s => {
-        /* the intermediate data passed between pipeline stages; initialize
-         * with the document under the reserved name "$document" */
-        val intermediates = scala.collection.mutable.Map[String, Any](
-          FeaturePipeline.DocumentInput -> document
-        )
-        for (stage <- s.graph) {
-          intermediates ++= stage.transforms
-            .map(xf => (xf.name -> xf.transform(intermediates)))
+      /* the intermediate data passed between pipeline stages; initialize
+       * with the document under the reserved name "$document" */
+      val intermediates = scala.collection.mutable.Map[String, Any](
+        FeaturePipeline.DocumentInput -> document
+      )
+      for (stage <- this.state.graph) {
+        intermediates ++= stage.transforms
+          .map(xf => (xf.name -> xf.transform(intermediates)))
 
-          intermediates --= stage.killList
-        }
+        intermediates --= stage.killList
+      }
 
-        intermediates(FeaturePipeline.OutputStage).asInstanceOf[Seq[Vector]]
-      }).getOrElse(throw new IllegalStateException("Pipeline not loaded"))
+      intermediates(FeaturePipeline.OutputStage).asInstanceOf[Seq[Vector]]
     }
 
     /** Saves each archivable transforms and generates the total pipeline JSON
@@ -45,22 +44,19 @@ package com.idibon.ml.feature {
       */
     def save(writer: Alloy.Writer): Option[JObject] = {
       // todo: store dimensions of output vectors here?
-      _state.map(s =>
-        JObject(List(
-          JField("transforms", JArray(s.transforms.map({ case (name, xf) => {
-            // archive each Archivable transform
-            val configJson = xf match {
-              case archive: Archivable => archive.save(writer.within(name))
-              case _ => None
-            }
-            // and map to the entry in the transforms array
+      Some(JObject(List(
+        JField("transforms",
+          JArray(this.state.transforms.map({ case (name, xf) => {
+            // create the serialized TransformEntry representation
             JObject(List(
               JField("name", JString(name)),
               JField("class", JString(xf.getClass.getName)),
-              JField("config", configJson.getOrElse(JNothing))
+              JField("config",
+                Archivable.save(xf, writer.within(name)).getOrElse(JNothing))
             ))
           }}).toList)),
-          JField("pipeline", JArray(s.pipeline.map(pipe => {
+        JField("pipeline",
+          JArray(this.state.pipeline.map(pipe => {
             // construct an entry in the "pipeline" array for each PipelineEntry
             JObject(List(
               JField("name", JString(pipe.name)),
@@ -69,9 +65,10 @@ package com.idibon.ml.feature {
           }).toList))
         )))
     }
+  }
 
-    @volatile private var _state: Option[LoadState] = None
-
+  /** Paired loader class for FeaturePipeline instances */
+  class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     /** Load the FeaturePipeline from the Alloy
       *
       * See {@link com.idibon.ml.feature.FeaturePipeline}
@@ -82,7 +79,7 @@ package com.idibon.ml.feature {
       *   pipeline was last saved
       * @return this
       */
-    def load(reader: Alloy.Reader, config: Option[JObject]): this.type = {
+    def load(reader: Alloy.Reader, config: Option[JObject]): FeaturePipeline = {
       // configure format converters for json4s
       implicit val formats = DefaultFormats
 
@@ -99,31 +96,9 @@ package com.idibon.ml.feature {
         (obj.name -> reify(reader.within(obj.name), obj))
       }).toMap
 
-      bind(transforms, pipeJson)
+      FeaturePipeline.bind(transforms, pipeJson)
     }
 
-    /** Creates a bound state graph from the provided input state
-      *
-      * Helper method for load, also used for programmatic creation of
-      * FeaturePipline instances by the FeaturePipelineBuilder
-      *
-      * @param transforms  all of the transforms and names used in the pipeline
-      * @param pipeline    the pipeline structure
-      * @return this
-      */
-    private [feature] def bind(transforms: Map[String, FeatureTransformer],
-        pipeline: Seq[PipelineEntry]): this.type = {
-
-      val graph = FeaturePipeline.bindGraph(transforms, pipeline)
-
-      /* grab all of the feature transformers bound to the output stage
-       * these are the possible sources for significant feature inversion */
-      val outputs = pipeline.find(_.name == "$output")
-        .map(_.inputs.map(i => transforms(i))).getOrElse(List.empty)
-
-      _state = Some(new LoadState(graph, pipeline, outputs, transforms))
-      this
-    }
 
     /** Reifies a single FeatureTransformer
       *
@@ -139,18 +114,10 @@ package com.idibon.ml.feature {
     private def reify(reader: Alloy.Reader, entry: TransformEntry):
         FeatureTransformer = {
 
-      val transform = Class.forName(entry.`class`)
-        .newInstance.asInstanceOf[FeatureTransformer]
-
-      transform match {
-        // load and return the transform from the Alloy, if it's Archivable
-        case archived: FeatureTransformer with Archivable => {
-          // grab the configuration data for this transformer, if any
-          archived.load(reader, entry.config)
-        }
-        // otherwise just return the transform
-        case _ => transform
-      }
+      val transformClass = Class.forName(entry.`class`)
+      ArchiveLoader
+        .reify[FeatureTransformer](transformClass, reader, entry.config)
+        .getOrElse(transformClass.newInstance.asInstanceOf[FeatureTransformer])
     }
   }
 
@@ -159,8 +126,31 @@ package com.idibon.ml.feature {
     val DocumentInput = "$document"
     val DefaultName = "<undefined>"
 
-    lazy val logger = Logger(org.slf4j.LoggerFactory
-      .getLogger(classOf[FeaturePipeline].getName))
+    val logger = Logger(org.slf4j.LoggerFactory
+      .getLogger(classOf[FeaturePipeline]))
+
+    /** Creates a bound state graph from the provided input state
+      *
+      * Helper method for load, also used for programmatic creation of
+      * FeaturePipline instances by the FeaturePipelineBuilder
+      *
+      * @param transforms  all of the transforms and names used in the pipeline
+      * @param pipeline    the pipeline structure
+      * @return this
+      */
+    def bind(transforms: Map[String, FeatureTransformer],
+      pipeline: Seq[PipelineEntry]): FeaturePipeline = {
+
+      val graph = FeaturePipeline.bindGraph(transforms, pipeline)
+
+      /* grab all of the feature transformers bound to the output stage
+       * these are the possible sources for significant feature inversion */
+      val outputs = pipeline.find(_.name == "$output")
+        .map(_.inputs.map(i => transforms(i))).getOrElse(List.empty)
+
+      new FeaturePipeline(new LoadState(graph, pipeline, outputs, transforms))
+    }
+
 
     /** Tests if a user-provided name uses a reserved sequence.
       *

@@ -3,6 +3,7 @@ package com.idibon.ml.predict.ml
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
+import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
@@ -12,8 +13,9 @@ import org.json4s.JObject
   *
   * This class implements our LogisticRegressionModel.
   */
-class IdibonLogisticRegressionModel extends MLModel {
-  //TODO: feature pipeline stuff
+class IdibonLogisticRegressionModel extends MLModel
+  with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
+
 
   var lrm: IdibonSparkLogisticRegressionModelWrapper = null
 
@@ -84,17 +86,6 @@ class IdibonLogisticRegressionModel extends MLModel {
     */
   override def save(writer: Writer): Option[JObject] = ???
 
-  /** Reloads the object from the Alloy
-    *
-    * @param reader location within Alloy for loading any resources
-    *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
-    * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
-    * @return this object
-    */
-  override def load(reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel.this.type = ???
-
   /**
     * Override equals so that we can make unit tests simpler.
     * @param that
@@ -108,4 +99,20 @@ class IdibonLogisticRegressionModel extends MLModel {
       case _ => false
     }
   }
+}
+
+/** Paired loader class for IdibonLogisticRegressionModel instances */
+class IdibonLogisticRegressionModelLoader
+    extends ArchiveLoader[IdibonLogisticRegressionModel] {
+
+  /** Reloads the object from the Alloy
+    *
+    * @param reader location within Alloy for loading any resources
+    *               previous preserved by a call to
+    *               { @link com.idibon.ml.feature.Archivable#save}
+    * @param config archived configuration data returned by a previous
+    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    * @return this object
+    */
+  def load(reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = ???
 }
