@@ -1,7 +1,7 @@
 package com.idibon.ml.predict.rules
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.predict.{PredictResult}
+import com.idibon.ml.predict.{PredictOptions, PredictResult}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
 
@@ -14,13 +14,11 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = ???
+                       options: PredictOptions): PredictResult = ???
 
   /**
     * Returns the type of model.
@@ -70,11 +68,9 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = ???
+                       options: PredictOptions): PredictResult = ???
 }

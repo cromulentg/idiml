@@ -1,7 +1,7 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.{SingleLabelDocumentResult, PredictResult}
+import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult, PredictResult}
 import com.idibon.ml.predict.rules.DocumentRules
 import org.json4s._
 import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
@@ -60,7 +60,8 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val docRules = new DocumentRules(2, List(("/str[ij]ng/", 0.5), ("is", 0.5)))
       val ensembleModel = new EnsembleModel(2, List(docRules))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
-      val actual: SingleLabelDocumentResult = ensembleModel.predict(doc, false, 0.0)
+      val actual: SingleLabelDocumentResult = ensembleModel.predict(
+        doc, new PredictOptionsBuilder().build())
         .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe 2
       actual.matchCount shouldBe 2.0
@@ -73,7 +74,11 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val docRules2 = new DocumentRules(2, List(("/ma[th]ching/", 0.35)))
       val ensembleModel = new EnsembleModel(2, List(docRules1, docRules2))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
-      val actual = ensembleModel.predict(doc, true, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      val actual = ensembleModel.predict(
+        doc, new PredictOptionsBuilder()
+          .showSignificantFeatures(0.0)
+          .build())
+        .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe 2
       actual.matchCount shouldBe 3.0
       actual.probability shouldEqual 0.45
@@ -85,7 +90,11 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val docRules2 = new DocumentRules(2, List(("/ma[th]ching/", 1.0)))
       val ensembleModel = new EnsembleModel(2, List(docRules1, docRules2))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
-      val actual = ensembleModel.predict(doc, true, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      val actual = ensembleModel.predict(
+        doc, new PredictOptionsBuilder()
+          .showSignificantFeatures(0.0)
+          .build())
+        .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe 2
       actual.matchCount shouldBe 2.0
       actual.probability shouldEqual 0.5

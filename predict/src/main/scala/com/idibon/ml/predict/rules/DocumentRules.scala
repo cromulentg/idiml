@@ -59,13 +59,11 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = {
+                       options: PredictOptions): PredictResult = {
     throw new RuntimeException("Not implemented for rules.")
   }
 
@@ -136,16 +134,15 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = {
+                       options: PredictOptions): PredictResult = {
     // Takes $document out of the JObject and runs rules over them.
     val content: String = (document \ "content").asInstanceOf[JString].s
-    docPredict(content, significantFeatures)
+    docPredict(content, options.options.getOrElse(
+      PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue())
   }
 
   /**

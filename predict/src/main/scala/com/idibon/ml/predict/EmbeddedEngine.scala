@@ -46,7 +46,7 @@ class EmbeddedEngine extends Engine {
     idibonModel.lrm = sparkLRModel
 
     println(sparkLRModel.predictProbability(featureVector))
-    println(idibonModel.predict(featureVector, false, 0.0).toString)
+    println(idibonModel.predict(featureVector, new PredictOptionsBuilder().build()).toString)
   }
 
 }

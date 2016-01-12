@@ -3,7 +3,7 @@ package com.idibon.ml.predict.rules
 import java.util.regex.Pattern
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.SingleLabelDocumentResult
+import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
 import org.apache.spark.mllib.linalg.SparseVector
 import org.json4s._
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
@@ -264,7 +264,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
   describe("predict from vector") {
     it("Should throw exception") {
       intercept[RuntimeException] {
-        new DocumentRules(0, List()).predict(new SparseVector(1, Array(0), Array(0)), false, 0.0)
+        new DocumentRules(0, List()).predict(
+          new SparseVector(1, Array(0), Array(0)), new PredictOptionsBuilder().build())
       }
     }
   }
@@ -273,7 +274,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should predict properly when there is a match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules(0, List(("/str[ij]ng/", 1.0), ("is", 1.0)))
-      val actual = model.predict(doc, false, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(
+        doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe 0
       actual.probability shouldBe 1.0
     }
@@ -281,7 +283,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should predict properly when there is no match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules(0, List(("/str[ij]ng/", 1.0), ("/no[thing].*/", 1.0)))
-      val actual = model.predict(doc, false, 0.0).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(
+        doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe 0
       actual.probability shouldBe 0.0
     }

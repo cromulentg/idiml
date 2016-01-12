@@ -1,7 +1,7 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.predict.{PredictResult, SingleLabelDocumentResult, PredictModel}
+import com.idibon.ml.predict.{PredictOptions, PredictResult, SingleLabelDocumentResult, PredictModel}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -26,18 +26,16 @@ class EnsembleModel(var label: Int, var models: List[PredictModel]) extends Pred
     * The lower level models needs to handle "featurization".
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = {
+                       options: PredictOptions): PredictResult = {
     // create list of (index, model)
     val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
     val results: List[(Int, String, PredictResult)] = zipped.par.map(m =>
-      (m._1, m._2.getType(), m._2.predict(document, significantFeatures, significantThreshold))).toList
+      (m._1, m._2.getType(), m._2.predict(document, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
     combineResults(results.sortBy(_._1).map(_._3))
   }
@@ -45,18 +43,16 @@ class EnsembleModel(var label: Int, var models: List[PredictModel]) extends Pred
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = {
+                       options: PredictOptions): PredictResult = {
     // create list of (index, model)
     val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
     val results: List[(Int, String, PredictResult)] = zipped.par.map(m =>
-      (m._1, m._2.getType(), m._2.predict(features, significantFeatures, significantThreshold))).toList
+      (m._1, m._2.getType(), m._2.predict(features, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
     combineResults(results.sortBy(_._1).map(_._3))
   }

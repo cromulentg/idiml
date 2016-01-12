@@ -1,12 +1,10 @@
 package com.idibon.ml.predict.ml
 
-import java.io.DataInputStream
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
-import com.idibon.ml.predict.{SingleLabelDocumentResultBuilder, PredictResult}
+import com.idibon.ml.predict.{PredictOption, PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.Vector
-import org.codehaus.jettison.json.JSONObject
 import org.json4s.JObject
 
 /**
@@ -25,29 +23,26 @@ class IdibonLogisticRegressionModel extends MLModel {
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = ???
+                       options: PredictOptions): PredictResult = ???
 
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): PredictResult = {
+                       options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
     val builder = new SingleLabelDocumentResultBuilder(this.getType(), -1)
     for (labelIndex <- 0 until results.size) {
       builder.setProbability(results.apply(labelIndex))
-      if (significantFeatures) {
+      if (options.options.getOrElse(
+        PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue()) {
         // TODO: get significant features.
         // e.g. we need to find all the features that have a weight above X.
         // We should also check whether we need to take any transform on the weights. e.g. exp ?
