@@ -36,7 +36,7 @@ def getVersionString(String baseVersion) {
   version
 }
 
-version = getVersionString("0.0.2")
+version = getVersionString("0.0.3")
 
 println "Current Version: ${version}"
 
