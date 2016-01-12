@@ -26,12 +26,16 @@ abstract class PredictResult(modelIdentifier: String,
                              topLabelProbability: Float,
                              topLabelSignificantFeatures: List[(String, Float)],
                              topLabelMatchCount: Int,
-                             topLabelFlags: Map[String, Boolean]) {
+                             topLabelFlags: Map[PredictResultFlag.Value, Boolean]) {
 }
 
-object PredictResult {
-  // flags for special cases.
-  val WHITELIST_OR_BLACKLIST = "WhitelistOrBlacklist"
+/**
+  * Flags for special cases that we need to be aware of during prediction.
+  */
+object PredictResultFlag extends Enumeration {
+  type PredictResultFlag = Value
+  val FORCED // e.g. used when a blacklist or whitelist rule is used.
+    = Value
 }
 
 /**
@@ -48,7 +52,7 @@ case class SingleLabelDocumentResult(modelIdentifier: String,
                                      probability: Float,
                                      significantFeatures: List[(String, Float)],
                                      matchCount: Int,
-                                     flags: Map[String, Boolean]) extends PredictResult(
+                                     flags: Map[PredictResultFlag.Value, Boolean]) extends PredictResult(
   modelIdentifier, label, probability, significantFeatures, matchCount, flags
 )
 
@@ -61,7 +65,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
   private var probability: Float = 0.0f
   private val significantFeatures = scala.collection.mutable.MutableList[(String, Float)]()
   private var matchCount: Int = 0
-  private val specialFlags = mutable.HashMap[String, Boolean]()
+  private val specialFlags = mutable.HashMap[PredictResultFlag.Value, Boolean]()
 
   /**
     * Sets the probability.
@@ -119,7 +123,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param value
     * @return
     */
-  def setFlags(name: String, value: Boolean): SingleLabelDocumentResultBuilder = {
+  def setFlags(name: PredictResultFlag.Value, value: Boolean): SingleLabelDocumentResultBuilder = {
     specialFlags.put(name, value)
     this
   }

@@ -1,6 +1,6 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.predict.{PredictResult, SingleLabelDocumentResultBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{PredictResultFlag, PredictResult, SingleLabelDocumentResultBuilder, SingleLabelDocumentResult}
 
 /**
   * Class that houses logic to combine document prediction results.
@@ -39,7 +39,7 @@ class WeightedAverageDocumentPredictionCombiner(modelIdentifier: String, label: 
       .filter(_.label == this.label)
 
     // deal with special case black/whitelist
-    val blackOrWhite = singleLabelResults.filter(_.flags(PredictResult.WHITELIST_OR_BLACKLIST))
+    val blackOrWhite = singleLabelResults.filter(_.flags(PredictResultFlag.FORCED))
     // if special case then
     if (blackOrWhite.size > 0) {
       // build new result from old, changing model identifier.

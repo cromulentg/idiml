@@ -176,7 +176,7 @@ class DocumentRules(var label: String, var rules: List[(String, Float)])
     dpr.setProbability(psuedoProb)
       .addSignificantFeatures(sigFeatures)
       .setMatchCount(totalCount)
-      .setFlags(PredictResult.WHITELIST_OR_BLACKLIST, whiteOrBlackRule)
+      .setFlags(PredictResultFlag.FORCED, whiteOrBlackRule)
     dpr.build()
   }
 

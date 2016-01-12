@@ -1,6 +1,6 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.predict.{SingleLabelDocumentResultBuilder, PredictResult, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{PredictResultFlag, SingleLabelDocumentResultBuilder, PredictResult, SingleLabelDocumentResult}
 import org.scalatest.{BeforeAndAfter, Matchers, FunSpec}
 
 /**
@@ -12,13 +12,13 @@ class WeightedAverageDocumentPredictionCombinerSpec extends FunSpec with Matcher
     it("takes the first black or white list result") {
       val result1 = new SingleLabelDocumentResult(
         "string1", "a-label", 1.0f, List(("feature1", 1.0f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> true))
+        Map(PredictResultFlag.FORCED -> true))
       val result2 = new SingleLabelDocumentResult(
         "string2", "a-label", 1.0f, List(("feature2", 1.0f)), 2,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> true))
+        Map(PredictResultFlag.FORCED -> true))
       val result3 = new SingleLabelDocumentResult(
         "string3", "a-label", 0.0f, List(("feature3", 0.0f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> true))
+        Map(PredictResultFlag.FORCED -> true))
 
       val wadpc = new WeightedAverageDocumentPredictionCombiner("mod1", "a-label")
       val actual = wadpc.combine(List(result1, result2, result3))
@@ -30,13 +30,13 @@ class WeightedAverageDocumentPredictionCombinerSpec extends FunSpec with Matcher
     it("computes a proper weighted sum") {
       val result1 = new SingleLabelDocumentResult(
         "string1", "a-label", 0.6f, List(("feature1", 0.6f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result2 = new SingleLabelDocumentResult(
         "string2", "a-label", 0.5f, List(("feature2", 0.5f)), 2,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result3 = new SingleLabelDocumentResult(
         "string3", "a-label", 0.4f, List(("feature3", 0.4f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
 
       val wadpc = new WeightedAverageDocumentPredictionCombiner("mod1", "a-label")
       val actual = wadpc.combine(List(result1, result2, result3))
@@ -51,13 +51,13 @@ class WeightedAverageDocumentPredictionCombinerSpec extends FunSpec with Matcher
     it("returns 0.0 if there are no matches") {
       val result1 = new SingleLabelDocumentResult(
         "string1", "a-label", 0.0f, List(), 0,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result2 = new SingleLabelDocumentResult(
         "string2", "a-label", 0.0f, List(), 0,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result3 = new SingleLabelDocumentResult(
         "string3", "a-label", 0.0f, List(), 0,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
 
       val wadpc = new WeightedAverageDocumentPredictionCombiner("mod1", "a-label")
       val actual = wadpc.combine(List(result1, result2, result3))
@@ -72,13 +72,13 @@ class WeightedAverageDocumentPredictionCombinerSpec extends FunSpec with Matcher
     it("should only compute using values for the label initialized with") {
       val result1 = new SingleLabelDocumentResult(
         "string1", "x-label", 0.6f, List(("feature1", 0.6f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result2 = new SingleLabelDocumentResult(
         "string2", "a-label", 0.5f, List(("feature2", 0.5f)), 2,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
       val result3 = new SingleLabelDocumentResult(
         "string3", "z-label", 0.4f, List(("feature3", 0.4f)), 1,
-        Map(PredictResult.WHITELIST_OR_BLACKLIST -> false))
+        Map(PredictResultFlag.FORCED -> false))
 
       val wadpc = new WeightedAverageDocumentPredictionCombiner("mod1", "a-label")
       val actual = wadpc.combine(List(result1, result2, result3))
