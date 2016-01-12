@@ -1,26 +1,24 @@
 package com.idibon.ml.predict.rules
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.predict.DocumentPredictionResult
+import com.idibon.ml.predict.{PredictOptions, PredictResult}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
 
 /**
   * Class taking care of Span rule models. This could become a trait potentially...
-  * @param label the index of the label these rules are for
+  * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
+class SpanRules(label: String, rules: List[(String, Double)]) extends RulesModel {
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       options: PredictOptions): PredictResult = ???
 
   /**
     * Returns the type of model.
@@ -70,11 +68,9 @@ class SpanRules(label: Int, rules: List[(String, Double)]) extends RulesModel {
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       options: PredictOptions): PredictResult = ???
 }

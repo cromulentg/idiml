@@ -1,12 +1,10 @@
 package com.idibon.ml.predict.ml
 
-import java.io.DataInputStream
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
-import com.idibon.ml.predict.{DocumentPredictionResultBuilder, DocumentPredictionResult}
+import com.idibon.ml.predict.{PredictOption, PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.Vector
-import org.codehaus.jettison.json.JSONObject
 import org.json4s.JObject
 
 /**
@@ -15,7 +13,7 @@ import org.json4s.JObject
   * This class implements our LogisticRegressionModel.
   */
 class IdibonLogisticRegressionModel extends MLModel {
-
+  //TODO: feature pipeline stuff
 
   var lrm: IdibonSparkLogisticRegressionModelWrapper = null
 
@@ -25,29 +23,27 @@ class IdibonLogisticRegressionModel extends MLModel {
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = ???
+                       options: PredictOptions): PredictResult = ???
 
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
-    val builder = new DocumentPredictionResultBuilder()
+    val builder = new SingleLabelDocumentResultBuilder(this.getType(), "")
     for (labelIndex <- 0 until results.size) {
-      builder.addDocumentPredictResult(labelIndex, results.apply(labelIndex), null)
-      if (significantFeatures) {
+      // spark uses double underneath...
+      builder.setProbability(results.apply(labelIndex).toFloat)
+      if (options.options.getOrElse(
+        PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue()) {
         // TODO: get significant features.
         // e.g. we need to find all the features that have a weight above X.
         // We should also check whether we need to take any transform on the weights. e.g. exp ?
@@ -99,4 +95,18 @@ class IdibonLogisticRegressionModel extends MLModel {
     * @return this object
     */
   override def load(reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel.this.type = ???
+
+  /**
+    * Override equals so that we can make unit tests simpler.
+    * @param that
+    * @return
+    */
+  override def equals(that: scala.Any): Boolean = {
+    that match {
+      case that: IdibonLogisticRegressionModel => {
+        this.lrm.equals(that.lrm)
+      }
+      case _ => false
+    }
+  }
 }

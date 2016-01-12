@@ -6,7 +6,7 @@ import java.util.regex.{Matcher, Pattern}
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict.util.SafeCharSequence
-import com.idibon.ml.predict.{DocumentPredictionResultBuilder, DocumentPredictionResult}
+import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.linalg.{SparseVector, Vector}
 import org.json4s._
@@ -17,10 +17,10 @@ import scala.util.{Failure, Try}
 
 /**
   * Class taking care of Document rule models. This could become a trait potentially...
-  * @param label the index of the label these rules are for
+  * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
-class DocumentRules(var label: Int, var rules: List[(String, Double)])
+class DocumentRules(var label: String, var rules: List[(String, Float)])
   extends RulesModel with StrictLogging {
   val invalidRules = rules.filter(x => x._2 < 0.0 || x._2 > 1.0)
   if (invalidRules.size > 0) logger.info("Filtered out rules with invalid weights: " + invalidRules.toString())
@@ -31,6 +31,13 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   val rulesCache: ConcurrentHashMap[String, Try[Pattern]] = new ConcurrentHashMap[String, Try[Pattern]]()
   // Compile the rules and populate the rule cache; this could be slow, but there's no way around this...
   populateCache()
+
+  /**
+    * Constructor for making load easy.
+    */
+  def this() = {
+    this("", List[(String, Float)]())
+  }
 
   /**
     * Helper method to compile the rules into regular expressions.
@@ -52,13 +59,11 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(features: Vector,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       options: PredictOptions): PredictResult = {
     throw new RuntimeException("Not implemented for rules.")
   }
 
@@ -88,10 +93,10 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
   override def load(reader: Reader, config: Option[JObject]): DocumentRules.this.type = {
     // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
     implicit val formats = org.json4s.DefaultFormats
-    this.label = (config.get \ "label").extract[Int]
+    this.label = (config.get \ "label").extract[String]
     val jsonObject: JValue = parse(Codec.String.read(reader.resource(RULE_RESOURCE_NAME)))
-    val ruleJsonValue = jsonObject.extract[List[Map[String, Double]]]
-    this.rules = ruleJsonValue.map(x => x.toList).flatten
+    val ruleJsonValue = jsonObject.extract[List[Map[String, Float]]]
+    this.rules = ruleJsonValue.flatMap(x => x.toList)
     this.ruleWeightMap = rules.toMap
     this.rulesCache.clear()
     populateCache()
@@ -120,7 +125,7 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     logger.debug(jsonString)
     // write to the output stream via the codec.
     Codec.String.write(output, jsonString)
-    Some(new JObject(List("label" -> this.label)))
+    Some(new JObject(List(JField("label", JString(this.label)))))
   }
 
   /**
@@ -129,16 +134,15 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
   override def predict(document: JObject,
-                       significantFeatures: Boolean,
-                       significantThreshold: Double): DocumentPredictionResult = {
+                       options: PredictOptions): PredictResult = {
     // Takes $document out of the JObject and runs rules over them.
     val content: String = (document \ "content").asInstanceOf[JString].s
-    docPredict(content, significantFeatures)
+    docPredict(content, options.options.getOrElse(
+      PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue())
   }
 
   /**
@@ -147,8 +151,8 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * @param significantFeatures
     * @return
     */
-  def docPredict(content: String, significantFeatures: Boolean): DocumentPredictionResult = {
-    val dpr = new DocumentPredictionResultBuilder()
+  def docPredict(content: String, significantFeatures: Boolean): SingleLabelDocumentResult = {
+    val dpr = new SingleLabelDocumentResultBuilder(this.getType(), this.label)
     val matchesCount: Map[String, Int] = getDocumentMatchCounts(content)
     // calculate pseudo prob.
     val (psuedoProb, totalCount, whiteOrBlackRule) = calculatePseudoProbability(matchesCount)
@@ -165,13 +169,14 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
           (ruleWeightMap.getOrElse(x._1, -1.0) == 1.0 && whiteOrBlackRule) ||
           (ruleWeightMap.getOrElse(x._1, -1.0) == 0.0 && whiteOrBlackRule)))
         // get weights out
-        .map(x => (x._1 -> this.ruleWeightMap.getOrElse(x._1, -1.0))).toList
+        .map(x => (x._1 -> this.ruleWeightMap.getOrElse(x._1, -1.0f))).toList
     } else {
       List()
     }
-    dpr.addDocumentPredictResult(label, psuedoProb, sigFeatures)
+    dpr.setProbability(psuedoProb)
+      .addSignificantFeatures(sigFeatures)
       .setMatchCount(totalCount)
-      .setFlags(DocumentPredictionResult.WHITELIST_OR_BLACKLIST, whiteOrBlackRule)
+      .setFlags(PredictResultFlag.FORCED, whiteOrBlackRule)
     dpr.build()
   }
 
@@ -205,17 +210,17 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
     * @param countMap
     * @return Tuple of Probability, and MatchCount
     */
-  def calculatePseudoProbability(countMap: Map[String, Int]): (Double, Double, Boolean) = {
+  def calculatePseudoProbability(countMap: Map[String, Int]): (Float, Int, Boolean) = {
     // prob label [sum of (weight * count)] / [sum totalRule hits]
-    var weightedSum = 0.0
-    var totalCount = 0.0
-    var whiteListCount = 0.0
-    var blackListCount = 0.0
+    var weightedSum = 0.0f
+    var totalCount = 0
+    var whiteListCount = 0
+    var blackListCount = 0
     // for each rule
     countMap.foreach {
       case (rule, count) => {
         if (count != 0) {
-          val weight: Double = ruleWeightMap.getOrElse(rule, 0.0)
+          val weight: Float = ruleWeightMap.getOrElse(rule, 0.0f)
           // add to numerator
           weightedSum += (count * weight)
           // add to denominator
@@ -229,14 +234,14 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
         }
       }
     }
-    if (whiteListCount > 0.0 || blackListCount > 0.0) {
+    if (whiteListCount > 0 || blackListCount > 0) {
       // if any black list or white list valued rules hit, average them,
       // else this will be 1.0 or 0.0
-      (whiteListCount / (blackListCount + whiteListCount), (blackListCount + whiteListCount), true)
+      (whiteListCount.toFloat / (blackListCount + whiteListCount).toFloat, blackListCount + whiteListCount, true)
     } else if (totalCount > 0.0) {
       (weightedSum / totalCount, totalCount, false)
     } else {
-      (0.0, totalCount, false)
+      (0.0f, totalCount, false)
     }
   }
 
@@ -283,6 +288,20 @@ class DocumentRules(var label: Int, var rules: List[(String, Double)])
       }
       // remove 0 counts, remove parallel-ness, make it a map
     }.filter(tup => tup._2 != 0).toList.toMap
+  }
+
+  /**
+    * Override equals so that we can make unit tests simpler.
+    * @param that
+    * @return
+    */
+  override def equals(that: scala.Any): Boolean = {
+    that match {
+      case that: DocumentRules => {
+        this.label == that.label && this.rules.equals(that.rules)
+      }
+      case _ => false
+    }
   }
 
   private val RULE_RESOURCE_NAME: String = "rules.json"

@@ -14,11 +14,10 @@ trait PredictModel extends Archivable {
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
-  def predict(features: Vector, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
+  def predict(features: Vector, options: PredictOptions): PredictResult
 
   /**
     * The method used to predict from a FULL DOCUMENT!
@@ -26,11 +25,10 @@ trait PredictModel extends Archivable {
     * The model needs to handle "featurization" here.
     *
     * @param document the JObject to pull from.
-    * @param significantFeatures whether to return significant features.
-    * @param significantThreshold if returning significant features the threshold to use.
+    * @param options Object of predict options.
     * @return
     */
-  def predict(document: JObject, significantFeatures: Boolean, significantThreshold: Double): DocumentPredictionResult
+  def predict(document: JObject, options: PredictOptions): PredictResult
 
   /**
     * Returns the type of model.
