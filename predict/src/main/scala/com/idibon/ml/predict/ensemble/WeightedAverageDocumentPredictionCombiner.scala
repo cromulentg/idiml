@@ -50,7 +50,7 @@ class WeightedAverageDocumentPredictionCombiner(modelIdentifier: String, label: 
     // sum matchCount
     val matchSum = singleLabelResults.map(_.matchCount).sum
     // compute new weighted 'prob' if matchSum is not 0.0
-    val newProb = if (matchSum == 0.0) 0.0
+    val newProb: Float = if (matchSum == 0) 0.0f
     else {
       // sum matchCount * prob
       val weightedSum = singleLabelResults.map(x => x.matchCount * x.probability).sum

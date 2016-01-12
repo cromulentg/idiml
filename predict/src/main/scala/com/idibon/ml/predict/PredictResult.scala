@@ -23,9 +23,9 @@ import scala.collection.mutable
   */
 abstract class PredictResult(modelIdentifier: String,
                              topLabel: String,
-                             topLabelProbability: Double,
-                             topLabelSignificantFeatures: List[(String, Double)],
-                             topLabelMatchCount: Double,
+                             topLabelProbability: Float,
+                             topLabelSignificantFeatures: List[(String, Float)],
+                             topLabelMatchCount: Int,
                              topLabelFlags: Map[String, Boolean]) {
 }
 
@@ -45,9 +45,9 @@ object PredictResult {
   */
 case class SingleLabelDocumentResult(modelIdentifier: String,
                                      label: String,
-                                     probability: Double,
-                                     significantFeatures: List[(String, Double)],
-                                     matchCount: Double,
+                                     probability: Float,
+                                     significantFeatures: List[(String, Float)],
+                                     matchCount: Int,
                                      flags: Map[String, Boolean]) extends PredictResult(
   modelIdentifier, label, probability, significantFeatures, matchCount, flags
 )
@@ -58,9 +58,9 @@ case class SingleLabelDocumentResult(modelIdentifier: String,
   * @param label
   */
 class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
-  private var probability: Double = 0.0
-  private val significantFeatures = scala.collection.mutable.MutableList[(String, Double)]()
-  private var matchCount: Double = 0.0
+  private var probability: Float = 0.0f
+  private val significantFeatures = scala.collection.mutable.MutableList[(String, Float)]()
+  private var matchCount: Int = 0
   private val specialFlags = mutable.HashMap[String, Boolean]()
 
   /**
@@ -68,7 +68,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param probability
     * @return
     */
-  def setProbability(probability: Double): SingleLabelDocumentResultBuilder = {
+  def setProbability(probability: Float): SingleLabelDocumentResultBuilder = {
     this.probability = probability
     this
   }
@@ -78,7 +78,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param matchCount
     * @return
     */
-  def addToMatchCount(matchCount: Double): SingleLabelDocumentResultBuilder = {
+  def addToMatchCount(matchCount: Int): SingleLabelDocumentResultBuilder = {
     this.matchCount += matchCount
     this
   }
@@ -88,7 +88,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param matchCount
     * @return
     */
-  def setMatchCount(matchCount: Double): SingleLabelDocumentResultBuilder = {
+  def setMatchCount(matchCount: Int): SingleLabelDocumentResultBuilder = {
     this.matchCount = matchCount
     this
   }
@@ -98,7 +98,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param feature
     * @return
     */
-  def addSignificantFeature(feature: (String, Double)): SingleLabelDocumentResultBuilder = {
+  def addSignificantFeature(feature: (String, Float)): SingleLabelDocumentResultBuilder = {
     this.significantFeatures += feature
     this
   }
@@ -108,7 +108,7 @@ class SingleLabelDocumentResultBuilder(modelIdentifier: String, label: String) {
     * @param significantFeatures
     * @return
     */
-  def addSignificantFeatures(significantFeatures: List[(String, Double)]): SingleLabelDocumentResultBuilder = {
+  def addSignificantFeatures(significantFeatures: List[(String, Float)]): SingleLabelDocumentResultBuilder = {
     this.significantFeatures ++= significantFeatures
     this
   }

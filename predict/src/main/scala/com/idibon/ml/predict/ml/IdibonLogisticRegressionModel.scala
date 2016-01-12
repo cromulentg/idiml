@@ -40,7 +40,8 @@ class IdibonLogisticRegressionModel extends MLModel {
     val results: Vector = lrm.predictProbability(features)
     val builder = new SingleLabelDocumentResultBuilder(this.getType(), "")
     for (labelIndex <- 0 until results.size) {
-      builder.setProbability(results.apply(labelIndex))
+      // spark uses double underneath...
+      builder.setProbability(results.apply(labelIndex).toFloat)
       if (options.options.getOrElse(
         PredictOption.SignificantFeatures, false).asInstanceOf[Boolean].booleanValue()) {
         // TODO: get significant features.
