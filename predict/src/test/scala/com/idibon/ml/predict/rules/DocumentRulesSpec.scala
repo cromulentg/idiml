@@ -272,4 +272,11 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
   }
 
+  describe("exercised features used") {
+    it("returns a sparse vector") {
+      val model = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("/no[thing].*/", 1.0f)))
+      model.getFeaturesUsed() shouldBe new SparseVector(1, Array(0), Array(0))
+    }
+  }
+
 }
