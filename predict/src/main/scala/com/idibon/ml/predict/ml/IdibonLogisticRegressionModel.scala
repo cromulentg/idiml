@@ -57,7 +57,7 @@ class IdibonLogisticRegressionModel extends MLModel
     * Returns the type of model. Perhaps this should be an enum?
     * @return
     */
-  override def getType(): String = this.getClass().getCanonicalName()
+  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method

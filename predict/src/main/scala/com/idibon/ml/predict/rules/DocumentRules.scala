@@ -247,7 +247,7 @@ class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
       Codec.String.read(reader.resource(DocumentRules.RULE_RESOURCE_NAME)))
 
     val ruleJsonValue = jsonObject.extract[List[Map[String, Float]]]
-    val rules = ruleJsonValue.map(x => x.toList).flatten
+    val rules = ruleJsonValue.flatMap(x => x.toList)
     new DocumentRules(label, rules)
   }
 }

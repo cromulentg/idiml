@@ -22,16 +22,18 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         ("label",JString("alabel")),
         ("size",JInt(2)),
         ("model-meta",JObject(List(
-          ("0",JObject(List(("label",JString("alabel"))))),
-          ("1",JObject(List(("label",JString("alabel")))))))),
-        ("model-index",JObject(List(
-          ("0",JString("com.idibon.ml.predict.rules.DocumentRules")),
-          ("1",JString("com.idibon.ml.predict.rules.DocumentRules"))))))))
+          ("0", JObject(List(
+            ("config", JObject(List(("label",JString("alabel"))))),
+            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))),
+          ("1",JObject(List(
+            ("config", JObject(List(("label",JString("alabel"))))),
+            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
+            )))))))
       metadata shouldBe expectedMetadata
       val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
       ensemble shouldBe ensemble2
     }
-
+//
     it("should save and load empty models") {
       val alloy = new IntentAlloy()
       val docRules1 = new DocumentRules("alabel", List())
@@ -42,11 +44,13 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         ("label",JString("alabel")),
         ("size",JInt(2)),
         ("model-meta",JObject(List(
-          ("0",JObject(List(("label",JString("alabel"))))),
-          ("1",JObject(List(("label",JString("alabel")))))))),
-        ("model-index",JObject(List(
-          ("0",JString("com.idibon.ml.predict.rules.DocumentRules")),
-          ("1",JString("com.idibon.ml.predict.rules.DocumentRules"))))))))
+          ("0", JObject(List(
+            ("config", JObject(List(("label",JString("alabel"))))),
+            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))),
+          ("1",JObject(List(
+            ("config", JObject(List(("label",JString("alabel"))))),
+            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
+            )))))))
       metadata shouldBe expectedMetadata
       val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
       ensemble shouldBe ensemble2

@@ -61,8 +61,6 @@ case class EnsembleModel(label: String, models: List[PredictModel])
   def combineResults(results: List[PredictResult]): SingleLabelDocumentResult = {
     // combine results -- hardcoded object here for now
     val combiner = new WeightedAverageDocumentPredictionCombiner(this.getType(), this.label)
-    // only want to deal with single label type so, cast all objects
-
     combiner.combine(results)
   }
 
@@ -70,7 +68,7 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     * Returns the type of model. Perhaps this should be an enum?
     * @return
     */
-  override def getType(): String = this.getClass().getCanonicalName()
+  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method
@@ -106,22 +104,17 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     val modelMetadata: List[JField] = modelTriple.map {
       case (index, mod, typ) => {
         val name = index.toString
-        JField(name,
-          Archivable.save(mod, writer.within(name)).getOrElse(JNothing))
-      }
-    }
-    // create map to tell us what model type is at what index
-    val indexToModelType: List[JField] = modelTriple.map {
-      case (index, mod, typ) => {
-        JField(index.toString(), JString(typ))
+        JField(name, JObject(List(
+          JField("config",
+            Archivable.save(mod, writer.within(name)).getOrElse(JNothing)),
+          JField("class", JString(typ)))))
       }
     }
     // create the JSON config to return
     val ensembleMetadata = JObject(List(
       JField("label", JString(this.label)),
       JField("size", JInt(this.models.size)),
-      JField("model-meta", JObject(modelMetadata)),
-      JField("model-index", JObject(indexToModelType))
+      JField("model-meta", JObject(modelMetadata))
     ))
     Some(ensembleMetadata)
   }
@@ -142,16 +135,15 @@ class EnsembleModelLoader extends ArchiveLoader[EnsembleModel] {
     implicit val formats = org.json4s.DefaultFormats
     val label = (config.get \ "label").extract[String]
     val size = (config.get \ "size").extract[Int]
+    val modelMeta = (config.get \ "model-meta").extract[JObject]
     val models = (0 until size).map(_.toString).map(name => {
-      // get model metadata JObject
-      val modelMeta =
-        (config.get \ "model-meta" \ name).extract[Option[JObject]]
       // get model type
       val modelType =
-        Class.forName((config.get \ "model-index" \ name).extract[String])
-
+        Class.forName((modelMeta \ name \ "class").extract[String])
+      // get model metadata JObject
+      val indivMeta = (modelMeta \ name \ "config").extract[Option[JObject]]
       ArchiveLoader
-        .reify[PredictModel](modelType, reader.within(name), modelMeta)
+        .reify[PredictModel](modelType, reader.within(name), indivMeta)
         .getOrElse(modelType.newInstance.asInstanceOf[PredictModel])
     })
     new EnsembleModel(label, models.toList)
