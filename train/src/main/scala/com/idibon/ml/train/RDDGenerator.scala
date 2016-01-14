@@ -40,7 +40,8 @@ class RDDGenerator {
                           pipeline: FeaturePipeline) : HashMap[String, RDD[LabeledPoint]] = {
 
     // Prime the index by reading each document from the input file, which assigns an index value to each token
-    for (line <- Source.fromFile(filename).getLines()) {
+    val linesInFile = Source.fromFile(filename).getLines()
+    for (line <- linesInFile) {
       val json = parse(line)
       pipeline(json.asInstanceOf[JObject])
     }
@@ -72,6 +73,7 @@ class RDDGenerator {
       perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
     }
 
+    // Generate the RDDs, given the per-label list of LabeledPoints we just created
     val perLabelRDDs = HashMap[String, RDD[LabeledPoint]]()
     for ((label, lp) <- perLabelLPs) {
       perLabelRDDs(label) = sc.parallelize(lp)

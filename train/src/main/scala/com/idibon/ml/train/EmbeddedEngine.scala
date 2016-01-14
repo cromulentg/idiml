@@ -1,20 +1,21 @@
 package com.idibon.ml.train
 
+import java.io.File
+
 import com.idibon.ml.alloy.{Codec,IntentAlloy}
-import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
+import com.idibon.ml.feature.{FeaturePipelineLoader, ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
-import com.idibon.ml.predict.Engine
+
+import org.apache.commons.io.FileUtils
 import org.apache.spark.mllib.classification.{LogisticRegressionModel, LogisticRegressionWithLBFGS}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.Saveable
 import org.apache.spark.rdd.RDD
-
 import org.apache.spark.{SparkContext, SparkConf}
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, parse, render}
-
 import scala.collection.mutable.HashMap
 
 /** EmbeddedEngine
@@ -22,11 +23,7 @@ import scala.collection.mutable.HashMap
   * Performs training, given a set of documents and annotations.
   *
   */
-class EmbeddedEngine extends Engine {
-
-  def start() = {
-    start("/tmp/idiml.txt", s"/tmp/idiml/mllib_models")
-  }
+class EmbeddedEngine extends com.idibon.ml.train.Engine {
 
   /** Produces an RDD of LabeledPoints for each distinct label name.
     *
@@ -63,7 +60,6 @@ class EmbeddedEngine extends Engine {
     * @param modelStoragePath: the filesystem path for saving models
     */
   def start(infilePath: String, modelStoragePath: String) = {
-
     // Instantiate the Spark environment
     val conf = new SparkConf().setAppName("idiml").setMaster("local[8]").set("spark.driver.host", "localhost")
     val sc = new SparkContext(conf)
@@ -82,8 +78,12 @@ class EmbeddedEngine extends Engine {
       // Perform training
       val model = getLogisticRegressionModel(labeledPoints)
 
+      // Create a file-safe label name
+      val fileSafeLabelName = label.replace(' ', '-')
+      // Remove the directory if it already exists
+      FileUtils.deleteDirectory(new File(s"${modelStoragePath}/${fileSafeLabelName}/LogisticRegressionModel"))
       // Save the model
-      saveMllibModel(sc, model, s"${modelStoragePath}/${label}/LogisticRegressionModel")
+      saveMllibModel(sc, model, s"${modelStoragePath}/${fileSafeLabelName}/LogisticRegressionModel")
 
       logisticRegressionModels(label) = model
     }
@@ -100,7 +100,7 @@ class EmbeddedEngine extends Engine {
     val reader = alloy.reader.within("IntentPipeline").resource("config.json")
     val config = Codec.String.read(reader)
     val newPipelineConfig: JObject = (parse(config) \ "IntentPipeline").asInstanceOf[JObject]
-    val newPipeline2 = (new FeaturePipeline).load(alloy.reader().within("IntentPipeline"), Some(newPipelineConfig))
+    val newPipeline2 = (new FeaturePipelineLoader).load(alloy.reader().within("IntentPipeline"), Some(newPipelineConfig))
 
   }
 }

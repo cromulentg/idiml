@@ -61,8 +61,7 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = new IndexTransformer()
-      transform2.load(intentAlloy.reader, null)
+      val transform2 = (new IndexTransformLoader).load(intentAlloy.reader, null)
 
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
     }
