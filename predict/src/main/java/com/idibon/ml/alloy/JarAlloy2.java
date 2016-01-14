@@ -1,52 +1,122 @@
 package com.idibon.ml.alloy;
 
+import com.idibon.ml.predict.PredictModel;
+
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.jar.*;
 
 /**
- * Rough draft of a Jar backed Alloy.
- * <p>
- * This is very simple, and allows you to write to a jar as if it was a file system.
- * Writing:
- * It doesn't do any signing or anything complex with Manifests.
- * Reading:
- * It doesn't do anything interesting, other than returning streams for reading.
- * <p>
- * Open questions:
- * - Does IdibonJarDataOutputStream suffice?
- * <p>
- * http://docs.oracle.com/javase/8/docs/technotes/guides/jar/jar.html - jar spec
- * https://docs.oracle.com/javase/8/docs/api/java/util/jar/package-summary.html - code
- *
- * @author "Stefan Krawczyk <stefan@idibon.com>"
+ * Created by stefankrawczyk on 1/14/16.
  */
-public class JarAlloy extends BaseAlloy {
+public class JarAlloy2 extends BaseAlloy {
 
-    private String _path;
-    private JarOutputStream _jos;
-    private JarFile _jar;
 
-    public JarAlloy(String pathToJar) {
-        _path = pathToJar;
+    public JarAlloy2(Map<String, PredictModel> labelModelMap, Map<String, String> labelToUUID) {
+        super(labelModelMap, labelToUUID);
     }
 
-    /**
-     * Returns a reader that will read from the root of the JarFile setup when the
-     * JarAlloy was instantiated.
-     *
-     * @return
-     * @throws IOException
-     */
-    public Alloy.Reader reader() throws IOException {
-        if (_jar != null) _jar.close();
-        _jar = new JarFile(new File(_path));
-        // start base path off at "root"
-        return new JarReader("", _jar);
+    @Override public boolean save(String path) throws IOException{
+        // create manifest
+        Manifest manifest = new Manifest();
+        fillManifest(manifest);
+
+        // create JarOutputStream
+        JarOutputStream jos = new JarOutputStream(new FileOutputStream(new File(path)), manifest);
+        // save metadata about this task
+        // TODO
+        // save models
+        // for each model
+        JarWriter baseWriter = new JarWriter("", jos);
+        // JarWriter writer = baseWriter.namespace("label");
+        // model.save(writer)
+
+        jos.close();
+        return false;
+    }
+
+    private void fillManifest(Manifest manifest) {
+        Attributes attr = manifest.getMainAttributes();
+        attr.put(Attributes.Name.MANIFEST_VERSION, "0.0.1");
+        attr.put(new Attributes.Name("Created-By"), "Idibon Inc.");
+        attr.put(new Attributes.Name("JVM-Version"), System.getProperty("java.version"));
+        attr.put(Attributes.Name.SPECIFICATION_TITLE, "Idibon IdiJar-Alloy for Prediction");
+        attr.put(Attributes.Name.SPECIFICATION_VENDOR, "Idibon Inc.");
+        attr.put(Attributes.Name.SPECIFICATION_VERSION, "0.0.1");
+        attr.put(Attributes.Name.IMPLEMENTATION_TITLE, "com.idibon.ml");
+        attr.put(Attributes.Name.IMPLEMENTATION_VENDOR, "Idibon Inc.");
+        attr.put(Attributes.Name.IMPLEMENTATION_VERSION, "0.0.1");
+    }
+
+    public static JarAlloy2 load(String path) throws IOException {
+        File jarFile = new File(path);
+        JarFile jar = new JarFile(jarFile);
+        // read top level models & get classes
+
+        // using reflection create that class and call the load method and reify models.
+        Map<String, PredictModel> labelModels = new HashMap<String, PredictModel>();
+        Map<String, String> labelToUUID = new HashMap<String, String>();
+        // instantiate other objects
+
+        jar.close();
+        // return fresh instance
+        return new JarAlloy2(labelModels, labelToUUID);
+    }
+
+    class JarWriter implements Alloy.Writer {
+
+        private final JarOutputStream _jos;
+        private final String _currentPath;
+
+        /**
+         * Constructor that sets up from what path a Writer will start writing at.
+         *
+         * @param path
+         */
+        public JarWriter(String path, JarOutputStream jarOutputStream) {
+            _currentPath = path;
+            _jos = jarOutputStream;
+        }
+
+        /**
+         * Returns a writer that will ensure that the "namespace" exists and is ready for use.
+         *
+         * Essentially it just creates a directory entry and returns a new JarWriter to write
+         * from that directory as its base.
+         *
+         * @param namespace
+         * @return
+         * @throws IOException
+         */
+        @Override public Writer within(String namespace) throws IOException {
+            String namespacePath = _currentPath + namespace + "/";
+            JarEntry je = new JarEntry(namespacePath);
+            // people need to take turns writing to the JarOutputStream.
+            synchronized (_jos) {
+                _jos.putNextEntry(je);
+                _jos.closeEntry();
+            }
+            return new JarWriter(namespacePath, _jos);
+        }
+
+        /**
+         * Use this to get a new DataOutputStream. Remember to use closeResource()
+         * once you're done on this writer object.
+         *
+         * @param resourceName
+         * @return
+         * @throws IOException
+         */
+        @Override public DataOutputStream resource(String resourceName) throws IOException {
+            JarEntry je = new JarEntry(_currentPath + resourceName); // "/" is taken care of.
+            return new IdibonJarDataOutputStream(new ByteArrayOutputStream(), _jos, je);
+        }
     }
 
     class JarReader implements Alloy.Reader {
-        String _currentPath;
-        JarFile _jarFile;
+        private final String _currentPath;
+        private final JarFile _jarFile;
 
         /**
          * Returns a JarReader set at a certain path in the JarFile.
@@ -84,87 +154,6 @@ public class JarAlloy extends BaseAlloy {
         }
     }
 
-    /**
-     * @return
-     * @throws IOException
-     */
-    public Alloy.Writer writer() throws IOException {
-        //TODO: this manifest stuff & more will probably be passed in...
-        Manifest manifest = new Manifest();
-        Attributes attr = manifest.getMainAttributes();
-        attr.put(Attributes.Name.MANIFEST_VERSION, "0.0.1");
-        attr.put(new Attributes.Name("Created-By"), "Idibon Inc.");
-        attr.put(new Attributes.Name("JVM-Version"), System.getProperty("java.version"));
-        attr.put(Attributes.Name.SPECIFICATION_TITLE, "Idibon IdiJar-Alloy for Prediction");
-        attr.put(Attributes.Name.SPECIFICATION_VENDOR, "Idibon Inc.");
-        attr.put(Attributes.Name.SPECIFICATION_VERSION, "0.0.1");
-        attr.put(Attributes.Name.IMPLEMENTATION_TITLE, "com.idibon.ml");
-        attr.put(Attributes.Name.IMPLEMENTATION_VENDOR, "Idibon Inc.");
-        attr.put(Attributes.Name.IMPLEMENTATION_VERSION, "0.0.1");
-        _jos = new JarOutputStream(new FileOutputStream(new File(_path)), manifest);
-        // start base path off at "root"
-        return new JarWriter("");
-    }
-
-    class JarWriter implements Alloy.Writer {
-
-        String _currentPath;
-
-        /**
-         * Constructor that sets up from what path a Writer will start writing at.
-         *
-         * @param path
-         */
-        public JarWriter(String path) {
-            _currentPath = path;
-        }
-
-        /**
-         * Returns a writer that will ensure that the "namespace" exists and is ready for use.
-         *
-         * Essentially it just creates a directory entry and returns a new JarWriter to write
-         * from that directory as its base.
-         *
-         * @param namespace
-         * @return
-         * @throws IOException
-         */
-        @Override public Writer within(String namespace) throws IOException {
-            String namespacePath = _currentPath + namespace + "/";
-            JarEntry je = new JarEntry(namespacePath);
-            // people need to take turns writing to the JarOutputStream.
-            synchronized (_jos) {
-                _jos.putNextEntry(je);
-                _jos.closeEntry();
-            }
-            return new JarWriter(namespacePath);
-        }
-
-        /**
-         * Use this to get a new DataOutputStream. Remember to use closeResource()
-         * once you're done on this writer object.
-         *
-         * @param resourceName
-         * @return
-         * @throws IOException
-         */
-        @Override public DataOutputStream resource(String resourceName) throws IOException {
-            JarEntry je = new JarEntry(_currentPath + resourceName); // "/" is taken care of.
-            return new IdibonJarDataOutputStream(new ByteArrayOutputStream(), _jos, je);
-        }
-    }
-
-    /**
-     * Closes writing or reading a Jar file if one was being written or read from.
-     *
-     * @throws IOException
-     */
-    public void close() throws IOException {
-        if (_jos != null)
-            _jos.close();
-        if (_jar != null)
-            _jar.close();
-    }
 
     /**
      * Wrapper class to allow "concurrent" writing to the Jar being
@@ -222,3 +211,4 @@ public class JarAlloy extends BaseAlloy {
         }
     }
 }
+

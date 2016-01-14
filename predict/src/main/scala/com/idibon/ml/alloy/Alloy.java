@@ -52,4 +52,14 @@ public interface Alloy {
          */
         DataOutputStream resource(String resourceName) throws IOException;
     }
+
+    /**
+     * Predict a document.
+     * @param document
+     * @param options
+     * @return
+     */
+    public Object predict(Object document, Object options);
+
+    public boolean save(String path) throws IOException;
 }

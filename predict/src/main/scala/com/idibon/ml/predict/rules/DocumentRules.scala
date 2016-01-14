@@ -80,16 +80,20 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     *         to reload the object. None if no configuration is needed
     */
   override def save(writer: Writer): Option[JObject] = {
-    // create output stream to write to
-    val output = writer.resource(DocumentRules.RULE_RESOURCE_NAME)
     // render the list into a json list of maps.
     val jsonString = compact(render(rules))
     logger.debug(jsonString)
-    // write to the output stream via the codec.
-    Codec.String.write(output, jsonString)
-    // close the stream
-    output.close()
-    Some(new JObject(List(JField("label", JString(this.label)))))
+    // create output stream to write to
+    val output = writer.resource(DocumentRules.RULE_RESOURCE_NAME)
+    try {
+      // write to the output stream via the codec.
+      Codec.String.write(output, jsonString)
+      Some(new JObject(List(JField("label", JString(this.label)))))
+    } finally {
+      // close the stream
+      output.close()
+    }
+
   }
 
   /**
