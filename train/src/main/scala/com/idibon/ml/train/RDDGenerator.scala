@@ -2,6 +2,7 @@ package com.idibon.ml.train
 
 import com.idibon.ml.feature.FeaturePipeline
 
+import java.io.File
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -37,8 +38,8 @@ class RDDGenerator {
     *         obtained from the provided pipeline.
     */
   def getLabeledPointRDDs(sc: SparkContext, filename: String,
-                          pipeline: FeaturePipeline) : HashMap[String, RDD[LabeledPoint]] = {
-
+                          pipeline: FeaturePipeline) : Option[HashMap[String, RDD[LabeledPoint]]] = {
+    if (!new File(filename).exists()) return None
     // Prime the index by reading each document from the input file, which assigns an index value to each token
     val linesInFile = Source.fromFile(filename).getLines()
     for (line <- linesInFile) {
@@ -79,6 +80,6 @@ class RDDGenerator {
       perLabelRDDs(label) = sc.parallelize(lp)
     }
 
-    perLabelRDDs
+    Some(perLabelRDDs)
   }
 }

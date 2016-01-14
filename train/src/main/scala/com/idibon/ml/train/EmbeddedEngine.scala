@@ -59,7 +59,7 @@ class EmbeddedEngine extends com.idibon.ml.train.Engine {
     *                    found in idibin
     * @param modelStoragePath: the filesystem path for saving models
     */
-  def start(infilePath: String, modelStoragePath: String) = {
+  def start(infilePath: String, modelStoragePath: String): Unit = {
     // Instantiate the Spark environment
     val conf = new SparkConf().setAppName("idiml").setMaster("local[8]").set("spark.driver.host", "localhost")
     val sc = new SparkContext(conf)
@@ -71,10 +71,16 @@ class EmbeddedEngine extends com.idibon.ml.train.Engine {
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
       := ("convertToIndex"))
 
-    val training = new RDDGenerator().getLabeledPointRDDs(sc, infilePath, pipeline)
+    val training: Option[HashMap[String, RDD[LabeledPoint]]] = new RDDGenerator()
+      .getLabeledPointRDDs(sc, infilePath, pipeline)
+    if (training.isEmpty) {
+      println("Error generating training points; Exiting.")
+      return
+    }
+    val trainingData = training.get
 
     val logisticRegressionModels = HashMap[String, LogisticRegressionModel]()
-    for ((label, labeledPoints) <- training) {
+    for ((label, labeledPoints) <- trainingData) {
       // Perform training
       val model = getLogisticRegressionModel(labeledPoints)
 
