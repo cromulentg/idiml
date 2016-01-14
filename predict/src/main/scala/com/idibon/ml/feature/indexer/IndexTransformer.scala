@@ -73,13 +73,13 @@ import org.json4s._
       * This function maps all features to unique indexes. It returns the size of the feature vocabulary.
       *
       * @param features
-      * @return unique index
+      * @return the size of the feature vocabulary
       */
     private[indexer] def createFeatureIndex(features: Seq[Feature[_]]): Int = {
 
-      val allIndexes = features.map(t => lookupOrAddToFeatureIndex(t))
+      features.map(t => lookupOrAddToFeatureIndex(t))
 
-      allIndexes.max + 1
+      featureIndex.size
     }
 
     /**

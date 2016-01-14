@@ -50,11 +50,11 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should save and load a transformer properly") {
       val fiveTokens = Seq[Feature[Token]](
-        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
-        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
-        new Token("sleep", Tag.Word, 1, 1), new Token("furiously", Tag.Word, 1, 1),
-        new Token("green", Tag.Word, 1, 1))
-      val result1 = transform.apply(fiveTokens)
+        new Token("colorless", Tag.Word, 0, 0), new Token("green", Tag.Word, 0, 0),
+        new Token("ideas", Tag.Word, 0, 0), new Token("sleep", Tag.Word, 0, 0),
+        new Token("sleep", Tag.Word, 0, 0), new Token("furiously", Tag.Word, 0, 0),
+        new Token("green", Tag.Word, 0, 0))
+      transform.apply(fiveTokens)
 
       // Save the results
       val intentAlloy = new IntentAlloy()
@@ -62,9 +62,18 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
       // Load the results
       val transform2 = (new IndexTransformLoader).load(intentAlloy.reader, null)
-      val result2 = transform2.apply(fiveTokens)
 
-      result1 shouldBe result2
+      transform.getFeatureIndex shouldBe transform2.getFeatureIndex
+    }
+
+    it("should give the same result after applying twice") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("furiously", Tag.Word, 1, 1))
+      val expected = Vectors.sparse(5, Seq((0, 1.0), (1, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)))
+      transform.apply(fiveTokens) shouldBe expected
+      transform.apply(fiveTokens) shouldBe expected
     }
   }
 }

@@ -59,7 +59,7 @@ subprojects {
   ext {
     scalaVersion = '2.11'
     scalaCompilerBuild = '7'
-    sparkVersion = '1.5.2'
+    sparkVersion = '1.6.0'
     slf4jVersion = '1.7.13'
   }
 
@@ -110,5 +110,7 @@ subprojects {
 
     // use simple slf4j bindings for testing
     testRuntime "org.slf4j:slf4j-simple:${project.ext.slf4jVersion}"
+
+    runtime "org.slf4j:log4j-over-slf4j:1.7.13"
   }
 }

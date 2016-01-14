@@ -274,7 +274,7 @@ package com.idibon.ml.feature {
                 })
                 val method = reflected.symbol
                 if (!isValidInvocation(method, List(inputTypes)))
-                  logger.warn(s"[$pipelineName/$current] inputs may not satisfy call")
+                  logger.error(s"[$pipelineName/$current] inputs may not satisfy call")
 
                 /* if the FeatureTransformer is declared using multiple
                  * parameter lists (for, e.g., function currying), throw
