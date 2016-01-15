@@ -5,6 +5,7 @@ import java.util.regex.{Matcher, Pattern}
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
+import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.util.SafeCharSequence
 import com.idibon.ml.predict._
@@ -239,7 +240,7 @@ class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  override def load(reader: Reader, config: Option[JObject]): DocumentRules = {
+  override def load(engine: Engine, reader: Reader, config: Option[JObject]): DocumentRules = {
     // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
     implicit val formats = org.json4s.DefaultFormats
     val label = (config.get \ "label").extract[String]

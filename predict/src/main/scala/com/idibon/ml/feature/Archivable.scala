@@ -2,7 +2,7 @@ package com.idibon.ml.feature
 
 import org.json4s.JObject
 import com.idibon.ml.alloy.Alloy
-import com.idibon.ml.common.Reflect
+import com.idibon.ml.common.{Engine, Reflect}
 
 /** Archivable objects support persistent storage within an Alloy
   *
@@ -31,6 +31,7 @@ trait Archivable[T <: Archivable[T, ArchiveLoader[T]], +U <: ArchiveLoader[T]] {
 trait ArchiveLoader[T] {
   /** Reloads the object from the Alloy
     *
+    * @param engine implementation of the Engine trait
     * @param reader location within Alloy for loading any resources
     *   previous preserved by a call to
     *   {@link com.idibon.ml.feature.Archivable#save}
@@ -38,7 +39,7 @@ trait ArchiveLoader[T] {
     *   call to {@link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  def load(reader: Alloy.Reader, config: Option[JObject]): T
+  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): T
 }
 
 object Archivable {
@@ -66,13 +67,13 @@ object ArchiveLoader {
   /** Loads an instance of an Archivable class using its paired ArchiveLoader
     *
     * If class is not Archivable, returns None
-    *
+    * @param engine - An implementation of the Engine trait
     * @param class - The Class of the Archivable object to reify
     * @param reader - A reader configured to load the resources for the
     *    loaded object
     * @param config - Any configuration meta-data for the object.
     */
-  def reify[T](`class`: Class[_], reader: Alloy.Reader,
+  def reify[T](`class`: Class[_], engine: Engine, reader: Alloy.Reader,
     config: Option[JObject]): Option[T] = {
 
     /* check if the class actually implements Archivable; if so, extract the
@@ -84,7 +85,7 @@ object ArchiveLoader {
         /* the last entry in the args list is the loader class. instantiate
          * a builder and call the load method to load the object */
         Some(args.last.newInstance.asInstanceOf[ArchiveLoader[_]]
-          .load(reader, config).asInstanceOf[T])
+          .load(engine, reader, config).asInstanceOf[T])
       }
     }
   }

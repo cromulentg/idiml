@@ -2,6 +2,7 @@ package com.idibon.ml.predict.ml
 
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
+import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
 import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
@@ -114,5 +115,5 @@ class IdibonLogisticRegressionModelLoader
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  def load(reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = ???
+  def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = ???
 }

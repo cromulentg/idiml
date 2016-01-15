@@ -1,8 +1,8 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult, PredictResult}
 import com.idibon.ml.predict.rules.DocumentRules
+import com.idibon.ml.predict.{EmbeddedEngine, PredictOptionsBuilder, SingleLabelDocumentResult}
 import org.json4s._
 import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
 
@@ -30,7 +30,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
             )))))))
       metadata shouldBe expectedMetadata
-      val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
+      val ensemble2 = (new EnsembleModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
       ensemble shouldBe ensemble2
     }
 //
@@ -52,7 +52,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
             )))))))
       metadata shouldBe expectedMetadata
-      val ensemble2 = (new EnsembleModelLoader).load(alloy.reader(), metadata)
+      val ensemble2 = (new EnsembleModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
       ensemble shouldBe ensemble2
     }
   }

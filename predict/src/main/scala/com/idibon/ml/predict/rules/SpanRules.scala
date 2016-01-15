@@ -1,6 +1,7 @@
 package com.idibon.ml.predict.rules
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
+import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.{PredictOptions, PredictResult}
 import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import org.apache.spark.mllib.linalg.Vector
@@ -78,5 +79,5 @@ class SpanRulesLoader extends ArchiveLoader[SpanRules] {
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  def load(reader: Reader, config: Option[JObject]): SpanRules = ???
+  def load(engine: Engine, reader: Reader,  config: Option[JObject]): SpanRules = ???
 }

@@ -1,14 +1,14 @@
-import scala.collection.mutable.{HashSet => MutableSet}
-import scala.collection.{Map => AnyMap}
-import scala.reflect.runtime.universe.{MethodMirror, Type, typeOf}
-
-import org.json4s._
-
-import org.apache.spark.mllib.linalg.Vector
-import com.typesafe.scalalogging.Logger
-
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Reflect._
+import com.typesafe.scalalogging.Logger
+import org.apache.spark.mllib.linalg.Vector
+import org.json4s._
+
+import scala.collection.mutable.{HashSet => MutableSet}
+import scala.collection.{Map => AnyMap}
+import scala.reflect.runtime.universe.{MethodMirror, typeOf}
+
+import com.idibon.ml.common.Engine
 
 package com.idibon.ml.feature {
 
@@ -79,7 +79,7 @@ package com.idibon.ml.feature {
       *   pipeline was last saved
       * @return this
       */
-    def load(reader: Alloy.Reader, config: Option[JObject]): FeaturePipeline = {
+    def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): FeaturePipeline = {
       // configure format converters for json4s
       implicit val formats = DefaultFormats
 
@@ -93,7 +93,7 @@ package com.idibon.ml.feature {
        * transformer object. */
       val transforms = xfJson.map(obj => {
         FeaturePipeline.checkTransformerName(obj.name)
-        (obj.name -> reify(reader.within(obj.name), obj))
+        (obj.name -> reify(engine, reader.within(obj.name), obj))
       }).toMap
 
       FeaturePipeline.bind(transforms, pipeJson)
@@ -111,12 +111,12 @@ package com.idibon.ml.feature {
       *   name, class and optional configuration information.
       * @return   tuple of the transformer name and the reified object
       */
-    private def reify(reader: Alloy.Reader, entry: TransformEntry):
+    private def reify(engine: Engine, reader: Alloy.Reader, entry: TransformEntry):
         FeatureTransformer = {
 
       val transformClass = Class.forName(entry.`class`)
       ArchiveLoader
-        .reify[FeatureTransformer](transformClass, reader, entry.config)
+        .reify[FeatureTransformer](transformClass, engine, reader, entry.config)
         .getOrElse(transformClass.newInstance.asInstanceOf[FeatureTransformer])
     }
   }

@@ -1,9 +1,9 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.common.Reflect
-import com.idibon.ml.predict.{PredictOptions, PredictResult, SingleLabelDocumentResult, PredictModel}
-import com.idibon.ml.feature.{Archivable, ArchiveLoader}
+import com.idibon.ml.common.Engine
+import com.idibon.ml.predict.{PredictResult, PredictModel, PredictOptions, SingleLabelDocumentResult}
+import com.idibon.ml.feature.{ArchiveLoader, Archivable}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -131,7 +131,7 @@ class EnsembleModelLoader extends ArchiveLoader[EnsembleModel] {
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  def load(reader: Reader, config: Option[JObject]): EnsembleModel = {
+  def load(engine: Engine, reader: Reader, config: Option[JObject]): EnsembleModel = {
     implicit val formats = org.json4s.DefaultFormats
     val label = (config.get \ "label").extract[String]
     val size = (config.get \ "size").extract[Int]
@@ -143,7 +143,7 @@ class EnsembleModelLoader extends ArchiveLoader[EnsembleModel] {
       // get model metadata JObject
       val indivMeta = (modelMeta \ name \ "config").extract[Option[JObject]]
       ArchiveLoader
-        .reify[PredictModel](modelType, reader.within(name), indivMeta)
+        .reify[PredictModel](modelType, engine, reader.within(name), indivMeta)
         .getOrElse(modelType.newInstance.asInstanceOf[PredictModel])
     })
     new EnsembleModel(label, models.toList)
