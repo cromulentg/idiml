@@ -1,7 +1,11 @@
 package com.idibon.ml.alloy;
 
 import java.io.*;
+import java.util.Map;
 
+import com.idibon.ml.predict.PredictOptions;
+import com.idibon.ml.predict.PredictResult;
+import org.json4s.JsonAST;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +31,15 @@ public class IntentAlloy implements Alloy {
 
     public Alloy.Reader reader() {
         return new IntentReader(_path, _random);
+    }
+
+    @Override
+    public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options) {
+        return null;
+    }
+
+    @Override public void save(String path) throws IOException {
+
     }
 
     class IntentReader implements Alloy.Reader {

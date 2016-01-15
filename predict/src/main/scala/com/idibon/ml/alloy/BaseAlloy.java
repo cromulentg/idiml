@@ -1,7 +1,11 @@
 package com.idibon.ml.alloy;
 
 import com.idibon.ml.predict.PredictModel;
+import com.idibon.ml.predict.PredictOptions;
+import com.idibon.ml.predict.PredictResult;
+import org.json4s.JsonAST;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -20,8 +24,12 @@ public abstract class BaseAlloy implements Alloy {
         _labelToUUID = labelToUUID;
     }
 
-    @Override public Object predict(Object document, Object options) {
+    @Override public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options) {
         // TODO: predict over all? or just a single one? or?
-        return null;
+        Map<String, PredictResult> results = new HashMap<>();
+        for(Map.Entry<String, PredictModel> entry: _labelModelMap.entrySet()) {
+            results.put(entry.getKey(), entry.getValue().predict(document, options));
+        }
+        return results;
     }
 }
