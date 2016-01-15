@@ -18,8 +18,10 @@ import org.json4s._
 
 class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val path: String) extends FeatureTransformer
   with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
+
+  val vectors = model.getVectors
   private val (_, firstVector) = vectors.head
-  private val vectorSize = firstVector.size
+  val vectorSize = firstVector.size
 
   /**
     * Transform a sequence of strings to a vector representing the sequence. The transform
