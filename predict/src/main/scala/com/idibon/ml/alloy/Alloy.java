@@ -1,8 +1,13 @@
 package com.idibon.ml.alloy;
 
+import com.idibon.ml.predict.PredictOptions;
+import com.idibon.ml.predict.PredictResult;
+import org.json4s.JsonAST;
+
 import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.util.Map;
 
 /**
  * Interface for interacting with Alloys
@@ -52,4 +57,19 @@ public interface Alloy {
          */
         DataOutputStream resource(String resourceName) throws IOException;
     }
+
+    /**
+     * Predict a document. Types here are subject to CHANGE!
+     * @param document
+     * @param options
+     * @return
+     */
+    public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options);
+
+    /**
+     * Top level method to save an alloy.
+     * @param path
+     * @throws IOException
+     */
+    public void save(String path) throws IOException;
 }
