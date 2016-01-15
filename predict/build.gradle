@@ -3,6 +3,8 @@ plugins {
   id "com.github.maiflai.scalatest" version "0.10"
   // Test coverage
   id "org.scoverage" version "2.0.0"
+  // generate a JAR of test artifacts
+  id "com.github.hauner.jarTest" version "1.0"
 }
 
 dependencies {
