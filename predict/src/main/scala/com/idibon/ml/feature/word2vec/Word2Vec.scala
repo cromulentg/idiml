@@ -1,21 +1,23 @@
 package com.idibon.ml.feature.word2vec
 
-import com.idibon.ml.feature.FeatureTransformer
+import com.idibon.ml.alloy.Alloy
+import com.idibon.ml.common.Engine
+import com.idibon.ml.feature._
 
 import org.apache.spark._
 import org.apache.spark.mllib.feature.Word2VecModel
 import org.apache.spark.mllib.linalg._
 
+import org.json4s._
+
 /**
   * Word2Vec feature for creating vector representations from sequences of strings
   *
   * @param sc Spark context object
-  * @param path path to pre-built spark word2vec model directory
   */
 
-class Word2VecTransformer(val sc: SparkContext, val path: String) extends FeatureTransformer {
-  private val model = Word2VecModel.load(sc, path)
-  private val vectors = model.getVectors
+class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val path: String) extends FeatureTransformer
+  with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
   private val (_, firstVector) = vectors.head
   private val vectorSize = firstVector.size
 
@@ -43,4 +45,21 @@ class Word2VecTransformer(val sc: SparkContext, val path: String) extends Featur
       sum
     }
   }
+
+  def save(writer: Alloy.Writer): Option[JObject] = {
+    Some(JObject(JField("path", JString(path))))
+  }
+
+}
+
+class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
+
+  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): Word2VecTransformer = {
+    implicit val formats = DefaultFormats
+    val path = (config.get \ "path").extract[String]
+    val model = Word2VecModel.load(engine.sparkContext, path)
+    val transformer = new Word2VecTransformer(engine.sparkContext, model, path)
+    transformer
+  }
+
 }
