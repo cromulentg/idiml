@@ -114,7 +114,7 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
       // create 3 threads to test contended usage
       val iterators = (1 to 3).toList.par.map(i => {
         ICUTokenizer.breaking(ULocale.US, (b: BreakIterator) => {
-          Thread.sleep(25)
+          Thread.sleep(250)
           b
         })
       })
