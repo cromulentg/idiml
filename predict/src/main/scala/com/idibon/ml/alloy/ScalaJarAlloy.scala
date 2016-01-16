@@ -123,6 +123,7 @@ class ScalaJarAlloy(labelModelMap: mutable.Map[String, PredictModel],
 
 object ScalaJarAlloy extends StrictLogging {
 
+  // the implementation version of this scala jar alloy.
   val CURRENT_VERSION: String = "0.0.1"
 
   val LABEL_UUID: String = "labels-uuid.json"

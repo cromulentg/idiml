@@ -1,24 +1,27 @@
 package com.idibon.ml.predict.ml
 
 
+import java.io.{IOException, DataInputStream, DataOutputStream}
+
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.Engine
+import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
-import com.idibon.ml.feature.{Archivable, ArchiveLoader}
+import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline, Archivable, ArchiveLoader}
+import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
-import org.apache.spark.mllib.linalg.Vector
-import org.json4s.JObject
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
+import org.json4s._
 
 /**
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   *
   * This class implements our LogisticRegressionModel.
   */
-class IdibonLogisticRegressionModel extends MLModel
+case class IdibonLogisticRegressionModel(label: String,
+                                    lrm: IdibonSparkLogisticRegressionModelWrapper,
+                                    featurePipeline: FeaturePipeline) extends MLModel
   with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
-
-
-  var lrm: IdibonSparkLogisticRegressionModelWrapper = null
 
   /**
     * The method used to predict from a FULL DOCUMENT!
@@ -30,7 +33,9 @@ class IdibonLogisticRegressionModel extends MLModel
     * @return
     */
   override def predict(document: JObject,
-                       options: PredictOptions): PredictResult = ???
+                       options: PredictOptions): PredictResult = {
+    return predict(featurePipeline.apply(document).head, options)
+  }
 
   /**
     * The method used to predict from a vector of features.
@@ -41,15 +46,14 @@ class IdibonLogisticRegressionModel extends MLModel
   override def predict(features: Vector,
                        options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
-    val builder = new SingleLabelDocumentResultBuilder(this.getType(), "")
-    for (labelIndex <- 0 until results.size) {
-      // spark uses double underneath...
-      builder.setProbability(results.apply(labelIndex).toFloat)
-      if (!options.significantFeatureThreshold.isNaN()) {
-        // TODO: get significant features.
-        // e.g. we need to find all the features that have a weight above X.
-        // We should also check whether we need to take any transform on the weights. e.g. exp ?
-      }
+    val builder = new SingleLabelDocumentResultBuilder(this.getType(), label)
+    // get the result of 1, the positive class we're interested in. 0 will be 1.0 minus this value.
+    // TODO: change this if we move from binary use case.
+    builder.setProbability(results.apply(1).toFloat)
+    if (!options.significantFeatureThreshold.isNaN()) {
+      // TODO: get significant features.
+      // e.g. we need to find all the features that have a weight above X.
+      // We should also check whether we need to take any transform on the weights. e.g. exp ?
     }
     builder.build()
   }
@@ -85,29 +89,73 @@ class IdibonLogisticRegressionModel extends MLModel
     * @return Some[JObject] of configuration data that must be preserved
     *         to reload the object. None if no configuration is needed
     */
-  override def save(writer: Writer): Option[JObject] = ???
+  override def save(writer: Writer): Option[JObject] = {
+    val coeffs = writer.within("model").resource("coefficients.libsvm")
+    IdibonLogisticRegressionModel.writeCodecLibSVM(
+      coeffs, this.lrm.intercept, this.lrm.coefficients, this.label)
+    coeffs.close()
+    //TODO: store other model metadata like training date, etc.
+    val featurePipelineMeta = featurePipeline.save(writer.within("featurePipeline"))
+    Some(new JObject(List(
+      JField("label", JString(this.label)),
+      JField("version", JString(IdibonLogisticRegressionModel.FORMAT_VERSION)),
+      JField("feature-meta", featurePipelineMeta.getOrElse(JNothing))
+    )))
+  }
+
+
+}
+
+object IdibonLogisticRegressionModel {
+
+  val FORMAT_VERSION = "0.0.1"
 
   /**
-    * Override equals so that we can make unit tests simpler.
-    * @param that
+    * Static method to write our "libsvm" like format to a stream.
+    * @param out
+    * @param intercept
+    * @param coefficients
+    * @param uid
+    */
+  def writeCodecLibSVM(out: DataOutputStream,
+                       intercept: Double,
+                       coefficients: Vector,
+                       uid: String): Unit = {
+    Codec.String.write(out, uid)
+    out.writeDouble(intercept)
+    Codec.VLuint.write(out, coefficients.numActives)
+    coefficients.foreachActive{
+      case (index, value) =>
+        // do I need to worry about 0?
+        Codec.VLuint.write(out, index)
+        out.writeDouble(value)
+    }
+  }
+
+  /**
+    * Static method to read our "libsvm" like format from a stream.
+    * @param in
     * @return
     */
-  override def equals(that: scala.Any): Boolean = {
-    that match {
-      case that: IdibonLogisticRegressionModel => {
-        this.lrm.equals(that.lrm)
-      }
-      case _ => false
-    }
+  def readCodecLibSVM(in: DataInputStream): (Double, Vector, String) = {
+    val uid = Codec.String.read(in)
+    val intercept = in.readDouble()
+    val numCoeffs = Codec.VLuint.read(in)
+    val (indices, values) = (0 until numCoeffs).map { _ =>
+      (Codec.VLuint.read(in), in.readDouble())
+    }.unzip
+    (intercept, Vectors.sparse(numCoeffs, indices.toArray, values.toArray), uid)
   }
 }
 
 /** Paired loader class for IdibonLogisticRegressionModel instances */
 class IdibonLogisticRegressionModelLoader
-    extends ArchiveLoader[IdibonLogisticRegressionModel] {
+    extends ArchiveLoader[IdibonLogisticRegressionModel] with StrictLogging {
+
 
   /** Reloads the object from the Alloy
     *
+    * @param engine Engine that houses spark context.
     * @param reader location within Alloy for loading any resources
     *               previous preserved by a call to
     *               { @link com.idibon.ml.feature.Archivable#save}
@@ -115,5 +163,27 @@ class IdibonLogisticRegressionModelLoader
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = ???
+  def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = {
+    implicit val formats = DefaultFormats
+    val version = (config.get \ "version" ).extract[String]
+    version match {
+      case IdibonLogisticRegressionModel.FORMAT_VERSION =>
+        logger.info(s"Attemping to load ILRM version [v. ${version}].")
+      case _ => throw new IOException(s"Unable to load, unhandled ILRM version ${version}")
+    }
+    val coeffs = reader.within("model").resource("coefficients.libsvm")
+    val (intercept: Double,
+        coefficients: Vector,
+        uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
+    coeffs.close()
+    val label = (config.get \ "label" ).extract[String]
+    val featureMeta = (config.get \ "feature-meta").extract[JObject]
+    val featurePipeline = new FeaturePipelineLoader().load(
+      engine, reader.within("featurePipeline"), Some(featureMeta))
+
+    new IdibonLogisticRegressionModel(
+      label,
+      new IdibonSparkLogisticRegressionModelWrapper(uid, coefficients, intercept),
+      featurePipeline)
+  }
 }
