@@ -3,6 +3,7 @@ package com.idibon.ml.train
 import com.idibon.ml.feature.FeaturePipeline
 
 import java.io.File
+import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -18,7 +19,7 @@ import scala.io.Source
   * for performing logistic regression during training.
   *
   */
-class RDDGenerator {
+class RDDGenerator extends StrictLogging {
 
   /** Produces an RDD of LabeledPoints for each distinct label name.
     *
@@ -39,6 +40,7 @@ class RDDGenerator {
     */
   def getLabeledPointRDDs(sc: SparkContext, filename: String,
                           pipeline: FeaturePipeline) : Option[HashMap[String, RDD[LabeledPoint]]] = {
+    logger.info(s"Creating Labeled Points from ${filename}.")
     if (!new File(filename).exists()) return None
     // Prime the index by reading each document from the input file, which assigns an index value to each token
     val linesInFile = Source.fromFile(filename).getLines()
@@ -46,15 +48,19 @@ class RDDGenerator {
       val json = parse(line)
       pipeline(json.asInstanceOf[JObject])
     }
-
+    implicit val formats = org.json4s.DefaultFormats
     // Iterate over the data one more time now that the index is complete. This ensures that every feature vector
     // will now be the same size
     val perLabelLPs = HashMap[String, ListBuffer[LabeledPoint]]()
     for (line <- Source.fromFile(filename).getLines()) {
+      logger.debug(line)
       // Extract the label name and its sign (positive or negative)
       val json = parse(line)
-      val JString(label) = json \ "annotations" \ "label" \ "name"
-      val JBool(isPositive) = json \ "annotations" \ "isPositive"
+      //TODO(Michelle): handle case with multiple positive annotations.
+      val annotations = (json \ "annotations").extract[JArray]
+      val first_entry = annotations.apply(0)
+      val JString(label) = first_entry \ "label" \ "name"
+      val JBool(isPositive) = first_entry \ "isPositive"
 
       // If we haven't seen this label before, instantiate a list
       if (!perLabelLPs.contains(label)) {
@@ -78,6 +84,7 @@ class RDDGenerator {
     val perLabelRDDs = HashMap[String, RDD[LabeledPoint]]()
     for ((label, lp) <- perLabelLPs) {
       perLabelRDDs(label) = sc.parallelize(lp)
+      logger.info(s"Created ${lp.size} data points for ${label}.")
     }
 
     Some(perLabelRDDs)

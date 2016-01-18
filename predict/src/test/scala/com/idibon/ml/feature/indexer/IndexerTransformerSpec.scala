@@ -13,7 +13,7 @@ import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
   * @author Michelle Casbon <michelle@idibon.com>
   */
 
-class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
+class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe("Indexer") {
 

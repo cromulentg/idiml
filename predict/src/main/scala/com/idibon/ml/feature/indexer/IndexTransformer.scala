@@ -51,7 +51,7 @@ import org.json4s._
           }
         }
       }
-
+      fos.close()
       // No config to return
       None
     }

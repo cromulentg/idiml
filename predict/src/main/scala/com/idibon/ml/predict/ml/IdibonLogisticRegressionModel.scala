@@ -21,7 +21,7 @@ import org.json4s._
 case class IdibonLogisticRegressionModel(label: String,
                                     lrm: IdibonSparkLogisticRegressionModelWrapper,
                                     featurePipeline: FeaturePipeline) extends MLModel
-  with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
+  with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] with StrictLogging {
 
   /**
     * The method used to predict from a FULL DOCUMENT!
@@ -72,7 +72,7 @@ case class IdibonLogisticRegressionModel(label: String,
     */
   override def getFeaturesUsed(): Vector = {
     //For the predict case this is fine I believe, since we should not have 0 valued features.
-    lrm.weights
+    lrm.coefficients
   }
 
   /** Serializes the object within the Alloy
@@ -106,7 +106,7 @@ case class IdibonLogisticRegressionModel(label: String,
 
 }
 
-object IdibonLogisticRegressionModel {
+object IdibonLogisticRegressionModel extends StrictLogging {
 
   val FORMAT_VERSION = "0.0.1"
 
@@ -121,8 +121,15 @@ object IdibonLogisticRegressionModel {
                        intercept: Double,
                        coefficients: Vector,
                        uid: String): Unit = {
+    logger.info(s"Writing ${coefficients.size} dimensions with " +
+      s"${coefficients.numActives} active dimensions with $intercept for $uid")
+    // uid
     Codec.String.write(out, uid)
+    // intercept
     out.writeDouble(intercept)
+    // dimensions
+    Codec.VLuint.write(out, coefficients.size)
+    // actual non-zero dimensions
     Codec.VLuint.write(out, coefficients.numActives)
     coefficients.foreachActive{
       case (index, value) =>
@@ -138,13 +145,19 @@ object IdibonLogisticRegressionModel {
     * @return
     */
   def readCodecLibSVM(in: DataInputStream): (Double, Vector, String) = {
+    // uid
     val uid = Codec.String.read(in)
+    // intercept
     val intercept = in.readDouble()
+    // dimensions
+    val dimensions = Codec.VLuint.read(in)
+    // non-zero dimensions
     val numCoeffs = Codec.VLuint.read(in)
     val (indices, values) = (0 until numCoeffs).map { _ =>
       (Codec.VLuint.read(in), in.readDouble())
     }.unzip
-    (intercept, Vectors.sparse(numCoeffs, indices.toArray, values.toArray), uid)
+    logger.info(s"Read $numCoeffs dimensions from $dimensions for $uid with intercept $intercept")
+    (intercept, Vectors.sparse(dimensions, indices.toArray, values.toArray), uid)
   }
 }
 
@@ -165,18 +178,18 @@ class IdibonLogisticRegressionModelLoader
     */
   def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = {
     implicit val formats = DefaultFormats
+    val label = (config.get \ "label" ).extract[String]
     val version = (config.get \ "version" ).extract[String]
     version match {
       case IdibonLogisticRegressionModel.FORMAT_VERSION =>
-        logger.info(s"Attemping to load ILRM version [v. ${version}].")
-      case _ => throw new IOException(s"Unable to load, unhandled ILRM version ${version}")
+        logger.info(s"Attemping to load ILRM version [v. $version] for $label")
+      case _ => throw new IOException(s"Unable to load, unhandled ILRM version $version for $label")
     }
     val coeffs = reader.within("model").resource("coefficients.libsvm")
     val (intercept: Double,
         coefficients: Vector,
         uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
     coeffs.close()
-    val label = (config.get \ "label" ).extract[String]
     val featureMeta = (config.get \ "feature-meta").extract[JObject]
     val featurePipeline = new FeaturePipelineLoader().load(
       engine, reader.within("featurePipeline"), Some(featureMeta))

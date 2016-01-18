@@ -39,7 +39,7 @@ class WeightedAverageDocumentPredictionCombiner(modelIdentifier: String, label: 
       .filter(_.label == this.label)
 
     // deal with special case black/whitelist
-    val blackOrWhite = singleLabelResults.filter(_.flags(PredictResultFlag.FORCED))
+    val blackOrWhite = singleLabelResults.filter(_.flags.getOrElse(PredictResultFlag.FORCED, false))
     // if special case then
     if (blackOrWhite.size > 0) {
       // build new result from old, changing model identifier.
