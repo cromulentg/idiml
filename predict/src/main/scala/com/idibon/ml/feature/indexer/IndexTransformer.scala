@@ -4,7 +4,8 @@ import com.typesafe.scalalogging.StrictLogging
 
 package com.idibon.ml.feature.indexer {
 
-import com.idibon.ml.alloy.{Codec, Alloy}
+import com.idibon.ml.alloy.{Alloy, Codec}
+import com.idibon.ml.common.Engine
 import org.json4s._
 
 /** Internal implementation of the indexer FeatureTransformer */
@@ -117,7 +118,7 @@ import org.json4s._
   class IndexTransformLoader extends ArchiveLoader[IndexTransformer] {
 
     /** Loads the IndexTransformer from an Alloy */
-    def load(reader: Alloy.Reader, config: Option[JObject]): IndexTransformer = {
+    def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): IndexTransformer = {
       val fis = new FeatureInputStream(
         reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
 

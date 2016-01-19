@@ -3,7 +3,7 @@ package com.idibon.ml.feature.indexer
 import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.Feature
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
-import java.io._
+import com.idibon.ml.predict.EmbeddedEngine
 import org.apache.spark.mllib.linalg.Vectors
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
 
@@ -61,7 +61,7 @@ class IndexerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(intentAlloy.reader, null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, intentAlloy.reader, null)
 
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
     }

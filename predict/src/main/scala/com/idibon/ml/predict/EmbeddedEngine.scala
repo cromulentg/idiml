@@ -1,23 +1,23 @@
 package com.idibon.ml.predict
 
-import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.bagofwords.BagOfWordsTransformer
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{FeatureTransformer, FeaturePipelineBuilder, FeaturePipeline, StringFeature}
 import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
+import com.idibon.ml.common.Engine
+import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
-import org.apache.spark.mllib.feature
 import org.json4s._
 import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods.{compact, parse, render}
-
 
 /**
   * Toy engine class that stitches together Idibon's feature pipeline and Spark's LR
   * to perform a prediction.
   */
 class EmbeddedEngine extends Engine {
+
+  val sparkContext = EmbeddedEngine.sparkContext
 
   /**
     * Very crude POC. This will change as we add more to the code base.
@@ -49,6 +49,16 @@ class EmbeddedEngine extends Engine {
     println(idibonModel.predict(featureVector, new PredictOptionsBuilder().build()).toString)
   }
 
+}
+
+/**
+  * Currently only one SparkContext can exist per JVM, hence the use of this companion object
+  */
+object EmbeddedEngine {
+  val sparkContext = {
+    val conf = new SparkConf().setMaster("local").setAppName("idiml")
+    new SparkContext(conf)
+  }
 }
 
 /**

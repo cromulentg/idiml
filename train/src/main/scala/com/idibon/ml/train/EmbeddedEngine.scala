@@ -3,19 +3,19 @@ package com.idibon.ml.train
 import java.io.File
 
 import com.idibon.ml.alloy.{Codec,IntentAlloy}
-import com.idibon.ml.feature.{FeaturePipelineLoader, ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
+import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineLoader, FeaturePipelineBuilder}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
-
 import org.apache.commons.io.FileUtils
-import org.apache.spark.mllib.classification.{LogisticRegressionModel, LogisticRegressionWithLBFGS}
+import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionModel}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.Saveable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}
 import org.json4s._
 import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods.{compact, parse, render}
+import org.json4s.native.JsonMethods.{parse, render, compact}
+
 import scala.collection.mutable.HashMap
 
 /** EmbeddedEngine
@@ -23,7 +23,9 @@ import scala.collection.mutable.HashMap
   * Performs training, given a set of documents and annotations.
   *
   */
-class EmbeddedEngine extends com.idibon.ml.train.Engine {
+class EmbeddedEngine extends com.idibon.ml.common.Engine {
+
+  val sparkContext = EmbeddedEngine.sparkContext
 
   /** Produces an RDD of LabeledPoints for each distinct label name.
     *
@@ -51,6 +53,16 @@ class EmbeddedEngine extends com.idibon.ml.train.Engine {
   def saveMllibModel(sc: SparkContext, model: Saveable, path: String) = {
     // TODO: Insert standard storage location
     model.save(sc, path)
+  }
+
+  /**
+    * Currently only one SparkContext can exist per JVM, hence the use of this companion object
+    */
+  object EmbeddedEngine {
+    val sparkContext = {
+      val conf = new SparkConf().setMaster("local").setAppName("idiml")
+      new SparkContext(conf)
+    }
   }
 
   /** Trains a model and saves it at the given filesystem location
@@ -106,7 +118,8 @@ class EmbeddedEngine extends com.idibon.ml.train.Engine {
     val reader = alloy.reader.within("IntentPipeline").resource("config.json")
     val config = Codec.String.read(reader)
     val newPipelineConfig: JObject = (parse(config) \ "IntentPipeline").asInstanceOf[JObject]
-    val newPipeline2 = (new FeaturePipelineLoader).load(alloy.reader().within("IntentPipeline"), Some(newPipelineConfig))
+    val newPipeline2 = (new FeaturePipelineLoader).load(this, alloy.reader().within("IntentPipeline"),
+                                                        Some(newPipelineConfig))
 
   }
 }

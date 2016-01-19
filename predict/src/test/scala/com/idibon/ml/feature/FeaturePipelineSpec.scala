@@ -1,22 +1,20 @@
 package com.idibon.ml.feature
-import com.idibon.ml.feature.tokenizer.{Token,TokenTransformer}
-
-import scala.util.Random
-import scala.collection.mutable.{HashMap => MutableMap}
-
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.json4s.{JObject, JString, JDouble, JField, JArray}
-import org.json4s.native.JsonMethods.{compact, render, parse}
-import org.json4s.JsonDSL._
-
-import org.scalatest.{Matchers, FunSpec, BeforeAndAfter, BeforeAndAfterAll}
-import org.scalatest.mock.MockitoSugar
-
-import org.mockito.Mockito._
-import org.mockito.Matchers.anyString
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.test.VerifyLogging
+import com.idibon.ml.feature.tokenizer.Token
+import com.idibon.ml.predict.EmbeddedEngine
+import com.idibon.ml.common.Engine
+
+import scala.util.Random
+import scala.collection.mutable.{HashMap => MutableMap}
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
+import org.json4s.{JArray, JString, JObject, JDouble, JField}
+import org.json4s.native.JsonMethods.{parse, render, compact}
+import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers, BeforeAndAfter}
+import org.scalatest.mock.MockitoSugar
+import org.mockito.Mockito._
+import org.mockito.Matchers.anyString
 
 class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     with BeforeAndAfter with BeforeAndAfterAll with VerifyLogging {
@@ -57,7 +55,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val dummyReader = createMockReader
       val dummyWriter = createMockWriter
       val json = parse(unparsed).asInstanceOf[JObject]
-      val pipeline = (new FeaturePipelineLoader).load(dummyReader, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyReader, Some(json))
       val result = pipeline.save(dummyWriter)
         .map(j => compact(render(j))).getOrElse("")
       result shouldBe unparsed
@@ -87,7 +85,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"B","inputs":[]},
   {"name":"$output","inputs":["A","B"]}]}""").asInstanceOf[JObject]
 
-      val pipeline = (new FeaturePipelineLoader).load(dummyAlloy, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
         List(Vectors.dense(1.0, 0.0, 1.0), Vectors.dense(0.0, -1.0, 0.5))
@@ -109,7 +107,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
 
-      (new FeaturePipelineLoader).load(dummyAlloy, Some(json.asInstanceOf[JObject]))
+      (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
       loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
     }
 
@@ -130,7 +128,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 }""")
 
       val pipeline = (new FeaturePipelineLoader)
-        .load(dummyAlloy, Some(json.asInstanceOf[JObject]))
+        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
@@ -412,7 +410,7 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
 private [this] class ArchivableTransformLoader
     extends ArchiveLoader[ArchivableTransform] {
 
-  def load(r: Alloy.Reader, config: Option[JObject]): ArchivableTransform = {
+  def load(engine: Engine, r: Alloy.Reader, config: Option[JObject]): ArchivableTransform = {
     new ArchivableTransform(config)
   }
 }

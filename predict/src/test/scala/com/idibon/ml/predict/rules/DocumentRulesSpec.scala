@@ -3,7 +3,7 @@ package com.idibon.ml.predict.rules
 import java.util.regex.Pattern
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{EmbeddedEngine, PredictOptionsBuilder, SingleLabelDocumentResult}
 import org.apache.spark.mllib.linalg.SparseVector
 import org.json4s._
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
@@ -74,7 +74,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, alloy.reader(), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file
@@ -86,7 +86,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, alloy.reader(), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file
