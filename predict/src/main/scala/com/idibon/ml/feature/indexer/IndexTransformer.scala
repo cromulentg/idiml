@@ -33,25 +33,26 @@ import org.json4s._
     def save(writer: Alloy.Writer) = {
       val fos = new FeatureOutputStream(
         writer.resource(IndexTransformer.INDEX_RESOURCE_NAME))
-
-      // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
-      Codec.VLuint.write(fos, featureIndex.size)
-
-      // Store each key (feature) / value (index) pair in sequence
-      featureIndex.foreach {
-        case (key, value) => {
-          key match {
-            case f: Feature[_] with Buildable[_, _] => {
-              fos.writeFeature(f)
-              Codec.VLuint.write(fos, value)
-            }
-            case _ => {
-              logger.warn(s"Unable to save feature of type ${key.getClass}")
+      try {
+        // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
+        Codec.VLuint.write(fos, featureIndex.size)
+        // Store each key (feature) / value (index) pair in sequence
+        featureIndex.foreach {
+          case (key, value) => {
+            key match {
+              case f: Feature[_] with Buildable[_, _] => {
+                fos.writeFeature(f)
+                Codec.VLuint.write(fos, value)
+              }
+              case _ => {
+                logger.warn(s"Unable to save feature of type ${key.getClass}")
+              }
             }
           }
         }
+      } finally {
+        fos.close()
       }
-
       // No config to return
       None
     }

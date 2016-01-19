@@ -7,6 +7,8 @@ import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST._
 import org.json4s.native.JsonMethods.{parse, render, compact}
 import com.idibon.ml.common.Engine
+import org.json4s.JsonDSL._
+
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.PredictModel
@@ -123,6 +125,7 @@ class ScalaJarAlloy(labelModelMap: mutable.Map[String, PredictModel],
 
 object ScalaJarAlloy extends StrictLogging {
 
+  // the implementation version of this scala jar alloy.
   val CURRENT_VERSION: String = "0.0.1"
 
   val LABEL_UUID: String = "labels-uuid.json"

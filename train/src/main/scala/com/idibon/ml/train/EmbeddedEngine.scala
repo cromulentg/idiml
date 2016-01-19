@@ -1,21 +1,28 @@
 package com.idibon.ml.train
 
-import java.io.File
-
-import com.idibon.ml.alloy.{Codec,IntentAlloy}
-import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineLoader, FeaturePipelineBuilder}
+import com.idibon.ml.alloy.ScalaJarAlloy
+import com.idibon.ml.common.{BaseEngine, TrainEngine}
+import com.idibon.ml.feature.bagofwords.BagOfWordsTransformer
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
-import org.apache.commons.io.FileUtils
-import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, LogisticRegressionModel}
+import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder}
+import com.idibon.ml.predict.PredictModel
+import com.idibon.ml.predict.ensemble.EnsembleModel
+import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
+import com.idibon.ml.predict.rules.DocumentRules
+import com.typesafe.scalalogging.StrictLogging
+import org.apache.spark.ml.classification.{IdibonSparkLogisticRegressionModelWrapper, LogisticRegressionModel, LogisticRegression}
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.util.Saveable
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkContext, SparkConf}
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{parse, render, compact}
 
+import org.apache.spark.{SparkConf, SparkContext}
+
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
 /** EmbeddedEngine
@@ -23,9 +30,7 @@ import scala.collection.mutable.HashMap
   * Performs training, given a set of documents and annotations.
   *
   */
-class EmbeddedEngine extends com.idibon.ml.common.Engine {
-
-  val sparkContext = EmbeddedEngine.sparkContext
+class EmbeddedEngine extends BaseEngine with TrainEngine with StrictLogging {
 
   /** Produces an RDD of LabeledPoints for each distinct label name.
     *
@@ -33,94 +38,104 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine {
     * @return a trained model based on the MLlib logistic regression model with LBFGS, trained on the provided
     *         dataset
     */
-  def getLogisticRegressionModel(labeledPoints: RDD[LabeledPoint]) : LogisticRegressionModel = {
-    val model = new LogisticRegressionWithLBFGS()
-      .setNumClasses(2)
-      .run(labeledPoints)
+  def fitLogisticRegressionModel(sc: SparkContext, labeledPoints: RDD[LabeledPoint]): LogisticRegressionModel = {
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    val data = sqlContext.createDataFrame(labeledPoints)
 
-    model
+    // set more parameters here
+    val trainer = createTrainer()
+    trainer.fit(data).bestModel.asInstanceOf[LogisticRegressionModel]
   }
 
-  /** Writes a model to the filesystem.
-    *
-    * @param sc: the SparkContext for this application
-    * @param model: the trained model to be saved
-    * @param path: the filesystem path to be written
-    *
-    * @return a trained model based on the MLlib logistic regression model with LBFGS, trained on the provided
-    *         dataset
-    */
-  def saveMllibModel(sc: SparkContext, model: Saveable, path: String) = {
-    // TODO: Insert standard storage location
-    model.save(sc, path)
-  }
+  def createTrainer() = {
+    // TODO: make these parameters more realistic
+    val lr = new LogisticRegression().setMaxIter(100)
+    // Print out the parameters, documentation, and any default values.
+    logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
+    // We use a ParamGridBuilder to construct a grid of parameters to search over.
+    // 5 values for lr.regParam,
+    // 1 x 5 = 5 parameter settings for CrossValidator to choose from.
+    val paramGrid = new ParamGridBuilder()
+      // TODO: make these parameters more realistic
+      .addGrid(lr.regParam, Array(0.01, 0.05, 0.1, 0.20, 0.35, 0.5))
+      .addGrid(lr.elasticNetParam, Array(0.0, 0.2, 0.5, 0.7, 0.9, 1.0))
+      .build()
 
-  /**
-    * Currently only one SparkContext can exist per JVM, hence the use of this companion object
-    */
-  object EmbeddedEngine {
-    val sparkContext = {
-      val conf = new SparkConf().setMaster("local").setAppName("idiml")
-      new SparkContext(conf)
-    }
+    // We now treat the LR as an Estimator, wrapping it in a CrossValidator instance.
+    // This will allow us to only choose parameters for the LR stage.
+    // A CrossValidator requires an Estimator, a set of Estimator ParamMaps, and an Evaluator.
+    // Note that the evaluator here is a BinaryClassificationEvaluator and its default metric
+    // is areaUnderROC.
+    val cv = new CrossValidator()
+      .setEstimator(lr)
+      // TODO: decide on best evaluator (this uses ROC)
+      .setEvaluator(new BinaryClassificationEvaluator())
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(6) // Use 3+ in practice
+    cv
   }
 
   /** Trains a model and saves it at the given filesystem location
     *
     * @param infilePath: the location of the ididat dump file generated by the export_training_to_idiml.rb tool,
-    *                    found in idibin
+    *                  found in idibin
     * @param modelStoragePath: the filesystem path for saving models
     */
   def start(infilePath: String, modelStoragePath: String): Unit = {
-    // Instantiate the Spark environment
-    val conf = new SparkConf().setAppName("idiml").setMaster("local[8]").set("spark.driver.host", "localhost")
-    val sc = new SparkContext(conf)
+    val startTime = System.currentTimeMillis()
+    logger.info(s"Reading from ${infilePath} and outputting to ${modelStoragePath}")
 
     // Define a pipeline that generates feature vectors
-    val pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
-      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
+    val pipeline = (FeaturePipelineBuilder.named("FeaturePipeline")
+      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "bagOfWords"))
+      += (FeaturePipelineBuilder.entry("bagOfWords", new BagOfWordsTransformer, "convertToTokens"))
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
       := ("convertToIndex"))
 
     val training: Option[HashMap[String, RDD[LabeledPoint]]] = new RDDGenerator()
-      .getLabeledPointRDDs(sc, infilePath, pipeline)
+      .getLabeledPointRDDs(sparkContext, infilePath, pipeline)
     if (training.isEmpty) {
       println("Error generating training points; Exiting.")
       return
     }
+    val labelModelMap = new mutable.HashMap[String, PredictModel]()
+    val labelToUUID = new mutable.HashMap[String, String]()
     val trainingData = training.get
+    // to make it easier to see everything together about the models trained. Build an atomic
+    // log line.
+    val atomicLogLine = new StringBuffer()
+    trainingData.par.map {
+      case (label, labeledPoints) => {
+        // base LR model
+        val model = fitLogisticRegressionModel(sparkContext, labeledPoints)
+        // append info to atomic log line
+        atomicLogLine.append(s"Model for $label was fit using parameters: ${model.parent.extractParamMap}\n")
+        // wrap into one we want
+        val wrapper = IdibonSparkLogisticRegressionModelWrapper.wrap(model)
+        // create PredictModel for label:
+        // LR
+        val idiModel = new IdibonLogisticRegressionModel(label, wrapper, pipeline)
+        // Rule
+        val ruleModel = new DocumentRules(label, List())
+        // Ensemble
+        val ensembleModel = new EnsembleModel(label, List[PredictModel](idiModel, ruleModel))
+        (label, ensembleModel)
+      }
+      // remove parallel, and then stick it in the map
+    }.toList.foreach(x => {
+      labelModelMap.put(x._1, x._2)
+      // TODO: UUID from task config
+      labelToUUID.put(x._1, x._1)
+    })
+    // log training information atomically
+    logger.info(atomicLogLine.toString())
 
-    val logisticRegressionModels = HashMap[String, LogisticRegressionModel]()
-    for ((label, labeledPoints) <- trainingData) {
-      // Perform training
-      val model = getLogisticRegressionModel(labeledPoints)
-
-      // Create a file-safe label name
-      val fileSafeLabelName = label.replace(' ', '-')
-      // Remove the directory if it already exists
-      FileUtils.deleteDirectory(new File(s"${modelStoragePath}/${fileSafeLabelName}/LogisticRegressionModel"))
-      // Save the model
-      saveMllibModel(sc, model, s"${modelStoragePath}/${fileSafeLabelName}/LogisticRegressionModel")
-
-      logisticRegressionModels(label) = model
-    }
-
-    val alloy = new IntentAlloy()
-
-    // Save the pipeline definition
-    val test = pipeline.save(alloy.writer.within("IntentPipeline"))
-    val alloyMetaJson: JObject = ("IntentPipeline" -> test)
-    val writer = alloy.writer.within("IntentPipeline").resource("config.json")
-    Codec.String.write(writer, compact(render(alloyMetaJson)))
-
-    // Load the pipeline definition again
-    val reader = alloy.reader.within("IntentPipeline").resource("config.json")
-    val config = Codec.String.read(reader)
-    val newPipelineConfig: JObject = (parse(config) \ "IntentPipeline").asInstanceOf[JObject]
-    val newPipeline2 = (new FeaturePipelineLoader).load(this, alloy.reader().within("IntentPipeline"),
-                                                        Some(newPipelineConfig))
-
+    // create the alloy for the task
+    val alloy = new ScalaJarAlloy(labelModelMap, labelToUUID)
+    // TODO: modify name of where it gets stored.
+    // save the alloy
+    alloy.save(modelStoragePath)
+    logger.info(s"Training completed in ${System.currentTimeMillis() - startTime}ms!")
   }
 }
-

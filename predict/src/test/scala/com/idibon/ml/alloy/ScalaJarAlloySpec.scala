@@ -78,6 +78,15 @@ class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with P
     }
   }
 
+  describe("Loads as intended") {
+    it("Throws exception on unhandled version") {
+      intercept[IOException] {
+        val jar = new File(".", "/predict/src/test/resources/fixtures/invalid_alloy_version.jar")
+        ScalaJarAlloy.load(null, jar.getCanonicalPath())
+      }
+    }
+  }
+
   describe("Tests JarWriter & JarReader") {
     /**
       * Helper function to create alloy writer.
