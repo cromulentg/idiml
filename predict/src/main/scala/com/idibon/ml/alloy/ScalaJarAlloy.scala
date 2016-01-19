@@ -5,10 +5,8 @@ import java.util.jar._
 
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST._
-import org.json4s.native.JsonMethods.{parse, compact, render}
-import org.json4s.JsonDSL._
-
-import com.idibon.ml.alloy.Codec
+import org.json4s.native.JsonMethods.{parse, render, compact}
+import com.idibon.ml.common.Engine
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.PredictModel
@@ -136,10 +134,11 @@ object ScalaJarAlloy extends StrictLogging {
   /**
     * Static method to load an alloy from a Jar file.
     *
-    * @param path
+    * @param engine implements com.idibon.ml.common.Engine
+    * @param path path to jar file
     * @return
     */
-  def load(path: String): ScalaJarAlloy = {
+  def load(engine: Engine, path: String): ScalaJarAlloy = {
     implicit val formats = org.json4s.DefaultFormats
     val jarFile: File = new File(path)
     val jar: JarFile = new JarFile(jarFile)
@@ -164,6 +163,7 @@ object ScalaJarAlloy extends StrictLogging {
       // Reify the model.
       val model: PredictModel = ArchiveLoader.reify[PredictModel](
         Class.forName(modelClass),
+        engine,
         baseReader.within(label),
         // extra the right model metadata to send down
         Some((modelMetadata \ label).extract[JObject])).get
