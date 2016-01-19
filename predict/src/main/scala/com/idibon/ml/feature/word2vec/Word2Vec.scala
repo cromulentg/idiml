@@ -13,9 +13,10 @@ import org.json4s._
 /**
   * Word2Vec feature for creating vector representations from sequences of strings
   *
-  * @param sc Spark context object
+  * @param sc SparkContext object
+  * @param model Word2VecModel model object
+  * @param path path to directory where the model is stored (a String)
   */
-
 class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val path: String) extends FeatureTransformer
   with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
 
@@ -48,6 +49,15 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     }
   }
 
+  /**
+    * Saves the path to the model object in a JObject. (This path is the
+    * only info needed to reload the Word2VecTransformer.)
+    *
+    * @param writer destination within Alloy for any resources that
+    *   must be preserved for this object to be reloadable
+    * @return Some[JObject] of configuration data that must be preserved
+    *   to reload the object. None if no configuration is needed
+    */
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(JField("path", JString(path))))
   }
@@ -56,6 +66,15 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
 
 class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
 
+  /**
+    * Loads a Word2VecTransformer from a path pointing to a saved Word2VecModel
+    *
+    * @param engine implementation of the Engine trait
+    * @param reader location within Alloy for loading any resources
+    *   previous preserved by a call to
+    * @param config archived configuration data returned by a previous
+    * @return a Word2VecTransformer
+    */
   def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): Word2VecTransformer = {
     implicit val formats = DefaultFormats
     val path = (config.get \ "path").extract[String]
