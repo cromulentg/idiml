@@ -6,7 +6,7 @@ import java.util.jar.{JarFile, JarOutputStream, Manifest}
 
 import com.idibon.ml.predict.ensemble.{EnsembleModel}
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.predict.{PredictModel, PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{EmbeddedEngine, PredictModel, PredictOptionsBuilder, SingleLabelDocumentResult}
 import scala.collection.mutable
 import org.json4s._
 import org.scalatest._
@@ -66,7 +66,7 @@ class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with P
       val jarFile = new File(tempFilename)
       jarFile.exists() shouldBe true
       // get alloy back & predict on it.
-      val resurrectedAlloy = ScalaJarAlloy.load(tempFilename)
+      val resurrectedAlloy = ScalaJarAlloy.load(new EmbeddedEngine, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val documentObject: JsonAST.JObject = JObject(List(("content", JString("content IS awesome"))))
       val result1 = alloy.predict(documentObject, options).get("alabel")
