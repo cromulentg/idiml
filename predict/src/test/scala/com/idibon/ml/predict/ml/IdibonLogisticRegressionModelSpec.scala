@@ -63,7 +63,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val jarFile = new File(tempFilename)
       jarFile.exists() shouldBe true
       // get alloy back & predict on it.
-      val resurrectedAlloy = ScalaJarAlloy.load(tempFilename)
+      val resurrectedAlloy = ScalaJarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val result1 = alloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]
       val result2 = resurrectedAlloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]

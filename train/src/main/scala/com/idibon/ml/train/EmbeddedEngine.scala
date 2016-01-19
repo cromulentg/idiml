@@ -50,7 +50,7 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
 
   def createTrainer() = {
     // TODO: make these parameters more realistic
-    val lr = new LogisticRegression().setElasticNetParam(0.9).setMaxIter(5)
+    val lr = new LogisticRegression().setMaxIter(100)
     // Print out the parameters, documentation, and any default values.
     logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
     // We use a ParamGridBuilder to construct a grid of parameters to search over.
@@ -58,7 +58,8 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
     // 1 x 5 = 5 parameter settings for CrossValidator to choose from.
     val paramGrid = new ParamGridBuilder()
       // TODO: make these parameters more realistic
-      .addGrid(lr.regParam, Array(0.01, 0.1, 0.20, 0.35, 0.5))
+      .addGrid(lr.regParam, Array(0.01, 0.05, 0.1, 0.20, 0.35, 0.5))
+      .addGrid(lr.elasticNetParam, Array(0.0, 0.2, 0.5, 0.7, 0.9, 1.0))
       .build()
 
     // We now treat the LR as an Estimator, wrapping it in a CrossValidator instance.
@@ -71,7 +72,7 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
       // TODO: decide on best evaluator (this uses ROC)
       .setEvaluator(new BinaryClassificationEvaluator())
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(5) // Use 3+ in practice
+      .setNumFolds(6) // Use 3+ in practice
     cv
   }
 
@@ -112,7 +113,7 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
     val labelModelMap = new mutable.HashMap[String, PredictModel]()
     val labelToUUID = new mutable.HashMap[String, String]()
     val trainingData = training.get
-    trainingData.map{
+    trainingData.par.map{
       case (label, labeledPoints) => {
         // base LR model
         val model = fitLogisticRegressionModel(sparkContext, labeledPoints)
@@ -130,7 +131,7 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
         (label, ensembleModel)
       }
       // remove parallel, and then stick it in the map
-    }.foreach(x => {
+    }.toList.foreach(x => {
       labelModelMap.put(x._1, x._2)
       // TODO: UUID
       labelToUUID.put(x._1, x._1)
@@ -144,4 +145,6 @@ class EmbeddedEngine extends com.idibon.ml.common.Engine with StrictLogging {
 
     logger.info("Training completed!")
   }
+
+  override def start(modelPath: String): Unit = {}
 }

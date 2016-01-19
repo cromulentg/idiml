@@ -19,7 +19,7 @@ class EmbeddedEngine extends Engine with StrictLogging{
     * Very crude POC. This will change as we add more to the code base.
     */
   override def start(modelPath: String) = {
-    val model = ScalaJarAlloy.load(modelPath)
+    val model = ScalaJarAlloy.load(this, modelPath)
 
     val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"
 //    val text: String = "I am very neutral at the moment"
