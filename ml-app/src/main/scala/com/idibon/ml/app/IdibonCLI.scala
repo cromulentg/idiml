@@ -41,9 +41,23 @@ class IdibonCLI(val argv: Array[String]) {
     }
   }
 
+  private val predictFilePath = cmd.getOptionValue("f")
+
+  /** Returns the given predict input file path.
+    *
+    * @return the path provided with the -f option. If no path was given, returns a default location
+    */
+  def getPredictFilePath = {
+    predictFilePath match {
+      case null | "" => "/tmp/idiml/predict.txt"
+      case _ => predictFilePath
+    }
+  }
+
   /** Defines valid command-line parameters */
   private def initialize = {
     options.addOption("i", true, "input file path")
     options.addOption("m", true, "model storage path")
+    options.addOption("f", true, "predict input file path")
   }
 }

@@ -32,7 +32,7 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
     if(coefficients.size != features.size) {
       val delta = features.size - coefficients.size
       assert(delta > 0) // delta should always be greater than 0, else FeaturePipeline is wonky.
-      logger.info(s"Predicting with ${delta} OOV dimensions.")
+      logger.trace(s"Predicting with ${delta} OOV dimensions.")
       val sparseVector = features.asInstanceOf[SparseVector]
       val modifiedFeatures = Vectors.sparse(
         coefficients.size,

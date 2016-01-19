@@ -182,8 +182,8 @@ class IdibonLogisticRegressionModelLoader
     val version = (config.get \ "version" ).extract[String]
     version match {
       case IdibonLogisticRegressionModel.FORMAT_VERSION =>
-        logger.info(s"Attemping to load ILRM version [v. $version] for $label")
-      case _ => throw new IOException(s"Unable to load, unhandled ILRM version $version for $label")
+        logger.info(s"Attemping to load version [v. $version] for '$label'")
+      case _ => throw new IOException(s"Unable to load, unhandled version [v. $version] for '$label'")
     }
     val coeffs = reader.within("model").resource("coefficients.libsvm")
     val (intercept: Double,

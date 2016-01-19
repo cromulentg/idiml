@@ -40,6 +40,7 @@ class RDDGenerator extends StrictLogging {
     */
   def getLabeledPointRDDs(sc: SparkContext, filename: String,
                           pipeline: FeaturePipeline) : Option[HashMap[String, RDD[LabeledPoint]]] = {
+    implicit val formats = org.json4s.DefaultFormats
     logger.info(s"Creating Labeled Points from ${filename}.")
     if (!new File(filename).exists()) return None
     // Prime the index by reading each document from the input file, which assigns an index value to each token
@@ -48,7 +49,6 @@ class RDDGenerator extends StrictLogging {
       val json = parse(line)
       pipeline(json.asInstanceOf[JObject])
     }
-    implicit val formats = org.json4s.DefaultFormats
     // Iterate over the data one more time now that the index is complete. This ensures that every feature vector
     // will now be the same size
     val perLabelLPs = HashMap[String, ListBuffer[LabeledPoint]]()
@@ -82,10 +82,21 @@ class RDDGenerator extends StrictLogging {
 
     // Generate the RDDs, given the per-label list of LabeledPoints we just created
     val perLabelRDDs = HashMap[String, RDD[LabeledPoint]]()
-    for ((label, lp) <- perLabelLPs) {
-      perLabelRDDs(label) = sc.parallelize(lp)
-      logger.info(s"Created ${lp.size} data points for ${label}.")
+    val logLine = perLabelLPs.map{
+      case (label, lp) => {
+        perLabelRDDs(label) = sc.parallelize(lp)
+        val splits = lp.groupBy(x => x.label).map(x => s"Polarity: ${x._1}, Size: ${x._2.size}").toList
+        // create some data for logging.
+        (label, lp.size, splits)
+      }
+    }.foldRight(""){
+      // create atomic log line.
+      case ((label, size, splits), line) => {
+        line + s"\nCreated $size data points for $label; with splits $splits"
+      }
     }
+    logger.info(logLine)
+
 
     Some(perLabelRDDs)
   }

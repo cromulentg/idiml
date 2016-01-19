@@ -1,43 +1,37 @@
 package com.idibon.ml.predict
 
-import com.idibon.ml.common.Engine
+import java.io.File
+import com.idibon.ml.common.{BaseEngine, PredictEngine}
 import org.apache.spark.{SparkContext, SparkConf}
 import com.idibon.ml.alloy.ScalaJarAlloy
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.JsonDSL._
+import org.json4s.native.JsonMethods._
+import org.json4s.native.JsonMethods.{parse, render, compact}
+
+import scala.io.Source
 
 /**
   * Toy engine class that stitches together Idibon's feature pipeline and Spark's LR
   * to perform a prediction.
   */
-class EmbeddedEngine extends Engine with StrictLogging{
-
-  val sparkContext = EmbeddedEngine.sparkContext
+class EmbeddedEngine extends BaseEngine with PredictEngine with StrictLogging{
 
   /**
     * Very crude POC. This will change as we add more to the code base.
+    *
+    * @param modelPath the path to load the model from.
+    * @param documentPath the path to load the new-line separated JSON documents for classification.
     */
-  override def start(modelPath: String) = {
+  override def start(modelPath: String, documentPath: String) = {
+    implicit val formats = org.json4s.DefaultFormats
     val model = ScalaJarAlloy.load(this, modelPath)
-
-    val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"
-//    val text: String = "I am very neutral at the moment"
-    val doc: JObject = ( "content" -> text )
-
-    val result = model.predict(doc, new PredictOptionsBuilder().build())
-    logger.info(result.toString)
+    val results = Source.fromFile(new File(documentPath)).getLines().toStream.par.foreach(line => {
+      val doc = parse(line).extract[JObject]
+      val result = model.predict(doc, new PredictOptionsBuilder().build())
+      logger.info(s"input=[${(doc \ "content").extract[String]}]\noutput=[${result.toString}")
+    })
   }
 
-  override def start(infilePath: String, modelPath: String): Unit = {}
-}
-
-/**
-  * Currently only one SparkContext can exist per JVM, hence the use of this companion object
-  */
-object EmbeddedEngine {
-  val sparkContext = {
-    val conf = new SparkConf().setMaster("local").setAppName("idiml")
-    new SparkContext(conf)
-  }
 }
