@@ -113,6 +113,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         pipeline)
       val result = model.predict(doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       result.probability shouldBe 0.9999999f
+      result.matchCount shouldBe 1
     }
     it("should return significant features") {
       //TODO:

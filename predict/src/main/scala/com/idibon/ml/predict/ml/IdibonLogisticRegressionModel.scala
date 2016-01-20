@@ -46,10 +46,12 @@ case class IdibonLogisticRegressionModel(label: String,
   override def predict(features: Vector,
                        options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
+    logger.trace(s"$label: input = ${features.toString} output=${results.toString}")
     val builder = new SingleLabelDocumentResultBuilder(this.getType(), label)
     // get the result of 1, the positive class we're interested in. 0 will be 1.0 minus this value.
     // TODO: change this if we move from binary use case.
     builder.setProbability(results.apply(1).toFloat)
+    builder.setMatchCount(1)
     if (!options.significantFeatureThreshold.isNaN()) {
       // TODO: get significant features.
       // e.g. we need to find all the features that have a weight above X.
