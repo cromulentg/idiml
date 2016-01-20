@@ -12,9 +12,6 @@ package com.idibon.ml.predict
   */
 case class PredictOptions(significantFeatureThreshold: Float = PredictOptions.NO_FEATURES)
 
-object PredictOptions {
-  val NO_FEATURES = Float.NaN
-}
 /**
   * Builder class to create a PredictOptions object.
   */
@@ -37,4 +34,11 @@ class PredictOptionsBuilder() {
     new PredictOptions(significantFeatureThreshold)
   }
 
+}
+
+object PredictOptions {
+  val NO_FEATURES = Float.NaN
+
+  /** The default set of prediction options */
+  val DEFAULT = (new PredictOptionsBuilder).build
 }
