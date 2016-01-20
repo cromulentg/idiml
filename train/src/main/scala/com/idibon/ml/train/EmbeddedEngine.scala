@@ -102,6 +102,7 @@ class EmbeddedEngine extends BaseEngine with TrainEngine with StrictLogging {
     val labelModelMap = new mutable.HashMap[String, PredictModel]()
     val labelToUUID = new mutable.HashMap[String, String]()
     val trainingData = training.get
+
     // to make it easier to see everything together about the models trained. Build an atomic
     // log line.
     val atomicLogLine = new StringBuffer()

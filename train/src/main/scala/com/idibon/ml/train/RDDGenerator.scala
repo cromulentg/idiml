@@ -53,31 +53,32 @@ class RDDGenerator extends StrictLogging {
     // will now be the same size
     val perLabelLPs = HashMap[String, ListBuffer[LabeledPoint]]()
     for (line <- Source.fromFile(filename).getLines()) {
-      logger.debug(line)
+      logger.trace(line)
       // Extract the label name and its sign (positive or negative)
       val json = parse(line)
-      //TODO(Michelle): handle case with multiple positive annotations.
       val annotations = (json \ "annotations").extract[JArray]
-      val first_entry = annotations.apply(0)
-      val JString(label) = first_entry \ "label" \ "name"
-      val JBool(isPositive) = first_entry \ "isPositive"
+      // for each annotation, we assume it was provided so we can make a training point out of it.
+      for (entry <- annotations.arr) {
+        val JString(label) = entry \ "label" \ "name"
+        val JBool(isPositive) = entry \ "isPositive"
 
-      // If we haven't seen this label before, instantiate a list
-      if (!perLabelLPs.contains(label)) {
-        perLabelLPs(label) = new ListBuffer[LabeledPoint]()
+        // If we haven't seen this label before, instantiate a list
+        if (!perLabelLPs.contains(label)) {
+          perLabelLPs(label) = new ListBuffer[LabeledPoint]()
+        }
+
+        // Assign a number that MLlib understands
+        val labelNumeric = isPositive match {
+          case true => 1.0
+          case false => 0.0
+        }
+
+        // Run the pipeline to generate the feature vector
+        val featureVector = pipeline(json.asInstanceOf[JObject]).head
+
+        // Create labeled points
+        perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
       }
-
-      // Assign a number that MLlib understands
-      val labelNumeric = isPositive match {
-        case true => 1.0
-        case false => 0.0
-      }
-
-      // Run the pipeline to generate the feature vector
-      val featureVector = pipeline(json.asInstanceOf[JObject]).head
-
-      // Create labeled points
-      perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
     }
 
     // Generate the RDDs, given the per-label list of LabeledPoints we just created
