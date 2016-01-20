@@ -6,7 +6,8 @@ import java.util.jar.{JarFile, JarOutputStream, Manifest}
 
 import com.idibon.ml.predict.ensemble.{EnsembleModel}
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.predict.{EmbeddedEngine, PredictModel, PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{PredictModel, PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.common.EmbeddedEngine
 import scala.collection.mutable
 import org.json4s._
 import org.scalatest._
@@ -59,7 +60,7 @@ class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with P
       val random = new Random().nextLong()
       val labelToModel = new mutable.HashMap[String, PredictModel]()
       labelToModel.put("alabel", ensemble)
-      val alloy = new ScalaJarAlloy(labelToModel, new mutable.HashMap[String, String]())
+      val alloy = new ScalaJarAlloy(labelToModel.toMap, Map[String, String]())
       tempFilename = s"test_${random}.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit

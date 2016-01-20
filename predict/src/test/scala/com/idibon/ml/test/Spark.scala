@@ -1,16 +1,12 @@
 package com.idibon.ml.test
 
-import org.apache.spark.{SparkConf, SparkContext}
+import com.idibon.ml.common.EmbeddedEngine
 
 /**
   * Provides a SparkContext for testing.
   */
 
 object Spark {
-
-  private val conf = new SparkConf()
-    .setMaster("local[2]")
-    .setAppName("idiML")
-  lazy val sc: SparkContext = new SparkContext(conf)
-
+  private [this] val _engine = new EmbeddedEngine
+  val sc = _engine.sparkContext
 }

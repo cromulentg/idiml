@@ -2,7 +2,8 @@ package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.predict.{EmbeddedEngine, PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.common.EmbeddedEngine
 import org.json4s._
 import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
 

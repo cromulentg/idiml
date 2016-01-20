@@ -3,7 +3,7 @@ package com.idibon.ml.feature.indexer
 import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.Feature
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
-import com.idibon.ml.predict.EmbeddedEngine
+import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg.Vectors
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
 

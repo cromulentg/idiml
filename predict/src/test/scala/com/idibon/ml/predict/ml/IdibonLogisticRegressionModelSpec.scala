@@ -54,9 +54,8 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
         pipeline)
-      val labelToModel = new mutable.HashMap[String, PredictModel]()
-      labelToModel.put("alabel", model)
-      val alloy = new ScalaJarAlloy(labelToModel, new mutable.HashMap[String, String]())
+      val labelToModel = Map(("alabel" -> model))
+      val alloy = new ScalaJarAlloy(labelToModel, Map[String, String]())
       tempFilename = "save.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit

@@ -1,7 +1,7 @@
 package com.idibon.ml.feature.word2vec
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.EmbeddedEngine
+import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg._
 import org.json4s._
 
