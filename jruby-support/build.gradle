@@ -1,0 +1,38 @@
+plugins {
+  // enable the ScalaTest test runner
+  id "com.github.maiflai.scalatest" version "0.10"
+  // Test coverage
+  id "org.scoverage" version "2.0.0"
+  // generate a JAR of test artifacts
+  id "com.github.hauner.jarTest" version "1.0"
+}
+
+configurations {
+  /* we want to avoid Gradle reporting that the specific JRuby library
+   * we compile against is a transitive dependency of this library,
+   * because that would lead to a dependency ouroboros when this library
+   * is imported into a running JRuby environment (i.e., the JRuby
+   * runtime - which already defines all of the org.jruby.* classes -
+   * imports the jruby-support library, which then imports a different
+   * version of the JRuby core runtime, which causes the classloader to
+   * die in a confusion-spiral). so create a configuration that is only
+   * used for compilation, and not reflected in the generated dependency
+   * graph */
+  compileOnly
+}
+
+dependencies {
+  scoverage 'org.scoverage:scalac-scoverage-plugin_2.11:1.1.0', 'org.scoverage:scalac-scoverage-runtime_2.11:1.1.0'
+
+  // core JRuby type definitions
+  compileOnly "org.jruby:jruby-core:9.0.4.0"
+
+  // include the entire JRuby runtime + standard library for testing
+  testCompile "org.jruby:jruby-complete:9.0.4.0"
+}
+
+sourceSets {
+  // force the compile-only dependencies into the compilation classpaths
+  main.compileClasspath += configurations.compileOnly
+  scoverage.compileClasspath += configurations.compileOnly
+}
