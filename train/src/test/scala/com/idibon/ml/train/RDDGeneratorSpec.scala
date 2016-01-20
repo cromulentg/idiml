@@ -4,7 +4,6 @@ import com.idibon.ml.feature.{FeaturePipeline, ContentExtractor, FeaturePipeline
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.test.Spark
-import com.idibon.ml.test.VerifyLogging
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
@@ -14,17 +13,13 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfter, Matchers, FunSpec}
   *
   */
 class RDDGeneratorSpec extends FunSpec with Matchers
-  with BeforeAndAfter with BeforeAndAfterAll with VerifyLogging {
-
-  override val loggerName = classOf[RDDGenerator].getName
+  with BeforeAndAfter with BeforeAndAfterAll {
 
   override def beforeAll = {
     super.beforeAll
-    initializeLogging
   }
 
   override def afterAll = {
-    shutdownLogging
     super.afterAll
   }
 
@@ -43,11 +38,6 @@ class RDDGeneratorSpec extends FunSpec with Matchers
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
       := ("convertToIndex"))
-  }
-
-  after {
-    // reset the logged messages after every test
-    resetLog
   }
 
   describe("RDDGenerator") {
