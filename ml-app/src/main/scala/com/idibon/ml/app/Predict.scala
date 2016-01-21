@@ -67,7 +67,11 @@ object Predict extends Tool {
           results.offer(Some((document, result.asScala.toMap)))
         })
     } finally {
+      // send the sentinel value to shut down the output thread
       results.offer(None)
+      // wait for the output thread to finish and close the stream
+      resultsThread.join
+      output.close
     }
   }
 }
