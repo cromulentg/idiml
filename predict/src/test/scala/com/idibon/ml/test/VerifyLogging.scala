@@ -91,7 +91,7 @@ private [this] object VerifyLogging
     extends PrintStream(new ByteArrayOutputStream) {
 
   val LOG_PATTERN = Pattern.compile(
-    "(?i)^\\s*(?:WARN|ERROR|INFO|DEBUG|TRACE)\\s+([\\p{L}.$_#\\-0-9:,!@/\\\\]+)\\s+-\\s+(.*)$")
+    "(?i)^\\s*[\\dT.:\\-+]+\\s+(?:WARN|ERROR|INFO|DEBUG|TRACE)\\s+([\\p{L}.$_#\\-0-9:,!@/\\\\]+)\\s+-\\s+(.*)$")
 
   /** The original TARGET_STREAM created by the SimpleLogger
     *
