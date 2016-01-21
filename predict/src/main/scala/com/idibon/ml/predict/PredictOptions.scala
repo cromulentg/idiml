@@ -24,8 +24,7 @@ class PredictOptionsBuilder() {
     * @param threshold
     * @return
     */
-  def showSignificantFeatures(threshold: Float): PredictOptionsBuilder = {
-    assert(!threshold.isNaN()) // Float.NaN is our "off" value.
+  def showSignificantFeatures(threshold: Float): this.type = {
     significantFeatureThreshold = threshold
     this
   }
