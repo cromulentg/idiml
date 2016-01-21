@@ -12,5 +12,7 @@ package com.idibon.ml.feature {
     * * (Seq[Feature[_]*) -> Seq[F]
     * * (
     */
-  trait FeatureTransformer
+  trait FeatureTransformer {
+    def numDimensions: Int = ???
+  }
 }

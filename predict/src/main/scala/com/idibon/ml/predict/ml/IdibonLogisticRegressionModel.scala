@@ -34,7 +34,7 @@ case class IdibonLogisticRegressionModel(label: String,
     */
   override def predict(document: JObject,
                        options: PredictOptions): PredictResult = {
-    return predict(featurePipeline.apply(document).head, options)
+    return predict(featurePipeline.apply(document), options)
   }
 
   /**

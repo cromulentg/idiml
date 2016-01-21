@@ -98,6 +98,7 @@ import org.json4s._
       // BLAS only supports adding to a dense vector, so let's instantiate one full of zeroes
       val featureVector = Vectors.dense(Array.fill[Double](vocabSize)(0))
 
+      // I think this means we disregard the feature value and always put 1.0 (or rather count in increments of 1.0)
       features.map(f => {
                 val index = lookupOrAddToFeatureIndex(f)
                 val singleFeature = Vectors.sparse(vocabSize, Seq((index, 1.0)))
@@ -113,6 +114,8 @@ import org.json4s._
         getFeatureVector(features)
       }
     }
+
+    override def numDimensions: Int = featureIndex.size
   }
 
   /** Paired loader class for IndexTransformer */

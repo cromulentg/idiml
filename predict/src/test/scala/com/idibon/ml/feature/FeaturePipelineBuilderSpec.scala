@@ -16,7 +16,8 @@ class FeaturePipelineBuilderSpec extends FunSpec with Matchers {
       := ("A", "B"))
 
     val document = parse("""{"A":0.375,"B":-0.625}""").asInstanceOf[JObject]
-    pipeline(document) shouldBe Seq(Vectors.dense(0.375), Vectors.dense(-0.625))
+    pipeline.prime(List(document))
+    pipeline(document) shouldBe Vectors.sparse(2, Array(0,1), Array(0.375,-0.625))
   }
 
   it("should support chained transforms") {
@@ -25,7 +26,8 @@ class FeaturePipelineBuilderSpec extends FunSpec with Matchers {
       += FeaturePipelineBuilder.entry("C", new TransformC, "A")
       := ("C"))
     val document = parse("""{"A":-0.5}""").asInstanceOf[JObject]
-    pipeline(document) shouldBe Seq(Vectors.dense(0.5))
+    pipeline.prime(List(document))
+    pipeline(document) shouldBe Vectors.sparse(1, Array(0), Array(0.5))
   }
 }
 
@@ -33,16 +35,19 @@ private[this] class TransformA extends FeatureTransformer {
   def apply(input: JObject): Vector = {
     Vectors.dense((input \ "A").asInstanceOf[JDouble].num)
   }
+  override def numDimensions: Int = 1
 }
 
 private[this] class TransformB extends FeatureTransformer {
   def apply(input: JObject): Vector = {
     Vectors.dense((input \ "B").asInstanceOf[JDouble].num)
   }
+  override def numDimensions: Int = 1
 }
 
 private[this] class TransformC extends FeatureTransformer {
   def apply(input: Vector): Vector = {
     Vectors.dense(input.toArray.map(_ + 1.0))
   }
+  override def numDimensions: Int = 1
 }

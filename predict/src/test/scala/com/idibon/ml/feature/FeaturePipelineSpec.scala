@@ -87,7 +87,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
-        List(Vectors.dense(1.0, 0.0, 1.0), Vectors.dense(0.0, -1.0, 0.5))
+        Vectors.sparse(6,Array(0,1,2,3,4,5),Array(1.0,0.0,1.0,0.0,-1.0,0.5))
       verify(dummyAlloy, times(2)).within(anyString())
       verify(dummyAlloy).within("A")
       verify(dummyAlloy).within("B")
@@ -131,7 +131,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
-      pipeline(doc) shouldBe List(Vectors.dense(3.14159265, 11.0))
+      pipeline(doc) shouldBe Vectors.sparse(2, Array(0, 1), Array(3.14159265, 11.0))
     }
   }
 
@@ -357,6 +357,7 @@ private [this] class VectorConcatenator extends FeatureTransformer {
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
   }
+  override def numDimensions: Int = 2
 }
 
 private [this] class CurriedExtractor extends FeatureTransformer {
@@ -373,6 +374,7 @@ private [this] class FeatureVectors extends FeatureTransformer {
   def apply(content: Seq[Feature[String]]): Vector = {
     Vectors.dense(content.map(_.get.length.toDouble).toArray)
   }
+  override def numDimensions: Int = 0
 }
 
 private [this] class MetadataNumberExtractor extends FeatureTransformer {
@@ -404,6 +406,8 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
   }
 
   def save(w: Alloy.Writer): Option[JObject] = suppliedConfig
+
+  override def numDimensions: Int = 3
 }
 
 private [this] class ArchivableTransformLoader

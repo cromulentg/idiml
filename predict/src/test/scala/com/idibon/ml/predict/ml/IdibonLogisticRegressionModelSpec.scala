@@ -31,6 +31,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"
   val doc: JObject = ( "content" -> text )
+  pipeline.prime(List(doc))
 
   var tempFilename = ""
   before {
@@ -48,7 +49,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   describe("Save & load integration test") {
     it("saves, loads and predicts as expected") {
       val intercept = -1.123
-      val coefficients = pipeline(doc).head
+      val coefficients = pipeline(doc)
       val label: String = "alabel"
       // do hacky thing where model coefficients are document coefficients -- just to make
       // sure it all works
@@ -87,7 +88,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
     it("returns config as expected") {
       val alloy = new IntentAlloy()
       val intercept = -1.123
-      val coefficients = pipeline(doc).head
+      val coefficients = pipeline(doc)
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
@@ -106,7 +107,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   describe("Tests predict") {
     it("returns appropriate probability") {
       val intercept = -10.123
-      val coefficients = pipeline(doc).head
+      val coefficients = pipeline(doc)
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
