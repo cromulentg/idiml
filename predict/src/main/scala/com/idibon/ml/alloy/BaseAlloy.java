@@ -5,6 +5,7 @@ import com.idibon.ml.predict.PredictOptions;
 import com.idibon.ml.predict.PredictResult;
 import org.json4s.JsonAST;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,8 +21,8 @@ public abstract class BaseAlloy implements Alloy {
     private final Map<String, String> _labelToUUID;
 
     public BaseAlloy(Map<String, PredictModel> labelModelMap, Map<String, String> labelToUUID) {
-        _labelModelMap = labelModelMap;
-        _labelToUUID = labelToUUID;
+        _labelModelMap = Collections.unmodifiableMap(labelModelMap);
+        _labelToUUID = Collections.unmodifiableMap(labelToUUID);
     }
 
     @Override public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options) {

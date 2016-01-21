@@ -14,7 +14,7 @@ import com.idibon.ml.feature.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.PredictModel
 
 // required for java object conversions
-import collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
@@ -32,9 +32,8 @@ import scala.collection.mutable
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
-class ScalaJarAlloy(labelModelMap: mutable.Map[String, PredictModel],
-                    labelToUUID: mutable.Map[String, String])
-  extends BaseAlloy(labelModelMap, labelToUUID) with StrictLogging {
+class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String])
+    extends BaseAlloy(models.asJava, uuids.asJava) with StrictLogging {
 
 
   /**
@@ -56,22 +55,20 @@ class ScalaJarAlloy(labelModelMap: mutable.Map[String, PredictModel],
     // save labels map
     saveMapOfData(
       baseWriter,
-      labelToUUID.map(x => (x._1, JString(x._2))).toList,
+      this.uuids.map({ case (label, u) => (label, JString(u))}).toList,
       ScalaJarAlloy.LABEL_UUID)
     // save class types of models
     saveMapOfData(
       baseWriter,
-      labelModelMap.map(x => (x._1, JString(x._2.getType()))).toList,
+      this.models.map({ case (label, m) => (label, JString(m.getType()))}).toList,
       ScalaJarAlloy.MODEL_CLASS)
     // save models
     saveMapOfData(
       baseWriter,
-      labelModelMap
-        .par.map(
+      this.models.par.map({ case (label, model) => {
           // for each model save it and get the JObject back
-          x =>
-            (x._1, Archivable.save(x._2, baseWriter.within(x._1)).getOrElse(JNothing))
-        ).toList,
+          (label, Archivable.save(model, baseWriter.within(label)).getOrElse(JNothing))
+        }}).toList,
       ScalaJarAlloy.MODEL_META)
     // TODO: save more schtuff about this task
     jos.close()
@@ -177,7 +174,7 @@ object ScalaJarAlloy extends StrictLogging {
     // instantiate other objects
     jar.close()
     // return fresh instance
-    return new ScalaJarAlloy(labelModels, labelToUUID)
+    return new ScalaJarAlloy(labelModels.toMap, labelToUUID.toMap)
   }
 
   /**

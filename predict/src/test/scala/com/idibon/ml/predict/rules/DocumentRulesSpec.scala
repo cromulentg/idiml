@@ -3,7 +3,8 @@ package com.idibon.ml.predict.rules
 import java.util.regex.Pattern
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.{EmbeddedEngine, PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg.SparseVector
 import org.json4s._
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
