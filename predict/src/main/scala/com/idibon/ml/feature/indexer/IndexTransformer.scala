@@ -85,26 +85,53 @@ import org.json4s._
     }
 
     /**
-      * This function creates the feature index map from all provided features. It creates a vector for each feature
-      * and sums them all together. It returns this consolidated feature vector.
+      * This function creates the feature index map from all provided features.
+      *
+      * To be memory efficient and not create an array the size of the vocab, it:
+      *  1) maps all the features to their index value and sorts them. O(n + n log(n))
+      *  2) creates two arrays that will store the index and count pairs O(n)
+      *  3) goes through the sorted list of indexes and sticks the appropriate values
+      *       in the two arrays. O(n)
+      *  4) it then creates a sparse vector, chopping off any trailing zeros in the two arrays. O(n)
+      *
+      * So for a total complexity of O(n log(n)) + 4 O(n) and space complexity of 5 O(n) where
+      * <i>n</i> is the number of features passed in.
       *
       * @param features
       * @return feature vector representing all provided features
       */
     private[indexer] def getFeatureVector(features: Seq[Feature[_]]): Vector = {
-      // Create our indexes and find out how large the return vector should be
+      // Create our indexes and find out how large in theory the return vector should be
       val vocabSize = createFeatureIndex(features)
-
-      // BLAS only supports adding to a dense vector, so let's instantiate one full of zeroes
-      val featureVector = Vectors.dense(Array.fill[Double](vocabSize)(0))
-
-      // I think this means we disregard the feature value and always put 1.0 (or rather count in increments of 1.0)
-      features.map(f => {
-                val index = lookupOrAddToFeatureIndex(f)
-                val singleFeature = Vectors.sparse(vocabSize, Seq((index, 1.0)))
-                IdibonBLAS.axpy(1, singleFeature, featureVector) })
-
-      featureVector.toSparse
+      // Map features to indexes & sort since they need to be in ascending order
+      val indexValues = features.map(lookupOrAddToFeatureIndex(_)).sorted.toArray
+      // Preallocate the arrays needed using their maximum possible size.
+      val newIndexes = Array.fill[Int](indexValues.size)(0)
+      val newValues = Array.fill[Double](indexValues.size)(0.0)
+      var lastIndex = 0
+      var i = 0
+      var j = 0
+      // traverse the sorted array of feature index values
+      while(i < indexValues.size) {
+        j = i + 1
+        // if j is in the array
+        if (j < indexValues.size) {
+          // while we're equal to the next values increment j
+          while (indexValues(i) == indexValues(j)) {
+            j += 1
+          }
+        }
+        // now we store the current index value
+        newIndexes(lastIndex) = indexValues(i)
+        // and how many times it occurred
+        newValues(lastIndex) = j - i
+        // and we increment where we are in the output array
+        lastIndex += 1
+        // now move i to where ever j ended up
+        i = j
+      }
+      // slicing allows us to make sure we chop off any trailing zeros
+      Vectors.sparse(vocabSize, newIndexes.slice(0, lastIndex), newValues.slice(0, lastIndex))
     }
 
     def apply(features: Seq[Feature[_]]): Vector = {
