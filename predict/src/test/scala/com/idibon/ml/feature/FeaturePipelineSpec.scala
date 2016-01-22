@@ -49,6 +49,54 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     writer
   }
 
+  describe("Vector concatenation") {
+    val pipelineDefinition:String = """
+"pipeline":[
+  {"name":"$output","inputs":["concatenator"]},
+  {"name":"concatenator","inputs":["metadataVector","featureVector", "metadataVector2"]},
+  {"name":"contentExtractor","inputs":["$document"]},
+  {"name":"metadataVector2","inputs":["$document"]},
+  {"name":"metadataVector","inputs":["$document"]},
+  {"name":"featureVector","inputs":["contentExtractor"]}]
+}"""
+    it("throws error on bad dimensions") {
+      val dummyAlloy = createMockReader
+      val json = parse("""{
+"transforms":[
+  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenatorBad"},
+  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],""" + pipelineDefinition)
+      val pipeline = (new FeaturePipelineLoader)
+        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+      loggedMessages shouldBe empty
+
+      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+      intercept[AssertionError]{
+        pipeline(doc)
+      }
+    }
+
+    it("works as expected with multiple vectors") {
+      val dummyAlloy = createMockReader
+      val json = parse("""{
+"transforms":[
+  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
+  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
+      val pipeline = (new FeaturePipelineLoader)
+        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+      loggedMessages shouldBe empty
+
+      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+      pipeline.prime(List(doc))
+      pipeline(doc) shouldBe Vectors.sparse(3, Array(0, 1, 2), Array(3.14159265, 11.0, 2.14))
+    }
+  }
+
   describe("save") {
     def runSaveTest(unparsed: String) {
       val dummyReader = createMockReader
@@ -131,6 +179,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
+      pipeline.prime(List(doc))
       pipeline(doc) shouldBe Vectors.sparse(2, Array(0, 1), Array(3.14159265, 11.0))
     }
   }
@@ -354,10 +403,23 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 }
 
 private [this] class VectorConcatenator extends FeatureTransformer {
+  var length = 0
+  def apply(inputs: Vector*): Vector = {
+    val v = Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
+    length = v.size
+    v
+  }
+  override def numDimensions: Int = length
+}
+
+/**
+  * Bad vector concatenator that has incorrect dimensions.
+  */
+private [this] class VectorConcatenatorBad extends FeatureTransformer {
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
   }
-  override def numDimensions: Int = 2
+  override def numDimensions: Int = -1
 }
 
 private [this] class CurriedExtractor extends FeatureTransformer {
@@ -380,6 +442,12 @@ private [this] class FeatureVectors extends FeatureTransformer {
 private [this] class MetadataNumberExtractor extends FeatureTransformer {
   def apply(document: JObject): Vector = {
     Vectors.dense((document \ "metadata" \ "number").asInstanceOf[JDouble].num)
+  }
+}
+
+private [this] class MetadataNumberExtractor2 extends FeatureTransformer {
+  def apply(document: JObject): Vector = {
+    Vectors.dense((document \ "metadata" \ "number2").asInstanceOf[JDouble].num)
   }
 }
 

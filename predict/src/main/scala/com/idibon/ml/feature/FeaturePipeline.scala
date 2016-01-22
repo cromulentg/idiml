@@ -117,7 +117,9 @@ class FeaturePipeline(state: LoadState)
         val expectedDimensions: Int = outputDimensionsMap.getOrElse(name, (0, 0))._2
         assert(dimension == expectedDimensions, s"Expected $expectedDimensions but got $dimension.")
         vector.foreachActive((index, value) => {
-          newIndexes(startIndex) = (startOffset + index)
+          /* Don't need to check that this index is in bounds, because the vector dimension
+          matches what we expect */
+          newIndexes(startIndex) = startOffset + index
           newValues(startIndex) = value
           startIndex += 1
         })
