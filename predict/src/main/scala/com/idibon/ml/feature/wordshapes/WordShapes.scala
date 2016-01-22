@@ -2,7 +2,6 @@ package com.idibon.ml.feature.wordshapes
 
 import com.idibon.ml.feature.{Feature,FeatureTransformer}
 import com.idibon.ml.feature.tokenizer.Token
-import scala.reflect.runtime.universe.typeOf
 
 /** WordShape FeatureTransformer
   *
@@ -19,12 +18,9 @@ class WordShapesTransformer extends FeatureTransformer {
     * @return wordshapes represented as a sequence of Shape features.
     */
   def apply(tokens: Seq[Feature[Token]]): Seq[Shape] = {
-    //iterates over the sequence, converting each token to its shape and updating counts in the map
-    val shapeMap: Map[String, Int] = tokens.foldLeft(Map.empty[String, Int])(
-      (mp, token) => mp + (toShape(token.get.content) -> (mp.getOrElse(toShape(token.get.content), 0) + 1)))
 
-    // convert map into a sequence of ShapeFeatures & return
-    shapeMap.map{ case (k, v) => new Shape(k, v) }.toSeq
+    //return the sequence of tokens translated to shapes (in the same order)
+    tokens.map(token => new Shape(toShape(token.get.content)))
   }
 
   /** Produces a word shape representation string from a token
@@ -33,13 +29,13 @@ class WordShapesTransformer extends FeatureTransformer {
     * @return shape represented as a string.
     */
   def toShape(token: String): String = {
-    val shape = token.replaceAll("[A-Z]", "C")
+    val shape = token.replaceAll("\\p{Lu}", "C")
       .replaceAll("CC+", "CC")
-      .replaceAll("[a-z]", "c")
+      .replaceAll("\\p{Ll}", "c")
       .replaceAll("cc+", "cc")
-      .replaceAll("[0-9]", "n")
+      .replaceAll("\\p{Nd}", "n")
       .replaceAll("nn+", "nn")
-      .replaceAll("\\s+", "s")
+      .replaceAll("\\p{Zs}+", "s")
       .replaceAll("[^snCc]+", "p")
 
     return shape
