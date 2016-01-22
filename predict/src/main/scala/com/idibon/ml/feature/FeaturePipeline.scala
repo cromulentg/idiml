@@ -195,6 +195,9 @@ class FeaturePipeline(state: LoadState)
       }
     }
   }
+
+  def getTotalDimensions(): Int = totalDimensions
+  def isFrozen(): Boolean = frozen
 }
 
 /** Paired loader class for FeaturePipeline instances */

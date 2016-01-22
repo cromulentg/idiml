@@ -49,7 +49,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     writer
   }
 
-  describe("Vector concatenation") {
+  describe("Vector concatenation & priming") {
     val pipelineDefinition:String = """
 "pipeline":[
   {"name":"$output","inputs":["concatenator"]},
@@ -94,6 +94,25 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
       pipeline.prime(List(doc))
       pipeline(doc) shouldBe Vectors.sparse(3, Array(0, 1, 2), Array(3.14159265, 11.0, 2.14))
+    }
+
+    it("primes as intended") {
+      val dummyAlloy = createMockReader
+      val json = parse("""{
+"transforms":[
+  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
+  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
+      val pipeline = (new FeaturePipelineLoader)
+        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+      loggedMessages shouldBe empty
+
+      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+      pipeline.prime(List(doc))
+      pipeline.isFrozen() shouldBe true
+      pipeline.getTotalDimensions() shouldBe 3
     }
   }
 
