@@ -14,5 +14,6 @@ package com.idibon.ml.feature {
     */
   trait FeatureTransformer {
     def numDimensions: Int = ???
+    def prune(transform: Int => Boolean): Unit = ???
   }
 }

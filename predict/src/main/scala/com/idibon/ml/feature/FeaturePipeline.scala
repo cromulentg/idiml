@@ -1,10 +1,11 @@
 package com.idibon.ml.feature
 
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.{StrictLogging, Logger}
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.linalg.Vectors
 import org.json4s._
 
+import scala.Boolean
 import scala.collection.mutable.{HashSet => MutableSet}
 import scala.collection.{Map => AnyMap}
 import scala.reflect.runtime.universe.{MethodMirror, typeOf}
@@ -18,7 +19,7 @@ import com.idibon.ml.common.Reflect._
 /** The feature pipeline transforms documents into feature vectors
   */
 class FeaturePipeline(state: LoadState)
-  extends Archivable[FeaturePipeline, FeaturePipelineLoader] {
+  extends Archivable[FeaturePipeline, FeaturePipelineLoader] with StrictLogging {
 
   private val outputDimensionsMap = new mutable.HashMap[String, (Int, Int)]()
   private var totalDimensions: Int = 0
@@ -56,6 +57,7 @@ class FeaturePipeline(state: LoadState)
         offset + dimensions
       }
     }
+    logger.debug(s"Freezing pipeline with $totalDimensions total dimensions.")
     frozen = true
   }
 
@@ -158,6 +160,40 @@ class FeaturePipeline(state: LoadState)
           ))
         }).toList))
     )))
+  }
+
+  /**
+    * Use this function to enforce feature selection essentially.
+    *
+    * Feature selection basically means you're pruning what features
+    * you're not interested in storing. Since this function does not
+    * tell you what features to remove, it is hence called prune.
+    *
+    * What tells you what to remove, is the passed in predicate function.
+    *
+    * @param predicate this tells us what feature to remove. It works on the
+    *                  global feature space (i.e. the output of apply) and thus
+    *                  should expect integers representing those values.
+    */
+  def prune(predicate: Int => Boolean): Unit = {
+    // for each output transform prune it back.
+    outputDimensionsMap.par.foreach{
+      case (transform, (start, dimension)) => {
+        /**
+          * Wrap predicate function with offset function so that internal
+          * feature transforms can use their native "index" range and
+          * thus know when to remove some features or not.
+          *
+          * @param index the internal feature transform index value.
+          * @return the index value in the global feature space.
+          */
+        def project(index: Int): Boolean = {
+          predicate(start + index)
+        }
+        // get the transformer and prune it!
+        this.state.transforms.get(transform).get.prune(project)
+      }
+    }
   }
 }
 

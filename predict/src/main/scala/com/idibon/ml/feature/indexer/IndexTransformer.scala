@@ -116,6 +116,12 @@ import org.json4s._
     }
 
     override def numDimensions: Int = featureIndex.size
+
+    override def prune(transform: (Int) => Boolean): Unit = {
+      featureIndex.map(x => {
+        if (transform(x._2)) featureIndex.remove(x._1)
+      })
+    }
   }
 
   /** Paired loader class for IndexTransformer */
