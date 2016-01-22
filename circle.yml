@@ -2,10 +2,6 @@ machine:
   java:
     version: oraclejdk8
 
-test:
-  override:
-    - ./gradlew reportScoverage
-
 general:
   branches:
     ignore:
@@ -21,17 +17,22 @@ general:
     - "train/build/libs"
 
 dependencies:
-  cache_directories:
-    # cache maven jars
-    - ~/.m2
+  override:
+    # install all of the gradle dependencies prior to the build, so that
+    # they can be cached and don't spew to the log with download updates
+    - ./gradlew --console plain downloadDependencies
+
+test:
+  override:
+    - ./gradlew --console plain reportScoverage
 
 deployment:
   development:
     branch: /.*/
     commands:
-      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew uploadArchives
+      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew --console plain uploadArchives
 
   release:
     tag: /v[0-9][0-9.]+/
     commands:
-      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew uploadArchives
+      - export AWS_ACCESS_KEY_ID=`cat ~/.aws/config | grep access_key_id | cut -d '=' -f 2 | tr -d ' '` && export AWS_SECRET_KEY=`cat ~/.aws/config | grep secret_access | cut -d '=' -f 2 | tr -d ' '` && ./gradlew --console plain uploadArchives

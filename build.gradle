@@ -119,4 +119,11 @@ subprojects {
 
     runtime "org.slf4j:log4j-over-slf4j:1.7.13"
   }
+
+  // Add a task to every sub-project that downloads the dependencies
+  task downloadDependencies {
+    doLast {
+      configurations.all { it.resolve() }
+    }
+  }
 }
