@@ -29,7 +29,9 @@ public abstract class BaseAlloy implements Alloy {
         // TODO: predict over all? or just a single one? or?
         Map<String, PredictResult> results = new HashMap<>();
         for(Map.Entry<String, PredictModel> entry: _labelModelMap.entrySet()) {
-            results.put(entry.getKey(), entry.getValue().predict(document, options));
+            PredictResult prediction = entry.getValue().predict(document, options);
+
+            results.put(entry.getKey(), prediction);
         }
         return results;
     }

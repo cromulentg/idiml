@@ -106,19 +106,30 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   describe("Tests predict") {
     it("returns appropriate probability") {
-      val intercept = -10.123
-      val coefficients = pipeline(doc)
+      val intercept = -1.123
+      val coefficients = Vectors.sparse(26, Array(0, 1, 2), Array(0.54, -1.23, 0.2))
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
         pipeline)
       val result = model.predict(doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
-      result.probability shouldBe 0.9999999f
+      result.probability shouldBe 0.16617252f
       result.matchCount shouldBe 1
     }
     it("should return significant features") {
-      //TODO:
+      val intercept = -1.123
+      val coefficients = Vectors.sparse(26, Array(0, 1, 2), Array(0.54, -1.23, 0.2))
+      val label: String = "alabel"
+      val model = new IdibonLogisticRegressionModel(
+        label,
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
+        pipeline)
+      val result = model.predict(doc, new PredictOptionsBuilder()
+        .showSignificantFeatures(0.35f).build()).asInstanceOf[SingleLabelDocumentResult]
+      result.probability shouldBe 0.16617252f
+      result.matchCount shouldBe 1
+      result.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
     }
   }
 

@@ -106,16 +106,16 @@ import org.json4s._
       // Map features to indexes & sort since they need to be in ascending order
       val indexValues = features.map(lookupOrAddToFeatureIndex(_)).sorted.toArray
       // Preallocate the arrays needed using their maximum possible size.
-      val newIndexes = Array.fill[Int](indexValues.size)(0)
-      val newValues = Array.fill[Double](indexValues.size)(0.0)
+      val newIndexes = Array.fill[Int](indexValues.length)(0)
+      val newValues = Array.fill[Double](indexValues.length)(0.0)
       var lastIndex = 0
       var i = 0
       var j = 0
       // traverse the sorted array of feature index values
-      while(i < indexValues.size) {
+      while(i < indexValues.length) {
         j = i + 1
         // if j is in the array
-        if (j < indexValues.size) {
+        if (j < indexValues.length) {
           // while we're equal to the next values increment j
           while (indexValues(i) == indexValues(j)) {
             j += 1
@@ -148,6 +148,16 @@ import org.json4s._
       featureIndex.map(x => {
         if (transform(x._2)) featureIndex.remove(x._1)
       })
+    }
+
+    override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
+      /* TODO: look at using more memory with a index -> feature map instead of iterating over everything. */
+      // iterate over all features in index
+      featureIndex.map(x => {
+        // if we find an index match
+        if (indexes.contains(x._2)) Some(x._2, x._1.toString())
+        else None
+      }).filter(_.isDefined).map(_.get).toList
     }
   }
 

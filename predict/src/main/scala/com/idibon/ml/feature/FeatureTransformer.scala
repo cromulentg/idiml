@@ -15,5 +15,6 @@ package com.idibon.ml.feature {
   trait FeatureTransformer {
     def numDimensions: Int = ???
     def prune(transform: Int => Boolean): Unit = ???
+    def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
   }
 }

@@ -6,7 +6,7 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.json4s._
 
 import scala.Boolean
-import scala.collection.mutable.{HashSet => MutableSet}
+import scala.collection.mutable.{HashSet => MutableSet, ListBuffer}
 import scala.collection.{Map => AnyMap}
 import scala.reflect.runtime.universe.{MethodMirror, typeOf}
 import scala.collection.mutable
@@ -194,6 +194,39 @@ class FeaturePipeline(state: LoadState)
         this.state.transforms.get(transform).get.prune(project)
       }
     }
+  }
+
+  /**
+    * Takes in a list of integers, and matches them with the corresponding
+    * FeatureTransformer and then calls that transformer with that feature
+    * subsection and to return a human readable feature name for that index.
+    * @param indexes
+    * @return
+    */
+  def getHumanReadableFeature(indexes: List[Int]): Map[Int, String] = {
+    val indexArray = indexes.toArray
+    val orderedTransformRanges = outputTransformNames.map(x => (x, outputDimensionsMap.get(x).get)).toArray
+    var i = 0
+    var j = 0
+    var results = ListBuffer[(Int, String)]()
+    while (i < orderedTransformRanges.length) {
+      val indexSet = new MutableSet[Int]()
+      // while the current index value is less than the startOffset + dimension
+      while(j < indexArray.length && indexArray(j) < (orderedTransformRanges(i)._2._1 + orderedTransformRanges(i)._2._2)) {
+        // add that to this transforms set of things to humanize
+        indexSet.add(indexArray(j))
+        // increment where we are looking in indexArray
+        j = j + 1
+      }
+      // get human versions for this particular transformer
+      val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get
+        .getHumanReadableFeature(indexSet.toSet)
+      // add results to list buffer
+      results ++= humanVersions
+      // increment transform we're looking at
+      i = i + 1
+    }
+    results.toList.toMap
   }
 
   def getTotalDimensions(): Int = totalDimensions
