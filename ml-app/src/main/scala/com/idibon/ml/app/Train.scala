@@ -25,6 +25,7 @@ object Train extends Tool with StrictLogging {
     val options = (new org.apache.commons.cli.Options)
       .addOption("i", "input", true, "Input file with training data")
       .addOption("o", "output", true, "Output alloy file")
+      .addOption("r", "rules", true, "Input file with rules data")
       .addOption("w", "wiggle-wiggle", false, "Wiggle Wiggle")
 
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
@@ -45,10 +46,21 @@ object Train extends Tool with StrictLogging {
     if (cli.hasOption('w')) new Thread(easterEgg).start()
     try{
       val startTime = System.currentTimeMillis()
-      new Trainer(engine).train(featurePipeline, () => {
-        Source.fromFile(cli.getOptionValue('i'))
+      new Trainer(engine).train(featurePipeline,
+        () => { // training data
+          Source.fromFile(cli.getOptionValue('i'))
           .getLines.map(line => parse(line).extract[JObject])
-      }).map(alloy => alloy.save(cli.getOptionValue('o')))
+        },
+        () => { // rule data
+          if (cli.hasOption('r')) {
+            Source.fromFile(cli.getOptionValue('r'))
+              .getLines.map(line => parse(line).extract[JObject])
+          } else {
+            List()
+          }
+        },
+        None // option config
+      ).map(alloy => alloy.save(cli.getOptionValue('o')))
         .map(x => {
           val elapsed = System.currentTimeMillis - startTime
           logger.info(s"Training completed in $elapsed ms")
