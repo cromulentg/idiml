@@ -10,6 +10,7 @@ import com.idibon.ml.feature.bagofwords.{BagOfWordsTransformer, CaseFoldOp}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
 import com.idibon.ml.feature.language.LanguageDetector
+import com.idibon.ml.feature.ngram.NgramTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder}
 import com.typesafe.scalalogging.StrictLogging
 
@@ -33,7 +34,8 @@ object Train extends Tool with StrictLogging {
   }
 
   private [this] val featurePipeline = (FeaturePipelineBuilder.named("pipeline")
-    += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "bagOfWords"))
+    += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams"))
+    += (FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, 3), "bagOfWords"))
     += (FeaturePipelineBuilder.entry("bagOfWords",
       new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseFoldOp.None),
       "convertToTokens", "languageDetector"))

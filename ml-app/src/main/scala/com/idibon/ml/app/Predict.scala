@@ -7,7 +7,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, render, parse}
 import com.idibon.ml.alloy.ScalaJarAlloy
-import com.idibon.ml.predict.{PredictModel, PredictResult, PredictOptions}
+import com.idibon.ml.predict._
 
 /** Command-line batch prediction tool
   *
@@ -20,7 +20,7 @@ object Predict extends Tool {
   private [this] def parseCommandLine(argv: Array[String]) = {
     val options = (new org.apache.commons.cli.Options)
       .addOption("i", "input", true, "Input file containing documents")
-      .addOption("o", "output", true, "Result output file")
+      .addOption("o", "output", true, "Result output CSV file")
       .addOption("a", "alloy", true, "Input alloy")
 
     (new org.apache.commons.cli.BasicParser).parse(options, argv)
@@ -38,19 +38,33 @@ object Predict extends Tool {
      * a sentinel value of None to cause the result output thread to
      * terminate. */
     val results = new LinkedBlockingQueue[Option[(JObject, Map[String, PredictResult])]]
-    val output = new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8")
+    val output = new org.apache.commons.csv.CSVPrinter(
+      new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8"),
+      org.apache.commons.csv.CSVFormat.RFC4180)
 
     val resultsThread = new Thread(new Runnable() {
       override def run {
+        var labels: Option[Seq[String]] = None
+
         Stream.continually(results.take)
           .takeWhile(_.isDefined)
           .foreach(_ match {
             case Some((document, prediction)) => {
+              /* initialize the CSV header structure and label output order
+               * on the first valid row, after the labels are known */
+              if (labels.isEmpty) {
+                labels = Some(prediction.keys.toList.sorted)
+                output.printRecord((Seq("Name", "Content") ++ labels.get).asJava)
+              }
               // output the prediction result and original content in JSON
-              val line = compact(render(
-                ("content" -> (document \ "content").extract[String]) ~
-                  ("prediction" -> prediction.toString)))
-              output.println(line)
+              val labelResults = labels.get.map(l => {
+                prediction(l).asInstanceOf[SingleLabelDocumentResult].probability
+              })
+              val row = (Seq(
+                (document \ "name").extract[Option[String]].getOrElse(""),
+                (document \ "content").extract[String]) ++ labelResults).asJava
+
+              output.printRecord(row)
             }
             case _ => { }
           })
