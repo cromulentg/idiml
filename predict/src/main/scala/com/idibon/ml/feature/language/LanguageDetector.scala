@@ -15,7 +15,7 @@ class LanguageDetector extends FeatureTransformer {
     * @param document - a parsed JSON document
     * @return - a LanguageCode feature
     */
-  def apply(document: JObject): Feature[LanguageCode] = {
+  def apply(document: JObject): LanguageCode = {
     (document \ "metadata" \ "iso_639_1").toOption
       .flatMap(code => LanguageCode.normalize(code.asInstanceOf[JString].s))
       .map(iso639_2 => LanguageCode(Some(iso639_2)))

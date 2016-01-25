@@ -16,8 +16,9 @@ class TokenTransformer extends FeatureTransformer {
     * @param language - the primary language for the document
     * @return all of the tokens in content
     */
-  def apply(content: Feature[String], language: LanguageCode): Seq[Token] = {
+  def apply(content: Feature[String], language: Feature[LanguageCode]):
+      Seq[Token] = {
     ICUTokenizer.tokenize(content.get,
-      language.icuLocale.getOrElse(ULocale.US))
+      language.get.icuLocale.getOrElse(ULocale.US))
   }
 }

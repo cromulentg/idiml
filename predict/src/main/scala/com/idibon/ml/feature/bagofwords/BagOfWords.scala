@@ -35,7 +35,8 @@ class BagOfWordsTransformer(accept: Seq[Tag.Value],
     * @param language - the primary language identified for the token stream
     * @return bag of words represented as a sequence of Word features.
     */
-  def apply(tokens: Seq[Feature[Token]], language: LanguageCode): Seq[Word] = {
+  def apply(tokens: Seq[Feature[Token]], language: Feature[LanguageCode]):
+      Seq[Word] = {
     val accepted = tokens.filter(t => (_tokenMask & (1 << t.get.tag.id)) != 0)
     this.transform match {
       case CaseFoldOp.None => accepted.map(t => Word(t.get.content))
