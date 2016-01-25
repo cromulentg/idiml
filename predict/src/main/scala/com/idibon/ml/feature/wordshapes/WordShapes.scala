@@ -5,14 +5,14 @@ import com.idibon.ml.feature.tokenizer.Token
 
 /** WordShape FeatureTransformer
   *
-  * Produces a bag of wordshapes, much like bag of words with an extra transformation,
-  * doesn't care about the order at all.
+  * Produces a bag of wordshapes, much like bag of words
+  * with an extra transformation.
+  * Preserves the order of token sequence.
   *
-  * Includes count of occurrences of each shape
   * */
 class WordShapesTransformer extends FeatureTransformer {
 
-  /** Produces wordshapes from a sequence of Tokens.
+  /** Produces a sequence of shapes from a sequence of Tokens.
     *
     * @param tokens
     * @return wordshapes represented as a sequence of Shape features.

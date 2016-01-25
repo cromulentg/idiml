@@ -15,7 +15,7 @@ class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
 
     it("should work on an empty sequence") {
-      transform.apply(Seq[Token]()) shouldBe empty
+      transform(Seq[Token]()) shouldBe empty
     }
 
     it("should work on a sequence of tokens") {
@@ -25,7 +25,7 @@ class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val expected = Seq[Feature[Shape]](
         new Shape("ccCcc"), new Shape("CccpCcc"), new Shape("CccpCcc"), new Shape("CCncc")
       )
-      transform.apply(tokens) shouldBe expected
+      transform(tokens) shouldBe expected
     }
 
     it("should have unicode support") {
@@ -37,7 +37,7 @@ class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val expected = Seq[Feature[Shape]](
         new Shape("Ccc"), new Shape("psp")
       )
-      transform.apply(tokens) shouldBe expected
+      transform(tokens) shouldBe expected
     }
 
   }

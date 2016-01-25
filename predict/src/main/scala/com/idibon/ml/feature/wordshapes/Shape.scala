@@ -6,7 +6,7 @@ import com.idibon.ml.alloy.Codec
 import com.idibon.ml.feature.{Feature, Buildable, Builder}
 
 /**
-  * This class represents a shape and it's occurrence count.
+  * This class represents a word shape.
   */
 case class Shape(shape: String) extends Feature[Shape]
   with Buildable[Shape, ShapeBuilder] {
