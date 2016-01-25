@@ -19,20 +19,6 @@ package com.idibon.ml.feature.tokenizer {
     */
   private[tokenizer] object ICUTokenizer {
 
-    /** Tokenizes the text
-      *
-      * Auto-detects the locale for the provided text, then tokenizes
-      * using any language-specific rules for that locale.
-      *
-      * Defaults to using the US if no locale is detected.
-      */
-    def tokenize(content: String): Seq[Token] = {
-      // FIXME: detect HTML vs plain-text
-      tokenize(content,
-        identifyLocale(content, CLD2.DocumentMode.PlainText)
-          .getOrElse(ULocale.US))
-    }
-
     def tokenize(content: String, locale: ULocale): Seq[Token] = {
       breaking(locale, (breakIt: BreakIterator) => {
         breakIt.setText(content)
@@ -55,33 +41,6 @@ package com.idibon.ml.feature.tokenizer {
         }).filter(_.length > 0).toList
       })
     }
-
-    /** Determines the primary locale for the document
-      *
-      * Uses language detection to assign a suitable locale for document
-      * tokenization, returning None if no locale is found.
-      *
-      * @param content text to process
-      * @param documentMode process the text in HTML or plain text mode
-      * @return the primary locale for the document, or None if detection fails
-      */
-    private[tokenizer] def identifyLocale(content: String,
-      documentMode: CLD2.DocumentMode) = Try({
-
-      /* if CLD2 initialization fails, or detection throws an exception for
-       * some reason, return None. fall-through cases are handled by the
-       * thrown MatchNotFound exception */
-      (CLD2.detect(content, documentMode): @unchecked) match {
-        case LangID.ENGLISH => ULocale.US
-        case LangID.CHINESE => ULocale.CHINA
-        case LangID.CHINESE_T => ULocale.TAIWAN
-        case LangID.JAPANESE => ULocale.JAPAN
-        case LangID.KOREAN => ULocale.KOREA
-        case LangID.FRENCH => ULocale.FRANCE
-        case LangID.GERMAN => ULocale.GERMANY
-        case LangID.ITALIAN => ULocale.ITALY
-      }
-    }).toOption
 
     /** Calls a user-provided function with a break iterator
       *
