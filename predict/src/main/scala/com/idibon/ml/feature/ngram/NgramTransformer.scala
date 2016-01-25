@@ -12,6 +12,9 @@ import com.idibon.ml.alloy.Alloy
   * lift single-word (i.e., unigram) features, such as those generated
   * by {@link com.idibon.ml.feature.bagofwords.BagOfWordsTransformer}
   * into multi-word (2 and 3 are most common) phrases.
+  *
+  * @param min - the minimum generated N-gram length (e.g., 1 = unigrams)
+  * @param max - the maximum generated N-gram length (e.g., 3 = trigrams)
   */
 class NgramTransformer(min: Int, max: Int) extends FeatureTransformer
     with Archivable[NgramTransformer, NgramTransformerLoader] {
