@@ -152,13 +152,13 @@ class Trainer(engine: Engine) extends StrictLogging {
             config: Option[JObject]): Try[Alloy] = {
     val parsedRules = rulesGenerator(rules)
     Try(RDDGenerator.getLabeledPointRDDs(this.engine, pipeline, docs))
-      .flatMap(trainingData => {
+      .flatMap{case (trainingData, featurePipeline) => {
         if (trainingData.isEmpty) {
           Failure(new IllegalArgumentException("No training data"))
         } else {
-          Try(fitModels(trainingData, pipeline, parsedRules))
+          Try(fitModels(trainingData, featurePipeline, parsedRules))
         }
-      })
+      }}
       .map({ case (modelsByLabel, uuidsByLabel) => {
         new ScalaJarAlloy(modelsByLabel, uuidsByLabel)
       }})

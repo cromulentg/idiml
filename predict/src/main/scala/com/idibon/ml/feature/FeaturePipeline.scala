@@ -18,20 +18,17 @@ import com.idibon.ml.common.Reflect._
 
 /** The feature pipeline transforms documents into feature vectors
   */
-class FeaturePipeline(state: LoadState)
+class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, Int)]] = None)
   extends Archivable[FeaturePipeline, FeaturePipelineLoader] with StrictLogging {
-
-  private val outputDimensionsMap = new mutable.HashMap[String, (Int, Int)]()
-  private var totalDimensions: Int = 0
-  private var outputTransformNames: List[String] = List()
-  private var frozen = false
+  val totalDimensions = outputDimensions.map(seq => seq.map(_._2).sum).getOrElse(-1)
+  val isFrozen = outputDimensions.isDefined
 
   /**
     * Function to prime the pipeline.
     *
     * @param documents
     */
-  def prime(documents: TraversableOnce[JObject]): Unit = {
+  def prime(documents: TraversableOnce[JObject]): FeaturePipeline = {
     for (document <- documents) {
       applyFeatureGraph(document)
     }
@@ -44,21 +41,24 @@ class FeaturePipeline(state: LoadState)
     * It saves the outputStage to a list, as well as the total dimensions and
     * the size of each outputStage's dimensions.
     */
-  private[feature] def freezePipeline(): Unit = {
+  private[feature] def freezePipeline(): FeaturePipeline = {
     // get names of output stages
-    outputTransformNames = this.state.pipeline.find(_.name == FeaturePipeline.OutputStage).map(_.inputs).get
+    val outputTransformNames = this.state.pipeline.find(_.name == FeaturePipeline.OutputStage).map(_.inputs).get
 
     // calculate total dimensions
-    totalDimensions = outputTransformNames.map(
-      transformName => (transformName, this.state.transforms.get(transformName).get.numDimensions)
-    ).foldRight(0) {
-      case ((name, dimensions), offset) => {
-        outputDimensionsMap.put(name, (offset, dimensions))
-        offset + dimensions
+    val outputDims = outputTransformNames
+      .map(transformName => {
+        // freeze
+        this.state.transforms.get(transformName).get.asInstanceOf[TerminableTransformer].freeze()
+        // pass through name
+        transformName
+      }).map(
+      transformName => {
+        // get number of dimensions
+        (transformName, this.state.transforms.get(transformName).get.asInstanceOf[TerminableTransformer].numDimensions)
       }
-    }
-    logger.debug(s"Freezing pipeline with $totalDimensions total dimensions.")
-    frozen = true
+    )
+    new FeaturePipeline(this.state, Some(outputDims))
   }
 
   /**
@@ -88,7 +88,7 @@ class FeaturePipeline(state: LoadState)
     * in this pipeline.
     */
   def apply(document: JObject): Vector = {
-    if (!frozen) throw new RuntimeException("Pipeline must be primed before use.")
+    if (!isFrozen) throw new IllegalStateException("Pipeline must be primed before use.")
     // apply the feature pipeline to the document
     val computedVectors = applyFeatureGraph(document)
     // get vectors that have been output by the output stage.
@@ -111,13 +111,12 @@ class FeaturePipeline(state: LoadState)
     val newValues = Array.fill[Double](numNonzeroDimensions)(0.0)
     var startIndex = 0
     var startOffset = 0
-    outputTransformNames.zip(vectors).foreach {
-      case (name, vector) => {
+    outputDimensions.get.zip(vectors).foreach {
+      case ((name, expectedDimension), vector) => {
         // each vector will have its full dimension so grab that
         val dimension = vector.size
         // assert the vector dimension matches the one we have taken earlier.
-        val expectedDimensions: Int = outputDimensionsMap.getOrElse(name, (0, 0))._2
-        assert(dimension == expectedDimensions, s"Expected $expectedDimensions but got $dimension.")
+        assert(dimension == expectedDimension, s"Expected $expectedDimension but got $dimension.")
         vector.foreachActive((index, value) => {
           /* Don't need to check that this index is in bounds, because the vector dimension
           matches what we expect */
@@ -176,9 +175,10 @@ class FeaturePipeline(state: LoadState)
     *                  should expect integers representing those values.
     */
   def prune(predicate: Int => Boolean): Unit = {
+    if (!isFrozen) throw new IllegalStateException("Pipeline must be primed before use.")
     // for each output transform prune it back.
-    outputDimensionsMap.par.foreach{
-      case (transform, (start, dimension)) => {
+    outputDimensions.get.zipWithIndex.par.foreach {
+      case ((transform, dimension), indice) => {
         /**
           * Wrap predicate function with offset function so that internal
           * feature transforms can use their native "index" range and
@@ -188,10 +188,10 @@ class FeaturePipeline(state: LoadState)
           * @return the index value in the global feature space.
           */
         def project(index: Int): Boolean = {
-          predicate(start + index)
+          predicate(outputDimensions.slice(0, indice).map(x => x(0)._2).sum + index)
         }
         // get the transformer and prune it!
-        this.state.transforms.get(transform).get.prune(project)
+        this.state.transforms.get(transform).get.asInstanceOf[TerminableTransformer].prune(project)
       }
     }
   }
@@ -203,23 +203,23 @@ class FeaturePipeline(state: LoadState)
     * @param indexes
     * @return
     */
-  def getHumanReadableFeature(indexes: List[Int]): Map[Int, String] = {
+  def getHumanReadableFeature(indexes: Seq[Int]): Map[Int, String] = {
     val indexArray = indexes.toArray
-    val orderedTransformRanges = outputTransformNames.map(x => (x, outputDimensionsMap.get(x).get)).toArray
+    val orderedTransformRanges = outputDimensions.get.toArray
     var i = 0
     var j = 0
     var results = ListBuffer[(Int, String)]()
     while (i < orderedTransformRanges.length) {
       val indexSet = new MutableSet[Int]()
       // while the current index value is less than the startOffset + dimension
-      while(j < indexArray.length && indexArray(j) < (orderedTransformRanges(i)._2._1 + orderedTransformRanges(i)._2._2)) {
+      while(j < indexArray.length && indexArray(j) < (orderedTransformRanges(i)._2 + orderedTransformRanges(i)._2)) {
         // add that to this transforms set of things to humanize
         indexSet.add(indexArray(j))
         // increment where we are looking in indexArray
         j = j + 1
       }
       // get human versions for this particular transformer
-      val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get
+      val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get.asInstanceOf[TerminableTransformer]
         .getHumanReadableFeature(indexSet.toSet)
       // add results to list buffer
       results ++= humanVersions
@@ -230,7 +230,6 @@ class FeaturePipeline(state: LoadState)
   }
 
   def getTotalDimensions(): Int = totalDimensions
-  def isFrozen(): Boolean = frozen
 }
 
 /** Paired loader class for FeaturePipeline instances */
@@ -263,7 +262,6 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
 
     val pipeline = FeaturePipeline.bind(transforms, pipeJson)
     pipeline.freezePipeline()
-    pipeline
   }
 
 
@@ -315,7 +313,7 @@ private[feature] object FeaturePipeline {
     val outputs = pipeline.find(_.name == "$output")
       .map(_.inputs.map(i => transforms(i))).getOrElse(List.empty)
 
-    new FeaturePipeline(new LoadState(graph, pipeline, outputs, transforms))
+    new FeaturePipeline(new LoadState(graph, pipeline, outputs, transforms), None)
   }
 
 

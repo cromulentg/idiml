@@ -31,7 +31,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"
   val doc: JObject = ( "content" -> text )
-  pipeline.prime(List(doc))
+  val fp = pipeline.prime(List(doc))
 
   var tempFilename = ""
   before {
@@ -49,14 +49,13 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   describe("Save & load integration test") {
     it("saves, loads and predicts as expected") {
       val intercept = -1.123
-      val coefficients = pipeline(doc)
+      val coefficients = fp(doc)
       val label: String = "alabel"
       // do hacky thing where model coefficients are document coefficients -- just to make
       // sure it all works
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
-        pipeline)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val labelToModel = Map(("alabel" -> model))
       val alloy = new ScalaJarAlloy(labelToModel, Map[String, String]())
       tempFilename = "save.jar"
@@ -88,12 +87,11 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
     it("returns config as expected") {
       val alloy = new IntentAlloy()
       val intercept = -1.123
-      val coefficients = pipeline(doc)
+      val coefficients = fp(doc)
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
-        pipeline)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val config = model.save(alloy.writer())
       implicit val formats = DefaultFormats
       val actualLabel = (config.get \ "label" ).extract[String]
@@ -111,8 +109,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
-        pipeline)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val result = model.predict(doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       result.probability shouldBe 0.16617252f
       result.matchCount shouldBe 1
@@ -123,8 +120,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept),
-        pipeline)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val result = model.predict(doc, new PredictOptionsBuilder()
         .showSignificantFeatures(0.35f).build()).asInstanceOf[SingleLabelDocumentResult]
       result.probability shouldBe 0.16617252f

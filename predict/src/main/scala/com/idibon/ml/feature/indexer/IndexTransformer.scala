@@ -22,8 +22,9 @@ import org.json4s._
     *
     *   @author Michelle Casbon <michelle@idibon.com>
     */
-  class IndexTransformer extends FeatureTransformer
+  class IndexTransformer(private var frozen: Boolean = false) extends FeatureTransformer
       with Archivable[IndexTransformer, IndexTransformLoader]
+      with TerminableTransformer
       with StrictLogging {
 
     private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
@@ -34,6 +35,8 @@ import org.json4s._
       val fos = new FeatureOutputStream(
         writer.resource(IndexTransformer.INDEX_RESOURCE_NAME))
       try {
+        // write boolean for frozen
+        fos.writeBoolean(frozen)
         // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
         Codec.VLuint.write(fos, featureIndex.size)
         // Store each key (feature) / value (index) pair in sequence
@@ -64,11 +67,12 @@ import org.json4s._
       * @return unique index
       */
     private[indexer] def lookupOrAddToFeatureIndex(feature: Feature[_]): Int = {
-      if (!featureIndex.contains(feature)) {
+      // only add to index if not frozen
+      if (!frozen && !featureIndex.contains(feature)) {
         featureIndex += (feature -> featureIndex.size)
       }
-
-      featureIndex(feature)
+      // return -1 as it's OOV or previously pruned if not in the index.
+      featureIndex.getOrElse(feature, -1)
     }
 
     /**
@@ -79,7 +83,7 @@ import org.json4s._
       */
     private[indexer] def createFeatureIndex(features: Seq[Feature[_]]): Int = {
 
-      features.map(t => lookupOrAddToFeatureIndex(t))
+      features.foreach(t => lookupOrAddToFeatureIndex(t))
 
       featureIndex.size
     }
@@ -109,37 +113,34 @@ import org.json4s._
       val newIndexes = Array.fill[Int](indexValues.length)(0)
       val newValues = Array.fill[Double](indexValues.length)(0.0)
       var lastIndex = 0
-      var i = 0
+      // skip OOV features
+      var i = indexValues.indexWhere(_ > -1, 0)
+      logger.debug(s"OOV/Pruned features were $i from ${indexValues.length}")
       var j = 0
       // traverse the sorted array of feature index values
       while(i < indexValues.length) {
-        j = i + 1
-        // if j is in the array
-        if (j < indexValues.length) {
-          // while we're equal to the next values increment j
-          while (indexValues(i) == indexValues(j)) {
-            j += 1
-          }
-        }
+        // find next index whose value doesn't equal the current index value. j could equal -1.
+        j = indexValues.indexWhere(_ != indexValues(i), i)
         // now we store the current index value
         newIndexes(lastIndex) = indexValues(i)
-        // and how many times it occurred
-        newValues(lastIndex) = j - i
+        // and how many times it occurred -- j could be -1 if we reached the end without a result
+        newValues(lastIndex) = if (j > -1) { j - i } else {indexValues.length - i}
         // and we increment where we are in the output array
         lastIndex += 1
-        // now move i to where ever j ended up
-        i = j
+        // now move i to where ever j ended up else skip to the end
+        i = if (j > -1) j else { indexValues.length }
       }
       // slicing allows us to make sure we chop off any trailing zeros
       Vectors.sparse(vocabSize, newIndexes.slice(0, lastIndex), newValues.slice(0, lastIndex))
     }
 
     def apply(features: Seq[Feature[_]]): Vector = {
+      /* TODO: @Gary: via what method do we return number of OOV items. I was thinking here, but
+         that would require a lot of rejiggering -- else whoever calls apply could figure OOV out.*/
       if (features.length < 1)
         Vectors.zeros(0)
-      else {
+      else
         getFeatureVector(features)
-      }
     }
 
     override def numDimensions: Int = featureIndex.size
@@ -159,6 +160,10 @@ import org.json4s._
         else None
       }).filter(_.isDefined).map(_.get).toList
     }
+
+    override def freeze(): Unit = {
+      frozen = true
+    }
   }
 
   /** Paired loader class for IndexTransformer */
@@ -169,10 +174,13 @@ import org.json4s._
       val fis = new FeatureInputStream(
         reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
 
+      // write boolean for frozen
+      val frozen = fis.readBoolean()
+
       // Retrieve the number of elements in the featureIndex map
       val size = Codec.VLuint.read(fis)
 
-      val transformer = new IndexTransformer
+      val transformer = new IndexTransformer(frozen)
 
       1 to size foreach { _ =>
         val feature = fis.readFeature
