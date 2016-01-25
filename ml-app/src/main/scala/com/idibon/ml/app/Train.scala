@@ -6,9 +6,10 @@ import java.nio.file.FileSystems
 import org.json4s._
 import com.idibon.ml.train.Trainer
 
-import com.idibon.ml.feature.bagofwords.BagOfWordsTransformer
+import com.idibon.ml.feature.bagofwords.{BagOfWordsTransformer, CaseFoldOp}
 import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
+import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder}
 import com.typesafe.scalalogging.StrictLogging
 
@@ -33,8 +34,11 @@ object Train extends Tool with StrictLogging {
 
   private [this] val featurePipeline = (FeaturePipelineBuilder.named("pipeline")
     += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "bagOfWords"))
-    += (FeaturePipelineBuilder.entry("bagOfWords", new BagOfWordsTransformer, "convertToTokens"))
-    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
+    += (FeaturePipelineBuilder.entry("bagOfWords",
+      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseFoldOp.None),
+      "convertToTokens", "languageDetector"))
+    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
+    += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
     := ("convertToIndex"))
 

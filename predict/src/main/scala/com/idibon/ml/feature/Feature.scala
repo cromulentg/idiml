@@ -1,6 +1,5 @@
 package com.idibon.ml.feature
 
-import java.io.{DataInputStream, DataOutputStream}
 import com.idibon.ml.alloy.Codec
 
 /** Generic interface for textual and machine learning features.
@@ -33,7 +32,7 @@ case class StringFeature(value: String) extends Feature[String]
   def get = value
 
   /** Saves a StringFeature to an output stream */
-  def save(output: DataOutputStream) {
+  def save(output: FeatureOutputStream) {
     Codec.String.write(output, value)
   }
 }
@@ -41,7 +40,7 @@ case class StringFeature(value: String) extends Feature[String]
 /** Paired builder class for StringFeature */
 class StringFeatureBuilder extends Builder[StringFeature] {
   /** Loads a StringFeature from an input stream */
-  def build(input: DataInputStream) = {
+  def build(input: FeatureInputStream) = {
     new StringFeature(Codec.String.read(input))
   }
 }

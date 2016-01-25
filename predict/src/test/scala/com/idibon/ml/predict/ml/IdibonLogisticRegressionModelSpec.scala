@@ -6,6 +6,7 @@ import com.idibon.ml.alloy.{ScalaJarAlloy, IntentAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
+import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.predict.{SingleLabelDocumentResult, PredictOptionsBuilder, PredictModel}
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -23,7 +24,8 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   val pipeline: FeaturePipeline = (FeaturePipelineBuilder.named("StefansPipeline")
     += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
-    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
+    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language"))
+    += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
     := ("convertToIndex"))
 

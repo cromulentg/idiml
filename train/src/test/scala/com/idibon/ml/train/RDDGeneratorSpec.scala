@@ -2,6 +2,7 @@ package com.idibon.ml.train
 
 import scala.io.Source
 import com.idibon.ml.feature.{FeaturePipeline, ContentExtractor, FeaturePipelineBuilder}
+import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.common.EmbeddedEngine
@@ -35,7 +36,8 @@ class RDDGeneratorSpec extends FunSpec with Matchers
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
       += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
-      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
+      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
       := ("convertToIndex"))
   }
