@@ -1,10 +1,8 @@
-import java.io.{DataInputStream, DataOutputStream}
-
 import com.ibm.icu.lang.UCharacter
 import com.ibm.icu.lang.UCharacterEnums.ECharacterCategory._
 
 import com.idibon.ml.alloy.Codec
-import com.idibon.ml.feature.{Feature, Buildable, Builder}
+import com.idibon.ml.feature._
 
 package com.idibon.ml.feature.tokenizer {
 
@@ -60,7 +58,7 @@ package com.idibon.ml.feature.tokenizer {
 
     def get = this
 
-    def save(output: DataOutputStream) {
+    def save(output: FeatureOutputStream) {
       Codec.String.write(output, content)
       Codec.VLuint.write(output, tag.id)
       Codec.VLuint.write(output, offset)
@@ -69,7 +67,7 @@ package com.idibon.ml.feature.tokenizer {
   }
 
   class TokenBuilder extends Builder[Token] {
-    def build(input: DataInputStream) = {
+    def build(input: FeatureInputStream) = {
       new Token(Codec.String.read(input),
         Tag.apply(Codec.VLuint.read(input)),
         Codec.VLuint.read(input),

@@ -1,7 +1,5 @@
 package com.idibon.ml.feature
 
-import java.io.{DataInputStream, DataOutputStream}
-
 /** Mixin trait for features that support saving and re-loading
   *
   * Implementations are paired to Builder classes that read data from an
@@ -14,7 +12,7 @@ trait Buildable[T <: Buildable[T, Builder[T]], +U <: Builder[T]] {
     *
     * @param output - Output stream to write data
     */
-  def save(output: DataOutputStream)
+  def save(output: FeatureOutputStream)
 }
 
 trait Builder[T] {
@@ -22,5 +20,5 @@ trait Builder[T] {
     *
     * @param input - Data stream where object was previously saved
     */
-  def build(input: DataInputStream): T
+  def build(input: FeatureInputStream): T
 }
