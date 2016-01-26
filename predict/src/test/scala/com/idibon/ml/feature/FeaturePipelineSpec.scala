@@ -49,6 +49,76 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     writer
   }
 
+  //FIXME
+//  describe("Vector concatenation & priming") {
+//    val pipelineDefinition:String = """
+//"pipeline":[
+//  {"name":"$output","inputs":["concatenator"]},
+//  {"name":"concatenator","inputs":["metadataVector","featureVector", "metadataVector2"]},
+//  {"name":"contentExtractor","inputs":["$document"]},
+//  {"name":"metadataVector2","inputs":["$document"]},
+//  {"name":"metadataVector","inputs":["$document"]},
+//  {"name":"featureVector","inputs":["contentExtractor"]}]
+//}"""
+//    it("throws error on bad dimensions") {
+//      val dummyAlloy = createMockReader
+//      val json = parse("""{
+//"transforms":[
+//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenatorBad"},
+//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],""" + pipelineDefinition)
+//      val pipeline = (new FeaturePipelineLoader)
+//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+//      // TODO: fix?
+//      // loggedMessages shouldBe empty
+//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+//      intercept[AssertionError]{
+//        pipeline(doc)
+//      }
+//    }
+//
+//    it("works as expected with multiple vectors") {
+//      val dummyAlloy = createMockReader
+//      val json = parse("""{
+//"transforms":[
+//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
+//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
+//      val pipeline = (new FeaturePipelineLoader)
+//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+////      loggedMessages shouldBe empty
+//
+//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+//      pipeline.prime(List(doc))
+//      pipeline(doc) shouldBe Vectors.sparse(3, Array(0, 1, 2), Array(3.14159265, 11.0, 2.14))
+//    }
+//
+//    it("primes as intended") {
+//      val dummyAlloy = createMockReader
+//      val json = parse("""{
+//"transforms":[
+//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
+//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
+//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
+//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
+//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
+//      val pipeline = (new FeaturePipelineLoader)
+//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+////      loggedMessages shouldBe empty
+//
+//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+//      val newPipeline = pipeline.prime(List(doc))
+//      pipeline.isFrozen shouldBe false
+//      newPipeline.isFrozen shouldBe true
+//      pipeline.getTotalDimensions() shouldBe 3
+//      newPipeline.getTotalDimensions() shouldBe 3
+//    }
+//  }
+
   describe("save") {
     def runSaveTest(unparsed: String) {
       val dummyReader = createMockReader
@@ -87,7 +157,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
-        List(Vectors.dense(1.0, 0.0, 1.0), Vectors.dense(0.0, -1.0, 0.5))
+        Vectors.sparse(6,Array(0,1,2,3,4,5),Array(1.0,0.0,1.0,0.0,-1.0,0.5))
       verify(dummyAlloy, times(2)).within(anyString())
       verify(dummyAlloy).within("A")
       verify(dummyAlloy).within("B")
@@ -131,7 +201,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
-      pipeline(doc) shouldBe List(Vectors.dense(3.14159265, 11.0))
+      val fp = pipeline.prime(List(doc))
+      fp(doc) shouldBe Vectors.sparse(2, Array(0, 1), Array(3.14159265, 11.0))
     }
   }
 
@@ -353,10 +424,38 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   }
 }
 
-private [this] class VectorConcatenator extends FeatureTransformer {
+private [this] class VectorConcatenator extends FeatureTransformer with TerminableTransformer {
+  var length = 0
+  var frozen = false
+  def apply(inputs: Vector*): Vector = {
+    val v = Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
+    length = v.size
+    v
+  }
+  override def numDimensions: Int = length
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def freeze(): Unit = { frozen = true }
+}
+
+/**
+  * Bad vector concatenator that has incorrect dimensions.
+  */
+private [this] class VectorConcatenatorBad extends FeatureTransformer with TerminableTransformer {
+  var frozen = false
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
   }
+  override def numDimensions: Int = -1
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def freeze(): Unit = { frozen = true }
 }
 
 private [this] class CurriedExtractor extends FeatureTransformer {
@@ -369,16 +468,45 @@ private [this] class NotATransformer extends FeatureTransformer {
   def appply(invalid: Int): Int = invalid + 10
 }
 
-private [this] class FeatureVectors extends FeatureTransformer {
+private [this] class FeatureVectors extends FeatureTransformer with TerminableTransformer {
   def apply(content: Seq[Feature[String]]): Vector = {
     Vectors.dense(content.map(_.get.length.toDouble).toArray)
   }
+  override def numDimensions: Int = 0
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def freeze(): Unit = {}
 }
 
-private [this] class MetadataNumberExtractor extends FeatureTransformer {
+private [this] class MetadataNumberExtractor extends FeatureTransformer with TerminableTransformer {
   def apply(document: JObject): Vector = {
     Vectors.dense((document \ "metadata" \ "number").asInstanceOf[JDouble].num)
   }
+
+  override def freeze(): Unit = {}
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def numDimensions: Int = 1
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
+}
+
+private [this] class MetadataNumberExtractor2 extends FeatureTransformer with TerminableTransformer{
+  def apply(document: JObject): Vector = {
+    Vectors.dense((document \ "metadata" \ "number2").asInstanceOf[JDouble].num)
+  }
+
+  override def freeze(): Unit = {}
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def numDimensions: Int = 1
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
 }
 
 private [this] class TokenConsumer extends FeatureTransformer {
@@ -393,7 +521,7 @@ private [this] class DocumentExtractor extends FeatureTransformer {
 
 private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
     extends FeatureTransformer
-    with Archivable[ArchivableTransform, ArchivableTransformLoader] {
+    with Archivable[ArchivableTransform, ArchivableTransformLoader] with TerminableTransformer {
 
   def apply: Vector = {
     suppliedConfig.map(config => {
@@ -404,6 +532,14 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
   }
 
   def save(w: Alloy.Writer): Option[JObject] = suppliedConfig
+
+  override def numDimensions: Int = 3
+
+  override def prune(transform: (Int) => Boolean): Unit = ???
+
+  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+
+  override def freeze(): Unit = {}
 }
 
 private [this] class ArchivableTransformLoader

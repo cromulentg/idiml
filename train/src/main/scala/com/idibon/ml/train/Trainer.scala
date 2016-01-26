@@ -1,5 +1,7 @@
 package com.idibon.ml.train
 
+import java.util
+
 import com.idibon.ml.alloy.{ScalaJarAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictModel
@@ -18,7 +20,7 @@ import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{parse, render, compact}
 
 import scala.collection.mutable
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{ListBuffer, HashMap}
 import scala.util.{Try, Failure}
 
 /** Trainer
@@ -50,8 +52,8 @@ class Trainer(engine: Engine) extends StrictLogging {
     // Print out the parameters, documentation, and any default values.
     logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
     // We use a ParamGridBuilder to construct a grid of parameters to search over.
-    // 5 values for lr.regParam,
-    // 1 x 5 = 5 parameter settings for CrossValidator to choose from.
+    // 6 values for lr.regParam, 6 values for elastic-net
+    // 6 x 6 = 36 parameter settings for CrossValidator to choose from.
     val paramGrid = new ParamGridBuilder()
       // TODO: make these parameters more realistic
       .addGrid(lr.regParam, Array(0.01, 0.05, 0.1, 0.20, 0.35, 0.5))
@@ -68,7 +70,7 @@ class Trainer(engine: Engine) extends StrictLogging {
       // TODO: decide on best evaluator (this uses ROC)
       .setEvaluator(new BinaryClassificationEvaluator())
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(6) // Use 3+ in practice
+      .setNumFolds(10) // Use 3+ in practice
     cv
   }
 
@@ -79,6 +81,7 @@ class Trainer(engine: Engine) extends StrictLogging {
 
     val labelModelMap = new mutable.HashMap[String, PredictModel]()
     val labelToUUID = new mutable.HashMap[String, String]()
+    val featuresUsed = new util.HashSet[Int]()
 
     /* to make it easier to see everything together about the models
      * trained. Build an atomic log line. */
@@ -98,14 +101,24 @@ class Trainer(engine: Engine) extends StrictLogging {
         val ruleModel = new DocumentRules(label, rules.getOrElse(label, List()))
         // Ensemble
         val ensembleModel = new EnsembleModel(label, List[PredictModel](idiModel, ruleModel))
-        (label, ensembleModel)
+        (label, ensembleModel, model.coefficients)
       }
       // remove parallel, and then stick it in the map
     }.toList.foreach(x => {
       labelModelMap.put(x._1, x._2)
       // TODO: UUID from task config
       labelToUUID.put(x._1, x._1)
+      // add coefficients
+      x._3.foreachActive((index, _) => featuresUsed.add(index))
     })
+    logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
+    // function to pass down so that the feature transforms can prune themselves.
+    // i.e. if it isn't used, remove it.
+    def isNotUsed(featureIndex: Int): Boolean = {
+      !featuresUsed.contains(featureIndex)
+    }
+    // prune unused features from global feature pipeline
+    pipeline.prune(isNotUsed)
     // log training information atomically
     logger.info(atomicLogLine.toString())
     (labelModelMap.toMap, labelToUUID.toMap)
@@ -139,13 +152,13 @@ class Trainer(engine: Engine) extends StrictLogging {
             config: Option[JObject]): Try[Alloy] = {
     val parsedRules = rulesGenerator(rules)
     Try(RDDGenerator.getLabeledPointRDDs(this.engine, pipeline, docs))
-      .flatMap(trainingData => {
+      .flatMap{case (trainingData, featurePipeline) => {
         if (trainingData.isEmpty) {
           Failure(new IllegalArgumentException("No training data"))
         } else {
-          Try(fitModels(trainingData, pipeline, parsedRules))
+          Try(fitModels(trainingData, featurePipeline, parsedRules))
         }
-      })
+      }}
       .map({ case (modelsByLabel, uuidsByLabel) => {
         new ScalaJarAlloy(modelsByLabel, uuidsByLabel)
       }})

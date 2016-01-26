@@ -12,5 +12,12 @@ package com.idibon.ml.feature {
     * * (Seq[Feature[_]*) -> Seq[F]
     * * (
     */
-  trait FeatureTransformer
+  trait FeatureTransformer {}
+
+  trait TerminableTransformer {
+    def freeze(): Unit
+    def numDimensions: Int
+    def prune(transform: Int => Boolean): Unit
+    def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)]
+  }
 }

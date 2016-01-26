@@ -47,7 +47,7 @@ class RDDGeneratorSpec extends FunSpec with Matchers
       implicit val formats = org.json4s.DefaultFormats
 
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
-      val training = RDDGenerator.getLabeledPointRDDs(engine, pipeline, () => {
+      val (training, fp) = RDDGenerator.getLabeledPointRDDs(engine, pipeline, () => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
       })

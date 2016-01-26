@@ -42,12 +42,12 @@ object RDDGenerator extends StrictLogging {
     * @return a Map from label name to an RDD of LabeledPoints for that label
     */
   def getLabeledPointRDDs(engine: Engine, pipeline: FeaturePipeline,
-      docs: () => TraversableOnce[JObject]): Map[String, RDD[LabeledPoint]] = {
+      docs: () => TraversableOnce[JObject]): (Map[String, RDD[LabeledPoint]], FeaturePipeline) = {
 
     implicit val formats = org.json4s.DefaultFormats
 
     // Prime the index by reading each document from the input file, which assigns an index value to each token
-    docs().foreach(document => pipeline(document))
+    val fp = pipeline.prime(docs())
 
     // Iterate over the data one more time now that the index is complete. This ensures that every feature vector
     // will now be the same size
@@ -68,8 +68,7 @@ object RDDGenerator extends StrictLogging {
         val labelNumeric = if (isPositive) 1.0 else 0.0
 
         // Run the pipeline to generate the feature vector
-        // FIXME: concatenate the vectors
-        val featureVector = pipeline(document).head
+        val featureVector = fp(document)
 
         // Create labeled points
         perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
@@ -93,6 +92,6 @@ object RDDGenerator extends StrictLogging {
     }
     logger.info(logLine)
 
-    perLabelRDDs.toMap
+    (perLabelRDDs.toMap, fp)
   }
 }

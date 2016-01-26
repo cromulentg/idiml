@@ -13,6 +13,8 @@ import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrap
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.json4s._
 
+import scala.collection.mutable.ListBuffer
+
 /**
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   *
@@ -34,7 +36,7 @@ case class IdibonLogisticRegressionModel(label: String,
     */
   override def predict(document: JObject,
                        options: PredictOptions): PredictResult = {
-    return predict(featurePipeline.apply(document).head, options)
+    return predict(featurePipeline.apply(document), options)
   }
 
   /**
@@ -53,9 +55,9 @@ case class IdibonLogisticRegressionModel(label: String,
     builder.setProbability(results.apply(1).toFloat)
     builder.setMatchCount(1)
     if (!options.significantFeatureThreshold.isNaN()) {
-      // TODO: get significant features.
-      // e.g. we need to find all the features that have a weight above X.
-      // We should also check whether we need to take any transform on the weights. e.g. exp ?
+      val indexSigFeatures = lrm.getSignificantFeatures(features, options.significantFeatureThreshold)
+      val indexToHumanFeatures = featurePipeline.getHumanReadableFeature(indexSigFeatures.map(x => x._1))
+      builder.addSignificantFeatures(indexSigFeatures.map(x => (indexToHumanFeatures.get(x._1).get, x._2)).toList)
     }
     builder.build()
   }
@@ -133,11 +135,15 @@ object IdibonLogisticRegressionModel extends StrictLogging {
     Codec.VLuint.write(out, coefficients.size)
     // actual non-zero dimensions
     Codec.VLuint.write(out, coefficients.numActives)
+    var maxCoefficient = -10000.0
+    var minCoefficient = 10000.0
     coefficients.foreachActive{
       case (index, value) =>
         // do I need to worry about 0?
         Codec.VLuint.write(out, index)
         out.writeDouble(value)
+        if (value > maxCoefficient) maxCoefficient = value
+        if (value < minCoefficient) minCoefficient = value
     }
   }
 
