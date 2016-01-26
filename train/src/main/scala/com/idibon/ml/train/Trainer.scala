@@ -56,8 +56,8 @@ class Trainer(engine: Engine) extends StrictLogging {
     // 6 x 6 = 36 parameter settings for CrossValidator to choose from.
     val paramGrid = new ParamGridBuilder()
       // TODO: make these parameters more realistic
-      .addGrid(lr.regParam, Array(0.01, 0.05, 0.1, 0.20, 0.35, 0.5))
-      .addGrid(lr.elasticNetParam, Array(0.0, 0.2, 0.5, 0.7, 0.9, 1.0))
+      .addGrid(lr.regParam, Array(0.01, 0.1, 0.25))
+      .addGrid(lr.elasticNetParam, Array(0.0, 0.2))
       .build()
 
     // We now treat the LR as an Estimator, wrapping it in a CrossValidator instance.
