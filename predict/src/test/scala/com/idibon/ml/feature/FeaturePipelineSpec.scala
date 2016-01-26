@@ -49,75 +49,60 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     writer
   }
 
-  //FIXME
-//  describe("Vector concatenation & priming") {
-//    val pipelineDefinition:String = """
-//"pipeline":[
-//  {"name":"$output","inputs":["concatenator"]},
-//  {"name":"concatenator","inputs":["metadataVector","featureVector", "metadataVector2"]},
-//  {"name":"contentExtractor","inputs":["$document"]},
-//  {"name":"metadataVector2","inputs":["$document"]},
-//  {"name":"metadataVector","inputs":["$document"]},
-//  {"name":"featureVector","inputs":["contentExtractor"]}]
-//}"""
-//    it("throws error on bad dimensions") {
-//      val dummyAlloy = createMockReader
-//      val json = parse("""{
-//"transforms":[
-//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
-//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenatorBad"},
-//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
-//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
-//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],""" + pipelineDefinition)
-//      val pipeline = (new FeaturePipelineLoader)
-//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
-//      // TODO: fix?
-//      // loggedMessages shouldBe empty
-//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
-//      intercept[AssertionError]{
-//        pipeline(doc)
-//      }
-//    }
-//
-//    it("works as expected with multiple vectors") {
-//      val dummyAlloy = createMockReader
-//      val json = parse("""{
-//"transforms":[
-//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
-//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
-//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
-//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
-//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
-//      val pipeline = (new FeaturePipelineLoader)
-//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
-////      loggedMessages shouldBe empty
-//
-//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
-//      pipeline.prime(List(doc))
-//      pipeline(doc) shouldBe Vectors.sparse(3, Array(0, 1, 2), Array(3.14159265, 11.0, 2.14))
-//    }
-//
-//    it("primes as intended") {
-//      val dummyAlloy = createMockReader
-//      val json = parse("""{
-//"transforms":[
-//  {"name":"contentExtractor","class":"com.idibon.ml.feature.ContentExtractor"},
-//  {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
-//  {"name":"metadataVector","class":"com.idibon.ml.feature.MetadataNumberExtractor"},
-//  {"name":"metadataVector2","class":"com.idibon.ml.feature.MetadataNumberExtractor2"},
-//  {"name":"featureVector","class":"com.idibon.ml.feature.FeatureVectors"}], """ + pipelineDefinition)
-//      val pipeline = (new FeaturePipelineLoader)
-//        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
-////      loggedMessages shouldBe empty
-//
-//      val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
-//      val newPipeline = pipeline.prime(List(doc))
-//      pipeline.isFrozen shouldBe false
-//      newPipeline.isFrozen shouldBe true
-//      pipeline.getTotalDimensions() shouldBe 3
-//      newPipeline.getTotalDimensions() shouldBe 3
-//    }
-//  }
+  describe("Vector concatenation & priming") {
+    val transforms = Map(
+      "contentExtractor" -> new DocumentExtractor,
+      "concatenator" -> new VectorConcatenator,
+      "concatenatorBad" -> new VectorConcatenatorBad,
+      "metadataVector" -> new MetadataNumberExtractor,
+      "metadataVector2" -> new MetadataNumberExtractor2,
+      "featureVector" -> new FeatureVectors
+    )
+
+    val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265, "number2":2.14}}""").asInstanceOf[JObject]
+
+    it("throws error on bad dimensions") {
+      val pipeline = List(
+        new PipelineEntry("$output", List("concatenatorBad")),
+        new PipelineEntry("concatenatorBad", List("metadataVector", "featureVector")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("metadataVector", List("$document")),
+        new PipelineEntry("featureVector", List("contentExtractor")))
+
+      val featurePipeline = FeaturePipeline.bind(transforms, pipeline).prime(List(doc))
+      intercept[AssertionError]{
+        featurePipeline(doc)
+      }
+    }
+
+    it("works as expected with multiple vectors") {
+      val pipeline = List(
+        new PipelineEntry("$output", List("concatenator")),
+        new PipelineEntry("concatenator", List("metadataVector", "featureVector", "metadataVector2")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("metadataVector", List("$document")),
+        new PipelineEntry("metadataVector2", List("$document")),
+        new PipelineEntry("featureVector", List("contentExtractor")))
+      val featurePipeline = FeaturePipeline.bind(transforms, pipeline).prime(List(doc))
+      featurePipeline(doc) shouldBe Vectors.sparse(3, Array(0, 1, 2), Array(3.14159265, 11.0, 2.14))
+    }
+
+    it("primes as intended") {
+      val pipeline = List(
+        new PipelineEntry("$output", List("concatenator")),
+        new PipelineEntry("concatenator", List("metadataVector", "metadataVector2")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("metadataVector", List("$document")),
+        new PipelineEntry("metadataVector2", List("$document")),
+        new PipelineEntry("featureVector", List("contentExtractor")))
+      val unprimed = FeaturePipeline.bind(transforms, pipeline)
+      val primed = unprimed.prime(List(doc))
+      unprimed.isFrozen shouldBe false
+      primed.isFrozen shouldBe true
+      unprimed.getTotalDimensions() shouldBe -1
+      primed.getTotalDimensions() shouldBe 2
+    }
+  }
 
   describe("save") {
     def runSaveTest(unparsed: String) {
@@ -469,10 +454,13 @@ private [this] class NotATransformer extends FeatureTransformer {
 }
 
 private [this] class FeatureVectors extends FeatureTransformer with TerminableTransformer {
+  var dims = 0
   def apply(content: Seq[Feature[String]]): Vector = {
-    Vectors.dense(content.map(_.get.length.toDouble).toArray)
+    val v = Vectors.dense(content.map(_.get.length.toDouble).toArray)
+    dims = v.size
+    v
   }
-  override def numDimensions: Int = 0
+  override def numDimensions: Int = dims
 
   override def prune(transform: (Int) => Boolean): Unit = ???
 
