@@ -204,29 +204,41 @@ class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, In
     * @return
     */
   def getHumanReadableFeature(indexes: Seq[Int]): Map[Int, String] = {
+    if (!isFrozen) throw new IllegalStateException("Pipeline must be primed before use.")
     val indexArray = indexes.toArray
     val orderedTransformRanges = outputDimensions.get.toArray
     var i = 0
     var j = 0
-    var results = ListBuffer[(Int, String)]()
+    var offset = 0
+    var results = ListBuffer[(Int, List[(Int, String)])]()
     while (i < orderedTransformRanges.length) {
       val indexSet = new MutableSet[Int]()
+      val curDimension: Int = orderedTransformRanges(i)._2
       // while the current index value is less than the startOffset + dimension
-      while(j < indexArray.length && indexArray(j) < (orderedTransformRanges(i)._2 + orderedTransformRanges(i)._2)) {
+      while(j < indexArray.length && indexArray(j) < (offset + curDimension)) {
         // add that to this transforms set of things to humanize
-        indexSet.add(indexArray(j))
+        indexSet.add(indexArray(j) - offset)
         // increment where we are looking in indexArray
         j = j + 1
       }
-      // get human versions for this particular transformer
-      val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get.asInstanceOf[TerminableTransformer]
-        .getHumanReadableFeature(indexSet.toSet)
-      // add results to list buffer
-      results ++= humanVersions
+      if (indexSet.size > 0) {
+        // get human versions for this particular transformer
+        val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get
+          .asInstanceOf[TerminableTransformer]
+          .getHumanReadableFeature(indexSet.toSet)
+        // add results to list buffer
+        results += ((offset, humanVersions))
+      }
       // increment transform we're looking at
       i = i + 1
+      // increment offset
+      offset += curDimension
     }
-    results.toList.toMap
+    results.toList.flatMap {
+      case (offset, list) => {
+        list.map(x => (x._1 + offset, x._2))
+      }
+    }.toMap
   }
 
   def getTotalDimensions(): Int = totalDimensions
