@@ -8,9 +8,13 @@ import com.idibon.ml.alloy.Alloy
 import org.json4s._
 import org.json4s.JsonDSL._
 
-object CaseFoldOp extends Enumeration {
+import com.ibm.icu.lang.UCharacter
+
+object CaseTransform extends Enumeration {
   // TODO: add more case fold choices here
-  val None  /* no change in case */ = Value
+  val ToLower,  /* convert all words to lower case */
+    ToUpper,    /* convert all words to upper case */
+    None        /* no change in case */ = Value
 }
 
 /** BagOfWords FeatureTransformer
@@ -22,7 +26,7 @@ object CaseFoldOp extends Enumeration {
   * @param transform - a case folding operation to apply
   */
 class BagOfWordsTransformer(accept: Seq[Tag.Value],
-  transform: CaseFoldOp.Value) extends FeatureTransformer
+  transform: CaseTransform.Value) extends FeatureTransformer
     with Archivable[BagOfWordsTransformer, BagOfWordsTransformerLoader] {
 
   // for performance, convert the list of accepted token tags into a bitmask
@@ -39,7 +43,23 @@ class BagOfWordsTransformer(accept: Seq[Tag.Value],
       Seq[Word] = {
     val accepted = tokens.filter(t => (_tokenMask & (1 << t.get.tag.id)) != 0)
     this.transform match {
-      case CaseFoldOp.None => accepted.map(t => Word(t.get.content))
+      case CaseTransform.ToLower => {
+        language.get.icuLocale.map(locale => {
+          accepted.map(t => Word(UCharacter.toLowerCase(locale, t.get.content)))
+        }).getOrElse({
+          accepted.map(t => Word(UCharacter.toLowerCase(t.get.content)))
+        })
+      }
+      case CaseTransform.ToUpper => {
+        language.get.icuLocale.map(locale => {
+          accepted.map(t => Word(UCharacter.toUpperCase(locale, t.get.content)))
+        }).getOrElse({
+          accepted.map(t => Word(UCharacter.toUpperCase(t.get.content)))
+        })
+      }
+      case CaseTransform.None => {
+        accepted.map(t => Word(t.get.content))
+      }
     }
   }
 
@@ -57,7 +77,7 @@ class BagOfWordsTransformerLoader extends ArchiveLoader[BagOfWordsTransformer] {
 
     val bowConfig = config.get.extract[BagOfWordsConfig]
     val accept = bowConfig.accept.map(t => Tag.withName(t))
-    val transform = CaseFoldOp.withName(bowConfig.transform)
+    val transform = CaseTransform.withName(bowConfig.transform)
     new BagOfWordsTransformer(accept, transform)
   }
 }
@@ -65,6 +85,6 @@ class BagOfWordsTransformerLoader extends ArchiveLoader[BagOfWordsTransformer] {
 /** JSON configuration data for the bag-of-words transform
   *
   * @param accept - a list of names of accepted token types (must be Tag.Value)
-  * @param transform - the name of a case-folding transform (CaseFoldOp.Value)
+  * @param transform - the name of a case-folding transform (CaseTransform.Value)
   */
 sealed case class BagOfWordsConfig(accept: List[String], transform: String)
