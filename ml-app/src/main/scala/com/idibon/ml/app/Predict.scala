@@ -54,12 +54,14 @@ object Predict extends Tool {
                * on the first valid row, after the labels are known */
               if (labels.isEmpty) {
                 labels = Some(prediction.keys.toList.sorted)
-                output.printRecord((Seq("Name", "Content") ++ labels.get).asJava)
+                output.printRecord((Seq("Name", "Content") ++
+                  labels.get.map(l => List(l, s"features[$l]")).flatten).asJava)
               }
               // output the prediction result and original content in JSON
               val labelResults = labels.get.map(l => {
-                prediction(l).asInstanceOf[SingleLabelDocumentResult].probability
-              })
+                val result = prediction(l).asInstanceOf[SingleLabelDocumentResult]
+                List(result.probability, result.significantFeatures.map(_._1))
+              }).reduce(_ ++ _)
               val row = (Seq(
                 (document \ "name").extract[Option[String]].getOrElse(""),
                 (document \ "content").extract[String]) ++ labelResults).asJava
@@ -77,7 +79,8 @@ object Predict extends Tool {
         .getLines.toStream.par
         .foreach(line => {
           val document = parse(line).extract[JObject]
-          val result = model.predict(document, PredictOptions.DEFAULT)
+          val result = model.predict(document,
+            (new PredictOptionsBuilder).showSignificantFeatures(0.1f).build)
           results.offer(Some((document, result.asScala.toMap)))
         })
     } finally {
