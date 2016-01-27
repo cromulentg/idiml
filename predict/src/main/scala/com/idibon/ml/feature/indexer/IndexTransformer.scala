@@ -28,6 +28,7 @@ import org.json4s._
       with StrictLogging {
 
     private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
+    var frozenSize = 0
 
     def getFeatureIndex = featureIndex
 
@@ -85,7 +86,7 @@ import org.json4s._
 
       features.foreach(t => lookupOrAddToFeatureIndex(t))
 
-      featureIndex.size
+      numDimensions
     }
 
     /**
@@ -143,7 +144,7 @@ import org.json4s._
         getFeatureVector(features)
     }
 
-    override def numDimensions: Int = featureIndex.size
+    override def numDimensions: Int = if(frozen) frozenSize else featureIndex.size
 
     override def prune(transform: (Int) => Boolean): Unit = {
       featureIndex.map(x => {
@@ -163,6 +164,7 @@ import org.json4s._
 
     override def freeze(): Unit = {
       frozen = true
+      frozenSize = featureIndex.size
     }
   }
 
