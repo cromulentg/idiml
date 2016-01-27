@@ -33,7 +33,8 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
   override def predictProbability(features: Vector): Vector = {
     if(coefficients.size != features.size) {
       val delta = features.size - coefficients.size
-      assert(delta > 0) // delta should always be greater than 0, else FeaturePipeline is wonky.
+      // delta should always be greater than 0, else FeaturePipeline is wonky.
+      assert(delta > 0, s"Expected ${coefficients.size} but got ${features.size} which was smaller.")
       logger.trace(s"Predicting with ${delta} OOV dimensions.")
       val sparseVector = features.asInstanceOf[SparseVector]
       // can take slice since indices are always are in order of value, and thus new features
