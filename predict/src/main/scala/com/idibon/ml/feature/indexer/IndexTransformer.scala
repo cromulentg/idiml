@@ -21,14 +21,18 @@ import org.json4s._
     *   - sums the vectors to produce the returned vector
     *
     *   @author Michelle Casbon <michelle@idibon.com>
+    *   @author Stefan Krawczyk <stefan@idibon.com>
+    *
+    * @param frozen whether the index size is frozen and can be added to.
+    * @param frozenSize the frozen size - needed incase the index is pruned once frozen.
     */
-  class IndexTransformer(private var frozen: Boolean = false) extends FeatureTransformer
+  class IndexTransformer(private var frozen: Boolean = false,
+                         private var frozenSize: Int = 0) extends FeatureTransformer
       with Archivable[IndexTransformer, IndexTransformLoader]
       with TerminableTransformer
       with StrictLogging {
 
     private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
-    var frozenSize = 0
 
     def getFeatureIndex = featureIndex
 
@@ -38,7 +42,9 @@ import org.json4s._
       try {
         // write boolean for frozen
         fos.writeBoolean(frozen)
-        // Save the dimensionality of the featureIndex map so we know how many times to call Codec.read() at load time
+        // save the dimensionality of the feature index, so that if frozen, we can create properly sized vectors
+        Codec.VLuint.write(fos, frozenSize)
+        // Save the size of the featureIndex map so we know how many times to call Codec.read() at load time
         Codec.VLuint.write(fos, featureIndex.size)
         // Store each key (feature) / value (index) pair in sequence
         featureIndex.foreach {
@@ -176,13 +182,15 @@ import org.json4s._
       val fis = new FeatureInputStream(
         reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
 
-      // write boolean for frozen
+      // read boolean for frozen
       val frozen = fis.readBoolean()
+      // read int for frozen size
+      val frozenSize = Codec.VLuint.read(fis)
 
       // Retrieve the number of elements in the featureIndex map
       val size = Codec.VLuint.read(fis)
 
-      val transformer = new IndexTransformer(frozen)
+      val transformer = new IndexTransformer(frozen, frozenSize)
 
       1 to size foreach { _ =>
         val feature = fis.readFeature
