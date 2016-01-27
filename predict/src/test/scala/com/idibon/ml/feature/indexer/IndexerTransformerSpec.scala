@@ -92,12 +92,14 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("furiously", Tag.Word, 1, 1))
       val expected = Vectors.sparse(5, Seq((0, 1.0), (1, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)))
       transform.apply(fiveTokens) shouldBe expected
+      transform.numDimensions shouldBe 5
       transform.freeze()
       val threeTokens = Seq[Feature[Token]](
         new Token("colorlessness", Tag.Word, 0, 1), new Token("greenless", Tag.Word, 1, 1),
         new Token("ideas", Tag.Word, 0, 1))
       val expected2 = Vectors.sparse(5, Array(2), Array(1.0))
       transform.apply(threeTokens) shouldBe expected2
+      transform.numDimensions shouldBe 5
     }
 
     it("it should continually add new tokens when not frozen") {
@@ -117,7 +119,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
   }
 
-  describe("Prune features tests") {
+  describe("Prune features tests & prune integration tests") {
 
     def predicate1(num:Int): Boolean = {
       !List(0, 1, 2, 3, 4).contains(num)
@@ -144,9 +146,25 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
         new Token("furiously", Tag.Word, 1, 1))
       transform.apply(fiveTokens)
+      transform.numDimensions shouldBe 5
       transform.prune(predicate2)
+      transform.numDimensions shouldBe 1
       transform.getFeatureIndex.size shouldBe 1
       transform.getFeatureIndex.getOrElse(fiveTokens(4), 0) shouldBe 4
+    }
+    it("should keep the original size once frozen and then pruned") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("furiously", Tag.Word, 1, 1))
+      transform.apply(fiveTokens)
+      transform.numDimensions shouldBe 5
+      transform.freeze()
+      transform.prune(predicate2)
+      transform.numDimensions shouldBe 5
+      transform.getFeatureIndex.size shouldBe 1
+      transform.getFeatureIndex.getOrElse(fiveTokens(4), 0) shouldBe 4
+      transform.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
   }
 
