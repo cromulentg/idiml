@@ -29,30 +29,36 @@ object Train extends Tool with StrictLogging {
       .addOption("o", "output", true, "Output alloy file")
       .addOption("r", "rules", true, "Input file with rules data")
       .addOption("w", "wiggle-wiggle", false, "Wiggle Wiggle")
+      .addOption("n", "ngram", true, "Maximum n-gram size")
 
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
   }
 
-  private [this] val featurePipeline = (FeaturePipelineBuilder.named("pipeline")
-    += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams"))
-    += (FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, 3), "bagOfWords"))
-    += (FeaturePipelineBuilder.entry("bagOfWords",
-      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
-      "convertToTokens", "languageDetector"))
-    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
-    += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
-    += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-    := ("convertToIndex"))
+  def featurePipeline(ngramSize: Int) = {
+    (FeaturePipelineBuilder.named("pipeline")
+      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams"))
+      += (FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords"))
+      += (FeaturePipelineBuilder.entry("bagOfWords",
+        new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
+        "convertToTokens", "languageDetector"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
+      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
+      := ("convertToIndex"))
+  }
 
   def run(engine: com.idibon.ml.common.Engine, argv: Array[String]) {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    val easterEgg = new WiggleWiggle()
-    if (cli.hasOption('w')) new Thread(easterEgg).start()
+    val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
+    easterEgg.map(egg => new Thread(egg).start)
+
     try{
       val startTime = System.currentTimeMillis()
-      new Trainer(engine).train(featurePipeline,
+      // default to tri-grams
+      val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3"))
+      new Trainer(engine).train(featurePipeline(ngramSize),
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))
           .getLines.map(line => parse(line).extract[JObject])
@@ -76,7 +82,7 @@ object Train extends Tool with StrictLogging {
           Failure(error)
         }})
     } finally {
-      easterEgg.terminate()
+      easterEgg.map(_.terminate)
     }
 
   }
