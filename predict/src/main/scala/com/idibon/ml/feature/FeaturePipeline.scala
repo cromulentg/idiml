@@ -207,36 +207,31 @@ class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, In
     if (!isFrozen) throw new IllegalStateException("Pipeline must be primed before use.")
     val indexArray = indexes.toArray
     val orderedTransformRanges = outputDimensions.get.toArray
-    var i = 0
     var j = 0
     var offset = 0
     var results = ListBuffer[(Int, List[(Int, String)])]()
-    while (i < orderedTransformRanges.length) {
+    orderedTransformRanges.foreach{ case (name, curDimension) => {
       val indexSet = new MutableSet[Int]()
-      val curDimension: Int = orderedTransformRanges(i)._2
-      // while the current index value is less than the startOffset + dimension
-      while(j < indexArray.length && indexArray(j) < (offset + curDimension)) {
+      while (j < indexArray.length && indexArray(j) < (offset + curDimension)) {
         // add that to this transforms set of things to humanize
         indexSet.add(indexArray(j) - offset)
         // increment where we are looking in indexArray
         j = j + 1
       }
       if (indexSet.size > 0) {
-        // get human versions for this particular transformer
-        val humanVersions = state.transforms.get(orderedTransformRanges(i)._1).get
-          .asInstanceOf[TerminableTransformer]
-          .getHumanReadableFeature(indexSet.toSet)
-        // add results to list buffer
-        results += ((offset, humanVersions))
+        state.transforms.get(name).get match {
+          case o: TerminableTransformer => {
+            // add results to list buffer
+            results += ((offset, o.getHumanReadableFeature(indexSet.toSet)))
+          }
+        }
       }
-      // increment transform we're looking at
-      i = i + 1
       // increment offset
       offset += curDimension
-    }
+    }}
     results.toList.flatMap {
       case (offset, list) => {
-        list.map(x => (x._1 + offset, x._2))
+        list.map({case (innerIndex, humanValue) => (innerIndex + offset, humanValue)})
       }
     }.toMap
   }
