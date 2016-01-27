@@ -124,8 +124,8 @@ import org.json4s._
       var i = indexValues.indexWhere(_ > -1, 0)
       logger.debug(s"OOV/Pruned features were $i from ${indexValues.length}")
       var j = 0
-      // traverse the sorted array of feature index values
-      while(i < indexValues.length) {
+      // traverse the sorted array of feature index values -- if i == -1 then we're all OOV so skip.
+      while(i > -1 && i < indexValues.length) {
         // find next index whose value doesn't equal the current index value. j could equal -1.
         j = indexValues.indexWhere(_ != indexValues(i), i)
         // now we store the current index value
@@ -169,8 +169,10 @@ import org.json4s._
     }
 
     override def freeze(): Unit = {
-      frozen = true
-      frozenSize = featureIndex.size
+      if (!frozen) {
+        frozenSize = featureIndex.size
+        frozen = true
+      }
     }
   }
 
