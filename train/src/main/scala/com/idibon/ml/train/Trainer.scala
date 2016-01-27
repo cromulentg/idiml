@@ -9,12 +9,17 @@ import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.ensemble.EnsembleModel
 import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
 import com.idibon.ml.predict.rules.DocumentRules
+
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.ml.classification.{IdibonSparkLogisticRegressionModelWrapper, LogisticRegressionModel, LogisticRegression}
+
+import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, IdibonSparkLogisticRegressionModelWrapper, LogisticRegressionModel, LogisticRegression}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions._
+
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{parse, render, compact}
@@ -90,8 +95,17 @@ class Trainer(engine: Engine) extends StrictLogging {
       case (label, labeledPoints) => {
         // base LR model
         val model = fitLogisticRegressionModel(labeledPoints)
+        val binarySummary = model.summary.asInstanceOf[BinaryLogisticRegressionSummary]
+        // TODO: figure out how to output these summary stats - e.g. binarySummary.roc.show(100, false)
+        val fMeasure: DataFrame = binarySummary.fMeasureByThreshold
+        val maxFMeasure = fMeasure.select(max("F-Measure")).head().getDouble(0)
+        val bestThreshold = fMeasure.where(fMeasure.col("F-Measure") === maxFMeasure)
+          .select("threshold").head().getDouble(0)
         // append info to atomic log line
-        atomicLogLine.append(s"Model for $label was fit using parameters: ${model.parent.extractParamMap}\n")
+        atomicLogLine.append(
+          s"Model for $label was fit using parameters: ${model.parent.extractParamMap}\n" +
+          s"Best threshold as determined by F-Measure is $bestThreshold for $label\n" +
+          s"Area under ROC: ${binarySummary.areaUnderROC} for $label\n")
         // wrap into one we want
         val wrapper = IdibonSparkLogisticRegressionModelWrapper.wrap(model)
         // create PredictModel for label:
