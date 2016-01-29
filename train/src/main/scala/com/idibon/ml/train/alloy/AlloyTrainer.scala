@@ -14,9 +14,10 @@ import com.idibon.ml.predict.PredictModel
 import com.idibon.ml.predict.ensemble.EnsembleModel
 import com.idibon.ml.predict.ml.{MLModel}
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.train.{RDDGenerator}
+import com.idibon.ml.train.{SparkDataGenerator}
 import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
+import org.apache.spark.sql.DataFrame
 import org.json4s.JObject
 
 import scala.collection.mutable
@@ -104,12 +105,12 @@ trait AlloyTrainer {
   * Base class for trainers that follow a fairly orthodox approach to training.
   *
   * @param engine
-  * @param rDDGenerator
+  * @param dataGen
   * @param furnace
   */
-abstract class BaseTrainer(engine: Engine,
-                           rDDGenerator: RDDGenerator,
-                           furnace: Furnace) extends AlloyTrainer {
+abstract class BaseTrainer[T](engine: Engine,
+                              dataGen: SparkDataGenerator[T],
+                              furnace: Furnace[T]) extends AlloyTrainer {
 
   /** Trains a model and generates an Alloy from it
     *
@@ -145,7 +146,7 @@ abstract class BaseTrainer(engine: Engine,
       - training MLModels
      */
     val mlModels = {
-      this.melt(docs, rDDGenerator, config.map(c => (c \ "pipelineConfig").extract[JObject]))
+      this.melt(docs, dataGen, config.map(c => (c \ "pipelineConfig").extract[JObject]))
     }
     mlModels
       // create PredictModels with Rules
@@ -158,12 +159,12 @@ abstract class BaseTrainer(engine: Engine,
     * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
     *
     * @param rawData
-    * @param rDDGenerator
+    * @param dataGen
     * @param pipelineConfig
     * @return
     */
   def melt(rawData: () => TraversableOnce[JObject],
-           rDDGenerator: RDDGenerator,
+           dataGen: SparkDataGenerator[T],
            pipelineConfig: Option[JObject]): Try[Map[String, MLModel]]
 
 }
@@ -172,24 +173,24 @@ abstract class BaseTrainer(engine: Engine,
   * Trains K models using a global feature pipeline.
   *
   * @param engine
-  * @param rDDGenerator
+  * @param dataGen
   * @param furnace
   */
 class KClass1FP(engine: Engine,
-                rDDGenerator: RDDGenerator,
-                furnace: Furnace)
-  extends BaseTrainer(engine, rDDGenerator, furnace) with StrictLogging {
+                dataGen: SparkDataGenerator[DataFrame],
+                furnace: Furnace[DataFrame])
+  extends BaseTrainer[DataFrame](engine, dataGen, furnace) with StrictLogging {
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.
     *
     * @param rawData
-    * @param rDDGenerator
+    * @param dataGen
     * @param pipelineConfig
     * @return
     */
   override def melt(rawData: () => TraversableOnce[JObject],
-                    rDDGenerator: RDDGenerator,
+                    dataGen: SparkDataGenerator[DataFrame],
                     pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
@@ -199,7 +200,7 @@ class KClass1FP(engine: Engine,
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
     // create featurized data once since we only have one feature pipeline
-    val featurizedData = furnace.featurizeData(rawData, rDDGenerator, primedPipeline)
+    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline)
     val featuresUsed = new util.HashSet[Int](100000)
     // delegate to the furnace for producing MLModels for each label
     val models = featurizedData match {

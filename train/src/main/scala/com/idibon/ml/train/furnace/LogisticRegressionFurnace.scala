@@ -7,7 +7,7 @@ import java.security.SecureRandom
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel, MLModel}
-import com.idibon.ml.train.RDDGenerator
+import com.idibon.ml.train.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
@@ -26,81 +26,22 @@ import scala.util.{Try, Success, Failure}
   * @param engine the engine context to use for RDD & DataFrame generation
   * @tparam T The type of trainer to expect to train on.
   */
-abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace with StrictLogging {
+abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace[DataFrame] with StrictLogging {
 
   /**
     * Function to take care of featurizing the data.
     * Converts the input documents and feature pipeline into DataFrames
     *
-    * Creates a set of labeled points for each label in the training document
-    * set, writes the points out to a temporary Parquet file, and re-loads
-    * the file as a DataFrame ready for training.
-    *
     * @param rawData a function that returns an iterator over training documents.
-    * @param rDDGenerator RDDGenerator that creates the data splits for training.
+    * @param dataGen SparkDataGenerator that creates the data splits for training.
     * @param featurePipeline the feature pipeline to use for labeled point creation.
     * @return a map from label name to the training DataFrame for that label
     */
   override def featurizeData(rawData: () => TraversableOnce[JObject],
-                             rDDGenerator: RDDGenerator,
+                             dataGen: SparkDataGenerator[DataFrame],
                              featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]] = {
-    /* use a random subdirectory within the system temp directory for
-     * storing the intermediate training files */
-    val trainerTemp = FileSystems.getDefault.getPath(
-      System.getProperty("java.io.tmpdir"), "idiml", "training",
-      Math.abs(SecureRandom.getInstance("SHA1PRNG").nextInt).toString).toFile
-
-    trainerTemp.mkdirs();
-
-    val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
-    val rdds = rDDGenerator.getLabeledPointRDDs(this.engine, featurePipeline, rawData)
-      // convert RDDs to data frames
-    val files = rdds.zipWithIndex.map({ case ((label, rdd), index) => {
-      (label, Try({
-        /* can't call File.createTempFile here, because the parquet writer
-         * doesn't like to overwrite files, including the empty file created
-         * by File.createTempFile, so use the integer index of the label
-         * within a random temp directory. :angry: */
-        val file = new File(trainerTemp, s"idiml-${index}.parquet")
-        logger.info(s"Saving RDD for $label to $file")
-        try {
-          sqlContext.createDataFrame(rdd)
-            .write.parquet(file.getAbsolutePath)
-          file
-        } catch {
-          case error: Throwable => {
-            /* if saving fails for any reason, delete the temporary file
-             * and map store a Failure in the map */
-            logger.error(s"Failed to save training data for $label", error)
-            file.delete
-            throw error
-          }
-        }
-      }))
-    }})
-
-    /* add a shutdown hook to make sure that we clean up all temp files,
-     * regardless of how the JVM terminates */
-    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run {
-        // delete all of the temporary files
-        files.foreach(_ match {
-          case (labelName: String, file: Success[File]) => file.get.delete
-          case _ => {}
-        })
-        // and the random parent folder
-        trainerTemp.delete
-      }
-    })
-
-    // only train if all labels were successfully stored
-    if (files.exists({ case (_, file) => file.isFailure })) {
-      None
-    } else {
-      Some(files.map({ case (label, file) => {
-        label -> sqlContext.read.parquet(file.get.getAbsolutePath)
-      }}))
-    }
+    // produces data frames
+    dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
   }
 
   /**
