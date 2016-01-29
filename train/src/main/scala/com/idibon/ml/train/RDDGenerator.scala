@@ -14,13 +14,34 @@ import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.io.Source
 
 
-/** RDDGenerator
+/**
+  * RDD Generator Trait
+  *
+  * This means that we can implement whatever strategy we want for creating RDDs.
+  */
+trait RDDGenerator {
+  def getLabeledPointRDDs(engine: Engine,
+                          pipeline: FeaturePipeline,
+                          docs: () => TraversableOnce[JObject]): Map[String, RDD[LabeledPoint]]
+}
+
+/**
+  * Place holder for creating multiclass RDDs.
+  */
+object MultiClassRDDGenerator extends RDDGenerator with StrictLogging {
+  override def getLabeledPointRDDs(engine: Engine,
+                                   pipeline: FeaturePipeline,
+                                   docs: () => TraversableOnce[JObject]): Map[String, RDD[LabeledPoint]] = ???
+}
+
+/**
+  * RDDGenerator that produces data for KClasses, where each class is binary.
   *
   * Produces an RDD of LabeledPoints given a list of documents with annotations. This is intended for use with MLlib
   * for performing logistic regression during training.
   *
   */
-object RDDGenerator extends StrictLogging {
+object KClassRDDGenerator extends RDDGenerator with StrictLogging {
 
   /** Produces an RDD of LabeledPoints for each distinct label name.
     *
@@ -41,14 +62,10 @@ object RDDGenerator extends StrictLogging {
     * @param docs: a callback function returning the training documents
     * @return a Map from label name to an RDD of LabeledPoints for that label
     */
-  def getLabeledPointRDDs(engine: Engine, pipeline: FeaturePipeline,
-      docs: () => TraversableOnce[JObject]): (Map[String, RDD[LabeledPoint]], FeaturePipeline) = {
-
+  override def getLabeledPointRDDs(engine: Engine,
+                                   pipeline: FeaturePipeline,
+                                   docs: () => TraversableOnce[JObject]): Map[String, RDD[LabeledPoint]] = {
     implicit val formats = org.json4s.DefaultFormats
-
-    // Prime the index by reading each document from the input file, which assigns an index value to each token
-    val fp = pipeline.prime(docs())
-
     // Iterate over the data one more time now that the index is complete. This ensures that every feature vector
     // will now be the same size
     val perLabelLPs = HashMap[String, ListBuffer[LabeledPoint]]()
@@ -68,7 +85,7 @@ object RDDGenerator extends StrictLogging {
         val labelNumeric = if (isPositive) 1.0 else 0.0
 
         // Run the pipeline to generate the feature vector
-        val featureVector = fp(document)
+        val featureVector = pipeline(document)
 
         // Create labeled points
         perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
@@ -91,7 +108,7 @@ object RDDGenerator extends StrictLogging {
       }
     }
     logger.info(logLine)
-
-    (perLabelRDDs.toMap, fp)
+    perLabelRDDs.toMap
   }
 }
+
