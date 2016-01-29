@@ -28,4 +28,3 @@ object App extends Tool {
       .run(engine, java.util.Arrays.copyOfRange(arguments, 1, arguments.length))
   }
 }
-

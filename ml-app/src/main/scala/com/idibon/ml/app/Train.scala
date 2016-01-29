@@ -1,17 +1,13 @@
 package com.idibon.ml.app
 
+import com.idibon.ml.train.alloy.KClass1FP
+import com.idibon.ml.train.furnace.{SimpleLogisticRegression, XValLogisticRegression}
+
 import scala.io.Source
 import scala.util.Failure
-import java.nio.file.FileSystems
 import org.json4s._
-import com.idibon.ml.train.Trainer
+import com.idibon.ml.train.{KClassDataFrameGenerator, KClassDataFrameGenerator$}
 
-import com.idibon.ml.feature.bagofwords.{BagOfWordsTransformer, CaseTransform}
-import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
-import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.ngram.NgramTransformer
-import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder}
 import com.typesafe.scalalogging.StrictLogging
 
 import org.json4s.native.JsonMethods.parse
@@ -34,19 +30,6 @@ object Train extends Tool with StrictLogging {
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
   }
 
-  def featurePipeline(ngramSize: Int) = {
-    (FeaturePipelineBuilder.named("pipeline")
-      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams"))
-      += (FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords"))
-      += (FeaturePipelineBuilder.entry("bagOfWords",
-        new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
-        "convertToTokens", "languageDetector"))
-      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
-      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
-      += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-      := ("convertToIndex"))
-  }
-
   def run(engine: com.idibon.ml.common.Engine, argv: Array[String]) {
     implicit val formats = org.json4s.DefaultFormats
 
@@ -57,11 +40,12 @@ object Train extends Tool with StrictLogging {
     try{
       val startTime = System.currentTimeMillis()
       // default to tri-grams
-      val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3"))
-      new Trainer(engine).train(featurePipeline(ngramSize),
+      val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
+      val furnace = new XValLogisticRegression(engine)
+      new KClass1FP(engine, KClassDataFrameGenerator, furnace).trainAlloy(
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))
-          .getLines.map(line => parse(line).extract[JObject])
+            .getLines.map(line => parse(line).extract[JObject])
         },
         () => { // rule data
           if (cli.hasOption('r')) {
@@ -71,7 +55,7 @@ object Train extends Tool with StrictLogging {
             List()
           }
         },
-        None // option config
+        Some(JObject(List(JField("pipelineConfig", JObject(List(JField("ngram", JInt(ngramSize)))))))) // option config
       ).map(alloy => alloy.save(cli.getOptionValue('o')))
         .map(x => {
           val elapsed = System.currentTimeMillis - startTime
