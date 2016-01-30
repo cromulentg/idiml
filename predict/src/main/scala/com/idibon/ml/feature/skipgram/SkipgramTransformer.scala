@@ -35,7 +35,7 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
    }
    else {
      val startGrams = (0 to len - n) //all the possible starting grams for a skip gram
-     var result = Seq[ProductFeature]()
+     var result = List[ProductFeature]()
 
      startGrams.foreach { i => //for every possible starting feature
        skipPermutations.foreach { perm => //go through the permutations of skip positions
@@ -43,19 +43,17 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
 
            //loop through the skip positions, incrementing an index to
            //select each gram and append it to the skipgram
-           var skipgram = List[Feature[_]](input(i))
+           //var skipgram = List[Feature[_]](input(i))
            var index = i
-           perm.foreach { j=>
-             println(index)
-             index = index + j + 1
-             println(index)
-             skipgram = skipgram :+ input(index)
+           val skipgram = input(i) +: perm.map{ j =>
+             index = index+j+1
+             input(index)
            }
-           result = result :+ new ProductFeature(skipgram)
+           result = new ProductFeature(skipgram) :: result
          }
        }
      }
-     result
+     result.toSeq
    }
  }
 
@@ -70,7 +68,7 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
     Seq.fill(n - 1)((0 to k).toIndexedSeq)
       .flatten.combinations(n - 1)
       .map(e => e.permutations)
-      .flatten//.map(e => listToSums(e))
+      .flatten
       .toSeq
   }
 

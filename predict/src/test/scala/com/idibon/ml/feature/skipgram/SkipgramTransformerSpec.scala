@@ -46,15 +46,15 @@ class SkipgramTransformerSpec extends FunSpec with Matchers{
     it("should act like ngrams when k=0"){
       //tri-grams
       transform4(tokens) shouldBe List(
-        ProductFeature(List(tokens(0), tokens(1), tokens(2))),
+        ProductFeature(List(tokens(2), tokens(3), tokens(4))),
         ProductFeature(List(tokens(1), tokens(2), tokens(3))),
-        ProductFeature(List(tokens(2), tokens(3), tokens(4)))
+        ProductFeature(List(tokens(0), tokens(1), tokens(2)))
       )
     }
 
     it("should generate a correct sequence of skipgrams") {
       //2-skip-tri-grams
-      transform(tokens) shouldBe List(
+      transform(tokens).reverse shouldBe List(
         ProductFeature(List(tokens(0), tokens(1), tokens(2))),
         ProductFeature(List(tokens(0), tokens(1), tokens(3))),
         ProductFeature(List(tokens(0), tokens(2), tokens(3))),
