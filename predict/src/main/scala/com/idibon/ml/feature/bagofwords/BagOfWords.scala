@@ -1,9 +1,9 @@
 package com.idibon.ml.feature.bagofwords
 
-import com.idibon.ml.feature._
+import com.idibon.ml.feature.{Feature, FeatureTransformer}
 import com.idibon.ml.feature.tokenizer.{Token, Tag}
 import com.idibon.ml.feature.language.LanguageCode
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Alloy
 import org.json4s._
 import org.json4s.JsonDSL._

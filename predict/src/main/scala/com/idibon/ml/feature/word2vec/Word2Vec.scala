@@ -1,7 +1,7 @@
 package com.idibon.ml.feature.word2vec
 
 import com.idibon.ml.alloy.Alloy
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature._
 
 import org.apache.spark._

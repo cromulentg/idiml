@@ -2,7 +2,7 @@ package com.idibon.ml.predict.ml
 
 import java.io._
 
-import com.idibon.ml.alloy.{ScalaJarAlloy, IntentAlloy}
+import com.idibon.ml.alloy.{JarAlloy, IntentAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
@@ -57,14 +57,14 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val labelToModel = Map(("alabel" -> model))
-      val alloy = new ScalaJarAlloy(labelToModel, Map[String, String]())
+      val alloy = new JarAlloy(labelToModel, Map[String, String]())
       tempFilename = "save.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
       val jarFile = new File(tempFilename)
       jarFile.exists() shouldBe true
       // get alloy back & predict on it.
-      val resurrectedAlloy = ScalaJarAlloy.load(null, tempFilename)
+      val resurrectedAlloy = JarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val result1 = alloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]
       val result2 = resurrectedAlloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]

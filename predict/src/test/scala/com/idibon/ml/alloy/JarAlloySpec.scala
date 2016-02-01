@@ -37,7 +37,7 @@ import org.scalatest._
   *  ListBuffer[String] objects.
   * </quote>
   */
-class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with ParallelTestExecution {
+class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   var tempFilename = ""
   before {
@@ -60,14 +60,14 @@ class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with P
       val random = new Random().nextLong()
       val labelToModel = new mutable.HashMap[String, PredictModel]()
       labelToModel.put("alabel", ensemble)
-      val alloy = new ScalaJarAlloy(labelToModel.toMap, Map[String, String]())
+      val alloy = new JarAlloy(labelToModel.toMap, Map[String, String]())
       tempFilename = s"test_${random}.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
       val jarFile = new File(tempFilename)
       jarFile.exists() shouldBe true
       // get alloy back & predict on it.
-      val resurrectedAlloy = ScalaJarAlloy.load(new EmbeddedEngine, tempFilename)
+      val resurrectedAlloy = JarAlloy.load(new EmbeddedEngine, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val documentObject: JsonAST.JObject = JObject(List(("content", JString("content IS awesome"))))
       val result1 = alloy.predict(documentObject, options).get("alabel")
@@ -83,7 +83,7 @@ class ScalaJarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with P
     it("Throws exception on unhandled version") {
       intercept[IOException] {
         val jar = new File(".", "/predict/src/test/resources/fixtures/invalid_alloy_version.jar")
-        ScalaJarAlloy.load(null, jar.getCanonicalPath())
+        JarAlloy.load(null, jar.getCanonicalPath())
       }
     }
   }

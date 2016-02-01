@@ -6,7 +6,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, render, parse}
-import com.idibon.ml.alloy.ScalaJarAlloy
+import com.idibon.ml.alloy.JarAlloy
 import com.idibon.ml.predict._
 
 /** Command-line batch prediction tool
@@ -31,7 +31,7 @@ object Predict extends Tool {
 
     val cli = parseCommandLine(argv)
 
-    val model = ScalaJarAlloy.load(engine, cli.getOptionValue('a'))
+    val model = JarAlloy.load(engine, cli.getOptionValue('a'))
 
     /* results will be written to the output file by a consumer thread;
      * after the last document is predicted, the main thread will post

@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 package com.idibon.ml.feature.indexer {
 
 import com.idibon.ml.alloy.{Alloy, Codec}
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import org.json4s._
 
 /** Internal implementation of the indexer FeatureTransformer */

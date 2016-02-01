@@ -2,7 +2,7 @@ package com.idibon.ml.feature.ngram
 
 import org.json4s._
 import com.idibon.ml.feature._
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Alloy
 
 /** Generic N-gram transformation
