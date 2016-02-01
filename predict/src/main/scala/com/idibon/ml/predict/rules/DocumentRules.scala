@@ -5,8 +5,7 @@ import java.util.regex.{Matcher, Pattern}
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
-import com.idibon.ml.common.Engine
-import com.idibon.ml.feature.{Archivable, ArchiveLoader}
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.predict.util.SafeCharSequence
 import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
@@ -241,9 +240,9 @@ class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
     *
     * @param reader location within Alloy for loading any resources
     *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
+    *               { @link com.idibon.ml.common.Archivable#save}
     * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    *               call to { @link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
   override def load(engine: Engine, reader: Reader, config: Option[JObject]): DocumentRules = {

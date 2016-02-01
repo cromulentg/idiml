@@ -1,9 +1,8 @@
 package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.predict.{PredictResult, PredictModel, PredictOptions, SingleLabelDocumentResult}
-import com.idibon.ml.feature.{ArchiveLoader, Archivable}
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -126,9 +125,9 @@ class EnsembleModelLoader extends ArchiveLoader[EnsembleModel] {
     *
     * @param reader location within Alloy for loading any resources
     *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
+    *               { @link com.idibon.ml.common.Archivable#save}
     * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    *               call to { @link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
   def load(engine: Engine, reader: Reader, config: Option[JObject]): EnsembleModel = {

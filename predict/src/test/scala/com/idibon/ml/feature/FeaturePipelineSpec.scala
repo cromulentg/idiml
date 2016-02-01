@@ -3,7 +3,7 @@ package com.idibon.ml.feature
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.test.VerifyLogging
 import com.idibon.ml.feature.tokenizer.Token
-import com.idibon.ml.common.{Engine, EmbeddedEngine}
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine, EmbeddedEngine}
 
 import scala.util.Random
 import scala.collection.mutable.{HashMap => MutableMap}

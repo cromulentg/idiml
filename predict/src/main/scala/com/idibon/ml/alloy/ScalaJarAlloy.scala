@@ -10,7 +10,7 @@ import com.idibon.ml.common.Engine
 import org.json4s.JsonDSL._
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
-import com.idibon.ml.feature.{Archivable, ArchiveLoader}
+import com.idibon.ml.common.{Archivable, ArchiveLoader}
 import com.idibon.ml.predict.PredictModel
 
 // required for java object conversions

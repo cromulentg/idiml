@@ -1,8 +1,7 @@
-package com.idibon.ml.feature
+package com.idibon.ml.common
 
 import org.json4s.JObject
 import com.idibon.ml.alloy.Alloy
-import com.idibon.ml.common.{Engine, Reflect}
 
 /** Archivable objects support persistent storage within an Alloy
   *
@@ -34,9 +33,9 @@ trait ArchiveLoader[T] {
     * @param engine implementation of the Engine trait
     * @param reader location within Alloy for loading any resources
     *   previous preserved by a call to
-    *   {@link com.idibon.ml.feature.Archivable#save}
+    *   {@link com.idibon.ml.common.Archivable#save}
     * @param config archived configuration data returned by a previous
-    *   call to {@link com.idibon.ml.feature.Archivable#save}
+    *   call to {@link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
   def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): T

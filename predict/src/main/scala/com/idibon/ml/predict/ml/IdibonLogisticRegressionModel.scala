@@ -4,10 +4,10 @@ package com.idibon.ml.predict.ml
 import java.io.{IOException, DataInputStream, DataOutputStream}
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
-import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline, Archivable, ArchiveLoader}
+import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
@@ -179,9 +179,9 @@ class IdibonLogisticRegressionModelLoader
     * @param engine Engine that houses spark context.
     * @param reader location within Alloy for loading any resources
     *               previous preserved by a call to
-    *               { @link com.idibon.ml.feature.Archivable#save}
+    *               { @link com.idibon.ml.common.Archivable#save}
     * @param config archived configuration data returned by a previous
-    *               call to { @link com.idibon.ml.feature.Archivable#save}
+    *               call to { @link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
   def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = {

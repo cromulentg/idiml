@@ -12,7 +12,7 @@ import scala.reflect.runtime.universe.{MethodMirror, typeOf}
 import scala.collection.mutable
 
 import com.idibon.ml.alloy.Alloy
-import com.idibon.ml.common.Engine
+import com.idibon.ml.common.{ArchiveLoader, Archivable, Engine}
 import com.idibon.ml.common.Reflect._
 
 
@@ -135,7 +135,7 @@ class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, In
     * We don't need to store expected dimensions since we can recover them from
     * the transformers on load.
     *
-    * See {@link com.idibon.ml.feature.Archivable}
+    * See {@link com.idibon.ml.common.Archivable}
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(List(
