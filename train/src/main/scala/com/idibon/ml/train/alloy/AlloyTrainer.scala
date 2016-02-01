@@ -2,7 +2,7 @@ package com.idibon.ml.train.alloy
 
 import java.util
 
-import com.idibon.ml.alloy.{ScalaJarAlloy, Alloy}
+import com.idibon.ml.alloy.{JarAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.bagofwords.{CaseTransform, BagOfWordsTransformer}
 import com.idibon.ml.feature.indexer.IndexTransformer
@@ -152,7 +152,7 @@ abstract class BaseTrainer[T](engine: Engine,
       // create PredictModels with Rules
       .map(this.mergeRulesWithModels(_, parsedRules))
       // create Alloy
-      .map(new ScalaJarAlloy(_, uuidsByLabel))
+      .map(new JarAlloy(_, uuidsByLabel))
   }
 
   /**

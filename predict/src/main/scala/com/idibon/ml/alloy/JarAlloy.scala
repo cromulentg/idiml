@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
-  * Rough draft of a Jar backed Alloy.
+  * Canonical Alloy implementation backed by a JAR file.
   * <p>
   * This is very simple, and allows you to write to a jar as if it was a file system.
   * Writing:
@@ -32,7 +32,7 @@ import scala.collection.mutable
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
-class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String])
+class JarAlloy(models: Map[String, PredictModel], uuids: Map[String, String])
     extends BaseAlloy(models.asJava, uuids.asJava) with StrictLogging {
 
 
@@ -41,7 +41,7 @@ class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String
     * @param path
     */
   override def save(path: String): Unit = {
-    logger.info(s"Attemping to save Alloy [v. ${ScalaJarAlloy.CURRENT_VERSION}] to ${path}.")
+    logger.info(s"Attemping to save Alloy [v. ${JarAlloy.CURRENT_VERSION}] to ${path}.")
     // check that we can save to the path
     val file: File = new File(path)
     ensureBaseDirectoryExists(file)
@@ -56,12 +56,12 @@ class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String
     saveMapOfData(
       baseWriter,
       this.uuids.map({ case (label, u) => (label, JString(u))}).toList,
-      ScalaJarAlloy.LABEL_UUID)
+      JarAlloy.LABEL_UUID)
     // save class types of models
     saveMapOfData(
       baseWriter,
       this.models.map({ case (label, m) => (label, JString(m.getType()))}).toList,
-      ScalaJarAlloy.MODEL_CLASS)
+      JarAlloy.MODEL_CLASS)
     // save models
     saveMapOfData(
       baseWriter,
@@ -69,7 +69,7 @@ class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String
           // for each model save it and get the JObject back
           (label, Archivable.save(model, baseWriter.within(label)).getOrElse(JNothing))
         }}).toList,
-      ScalaJarAlloy.MODEL_META)
+      JarAlloy.MODEL_META)
     // TODO: save more schtuff about this task
     jos.close()
   }
@@ -116,11 +116,11 @@ class ScalaJarAlloy(models: Map[String, PredictModel], uuids: Map[String, String
     attr.put(Attributes.Name.IMPLEMENTATION_TITLE, "com.idibon.ml")
     attr.put(Attributes.Name.IMPLEMENTATION_VENDOR, "Idibon Inc.")
     // save version number -- use this for determining what versioning of loading/saving jars.
-    attr.put(Attributes.Name.IMPLEMENTATION_VERSION, ScalaJarAlloy.CURRENT_VERSION)
+    attr.put(Attributes.Name.IMPLEMENTATION_VERSION, JarAlloy.CURRENT_VERSION)
   }
 }
 
-object ScalaJarAlloy extends StrictLogging {
+object JarAlloy extends StrictLogging {
 
   // the implementation version of this scala jar alloy.
   val CURRENT_VERSION: String = "0.0.1"
@@ -138,7 +138,7 @@ object ScalaJarAlloy extends StrictLogging {
     * @param path path to jar file
     * @return
     */
-  def load(engine: Engine, path: String): ScalaJarAlloy = {
+  def load(engine: Engine, path: String): JarAlloy = {
     implicit val formats = org.json4s.DefaultFormats
     val jarFile: File = new File(path)
     val jar: JarFile = new JarFile(jarFile)
@@ -174,7 +174,7 @@ object ScalaJarAlloy extends StrictLogging {
     // instantiate other objects
     jar.close()
     // return fresh instance
-    return new ScalaJarAlloy(labelModels.toMap, labelToUUID.toMap)
+    return new JarAlloy(labelModels.toMap, labelToUUID.toMap)
   }
 
   /**
