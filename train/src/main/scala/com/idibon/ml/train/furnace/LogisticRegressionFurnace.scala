@@ -126,6 +126,7 @@ class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace
       .setElasticNetParam(elasticNetParam)
       .setMaxIter(maxIterations)
       .setRegParam(regressionParam)
+      .setStandardization(true)
   }
 }
 
@@ -162,6 +163,7 @@ class XValLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[C
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.regParam, regressionParams)
       .addGrid(lr.elasticNetParam, elasticNetParams)
+      .addGrid(lr.standardization, Array(true))
       .build()
     logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
     /* We now treat the LR as an Estimator, wrapping it in a CrossValidator instance.
