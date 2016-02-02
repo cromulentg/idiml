@@ -102,8 +102,8 @@ abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace[Data
 class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[LogisticRegression](engine) {
   //TODO: make this configurable
   val maxIterations = 100
-  val elasticNetParam = 0.5
-  val regressionParam = 0.1
+  val elasticNetParam = 0.9
+  val regressionParam = 0.001
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.
