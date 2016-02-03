@@ -58,14 +58,15 @@ class MultiClassLRFurnaceSpec extends FunSpec
       features.get.size shouldBe 1
       features.get.keys.toList shouldBe List(MultiClass.MODEL_KEY)
       val points = features.get(MultiClass.MODEL_KEY).collect()
-      points(0) shouldBe LabeledPoint(0,
+      points.size shouldBe 2
+      points(0) === Array(LabeledPoint(0,
         Vectors.sparse(29,
           Array(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18),
-          Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0)))
-      points(1) shouldBe LabeledPoint(1,
+          Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))))
+      points(1) === Array(LabeledPoint(1,
         Vectors.sparse(29,
           Array(19,20,21,22,23,24,25,26,27,28),
-          Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0)))
+          Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))))
     }
   }
 
