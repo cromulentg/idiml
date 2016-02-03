@@ -195,11 +195,11 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     }
 
     it("should suppress None config parameters for Archivable transforms") {
-      runSaveTest("""{"transforms":[{"name":"A","class":"com.idibon.ml.feature.ArchivableTransform"}],"pipeline":[{"name":"A","inputs":[]},{"name":"$output","inputs":["A"]}]}""")
+      runSaveTest("""{"version":"0.0.1","transforms":[{"name":"A","class":"com.idibon.ml.feature.ArchivableTransform"}],"pipeline":[{"name":"A","inputs":[]},{"name":"$output","inputs":["A"]}]}""")
     }
 
     it("should include config parameters if present") {
-      runSaveTest("""{"transforms":[{"name":"A","class":"com.idibon.ml.feature.ArchivableTransform","config":{"values":[1.0,0.25,-0.75]}}],"pipeline":[{"name":"A","inputs":[]},{"name":"$output","inputs":["A"]}]}""")
+      runSaveTest("""{"version":"0.0.1","transforms":[{"name":"A","class":"com.idibon.ml.feature.ArchivableTransform","config":{"values":[1.0,0.25,-0.75]}}],"pipeline":[{"name":"A","inputs":[]},{"name":"$output","inputs":["A"]}]}""")
     }
   }
 

@@ -1,9 +1,5 @@
 package com.idibon.ml.train.furnace
 
-import java.io.File
-import java.nio.file.FileSystems
-import java.security.SecureRandom
-
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel, MLModel}
@@ -17,7 +13,6 @@ import org.apache.spark.sql.functions._
 import org.json4s.JsonAST.JObject
 import org.json4s._
 
-import scala.util.{Try, Success, Failure}
 
 /**
   * Abstract class that makes it easy to train simple logistic regression models using the
@@ -104,6 +99,7 @@ class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace
   val maxIterations = 100
   val elasticNetParam = 0.9
   val regressionParam = 0.001
+  val tolerance = 1e-4
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.
@@ -126,6 +122,7 @@ class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace
       .setElasticNetParam(elasticNetParam)
       .setMaxIter(maxIterations)
       .setRegParam(regressionParam)
+      .setTol(tolerance)
   }
 }
 
@@ -140,6 +137,7 @@ class XValLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[C
   val regressionParams = Array(0.001, 0.01, 0.1)
   val elasticNetParams = Array(0.9, 1.0)
   val numberOfFolds = 10
+  val tolerances = Array(1e-4)
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.
@@ -162,6 +160,7 @@ class XValLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[C
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.regParam, regressionParams)
       .addGrid(lr.elasticNetParam, elasticNetParams)
+      .addGrid(lr.tol, tolerances)
       .build()
     logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
     /* We now treat the LR as an Estimator, wrapping it in a CrossValidator instance.

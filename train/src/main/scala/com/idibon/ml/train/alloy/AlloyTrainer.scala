@@ -11,12 +11,14 @@ import com.idibon.ml.feature.ngram.NgramTransformer
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.predict.PredictModel
-import com.idibon.ml.predict.ensemble.EnsembleModel
+import com.idibon.ml.predict.ensemble.{GangModel, EnsembleModel}
 import com.idibon.ml.predict.ml.{MLModel}
 import com.idibon.ml.predict.rules.DocumentRules
 import com.idibon.ml.train.{SparkDataGenerator}
 import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.json4s.JObject
 
@@ -101,6 +103,32 @@ trait AlloyTrainer {
   }
 }
 
+trait OneFeaturePipeline {
+
+  /**
+    * Creates a single feature pipeline from the passed in configuration.
+    *
+    * @param config
+    * @return
+    */
+  def createFeaturePipeline(config: JObject): FeaturePipeline = {
+    implicit val formats = org.json4s.DefaultFormats
+    val ngramSize = (config \ "ngram").extract[Int]
+    //TODO: unhardcode this
+    (FeaturePipelineBuilder.named("pipeline")
+      += FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams")
+      += FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords")
+      += FeaturePipelineBuilder.entry("bagOfWords",
+      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
+      "convertToTokens", "languageDetector")
+      += FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector")
+      += FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document")
+      += FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document")
+      := "convertToIndex")
+  }
+
+}
+
 /**
   * Base class for trainers that follow a fairly orthodox approach to training.
   *
@@ -179,7 +207,7 @@ abstract class BaseTrainer[T](engine: Engine,
 class KClass1FP(engine: Engine,
                 dataGen: SparkDataGenerator[DataFrame],
                 furnace: Furnace[DataFrame])
-  extends BaseTrainer[DataFrame](engine, dataGen, furnace) with StrictLogging {
+  extends BaseTrainer[DataFrame](engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.
@@ -229,27 +257,151 @@ class KClass1FP(engine: Engine,
     // return MLModels
     Try(models.toMap)
   }
+}
 
+/**
+  * Static class for storing Multi-class constants.
+  */
+object MultiClass {
+  // key to use to get the single model that handles all classes.
+  val MODEL_KEY = "\u000all"
+}
+
+/**
+  * This class creates a single model that handles prediction for all labels. i.e. multinomial model.
+  * So instead of a label -> model mapping, this returns a single model mapped to MultiClass.MODEL_KEY.
+  *
+  * It (naturally) uses a single feature pipeline.
+  *
+  * It is also built on top of DataFrames.
+  * TODO: refactor so that we have a single multi-class alloy trainer that is agnostic to the data underneath.
+  *
+  * CAVEAT:
+  *  - Assumes labels are mutually exclusive. i.e. there is only ever one that is correct.
+  *
+  * @param engine
+  * @param dataGen
+  * @param furnace
+  */
+class MultiClass1FP(engine: Engine,
+                    dataGen: SparkDataGenerator[DataFrame],
+                    furnace: Furnace[DataFrame])
+  extends BaseTrainer[DataFrame](engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
   /**
-    * Creates a single feature pipeline from the passed in configuration.
+    * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
     *
-    * @param config
+    * @param rawData
+    * @param dataGen
+    * @param pipelineConfig
     * @return
     */
-  def createFeaturePipeline(config: JObject): FeaturePipeline = {
-    implicit val formats = org.json4s.DefaultFormats
-    val ngramSize = (config \ "ngram").extract[Int]
-    //TODO: unhardcode this
-    (FeaturePipelineBuilder.named("pipeline")
-      += FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams")
-      += FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords")
-      += FeaturePipelineBuilder.entry("bagOfWords",
-      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
-      "convertToTokens", "languageDetector")
-      += FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector")
-      += FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document")
-      += FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document")
-      := "convertToIndex")
+  override def melt(rawData: () => TraversableOnce[JObject],
+                    dataGen: SparkDataGenerator[DataFrame],
+                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+    // create one feature pipeline
+    val rawPipeline = pipelineConfig match {
+      case Some(config) => createFeaturePipeline(config)
+      case _ => return Failure(new IllegalArgumentException("No feature pipeline config passed."))
+    }
+    // prime the pipeline
+    val primedPipeline = rawPipeline.prime(rawData())
+    // create featurized data once since we only have one feature pipeline
+    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline) match {
+      case Some(data) => data(MultiClass.MODEL_KEY) // should be only MultiClass.MODEL_KEY
+      case _ => return Failure(new RuntimeException("Failed to create training data."))
+    }
+    val featuresUsed = new util.HashSet[Int](100000)
+    // delegate to the furnace for producing MLModel for all labels
+    val model = furnace.fit(MultiClass.MODEL_KEY, featurizedData, primedPipeline)
+    // add what was used so we can prune it from the global feature pipeline.
+    model.getFeaturesUsed().foreachActive((index, _) => featuresUsed.add(index))
+
+    logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
+    // function to pass down so that the feature transforms can prune themselves.
+    // i.e. if it isn't used, remove it.
+    def isNotUsed(featureIndex: Int): Boolean = {
+      !featuresUsed.contains(featureIndex)
+    }
+    // prune unused features from global feature pipeline
+    primedPipeline.prune(isNotUsed)
+    // return MLModel
+    Try(Map(MultiClass.MODEL_KEY -> model))
+  }
+}
+
+/**
+  * This class creates a single model that handles prediction for all labels. i.e. multinomial model.
+  * So instead of a label -> model mapping, this returns a single model mapped to MultiClass.MODEL_KEY.
+  *
+  * It (naturally) uses a single feature pipeline.
+  *
+  * It is also built on top of RDDs rather than DataFrames -- most likely cause we're using some
+  * mllib model underneath. TODO: refactor so that we have a single multi-class alloy trainer that
+  * is agnostic to the data underneath.
+  *
+  * CAVEAT:
+  *  - Assumes labels are mutually exclusive. i.e. there is only ever one that is correct.
+  *
+  * @param engine
+  * @param dataGen
+  * @param furnace
+  */
+class MultiClass1FPRDD(engine: Engine,
+                    dataGen: SparkDataGenerator[RDD[LabeledPoint]],
+                    furnace: Furnace[RDD[LabeledPoint]])
+  extends BaseTrainer[RDD[LabeledPoint]](engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+  /**
+    * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
+    *
+    * @param rawData
+    * @param dataGen
+    * @param pipelineConfig
+    * @return
+    */
+  override def melt(rawData: () => TraversableOnce[JObject],
+                    dataGen: SparkDataGenerator[RDD[LabeledPoint]],
+                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+    // create one feature pipeline
+    val rawPipeline = pipelineConfig match {
+      case Some(config) => createFeaturePipeline(config)
+      case _ => return Failure(new IllegalArgumentException("No feature pipeline config passed."))
+    }
+    // prime the pipeline
+    val primedPipeline = rawPipeline.prime(rawData())
+    // create featurized data once since we only have one feature pipeline
+    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline) match {
+      case Some(data) => data(MultiClass.MODEL_KEY) // should be only MultiClass.MODEL_KEY
+      case _ => return Failure(new RuntimeException("Failed to create training data."))
+    }
+    val featuresUsed = new util.HashSet[Int](100000)
+    // delegate to the furnace for producing MLModel for all labels
+    val model = furnace.fit(MultiClass.MODEL_KEY, featurizedData, primedPipeline)
+    // add what was used so we can prune it from the global feature pipeline.
+    model.getFeaturesUsed().foreachActive((index, _) => featuresUsed.add(index))
+
+    logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
+    // function to pass down so that the feature transforms can prune themselves.
+    // i.e. if it isn't used, remove it.
+    def isNotUsed(featureIndex: Int): Boolean = {
+      !featuresUsed.contains(featureIndex)
+    }
+    // prune unused features from global feature pipeline
+    primedPipeline.prune(isNotUsed)
+    // return MLModel
+    Try(Map(MultiClass.MODEL_KEY -> model))
+  }
+
+  /**
+    * Multiclass implemenation of taking MLModels and creating Predict models that have rules with them.
+    *
+    * @param models
+    * @param rules
+    * @return
+    */
+  override def mergeRulesWithModels(models: Map[String, MLModel],
+                           rules: Map[String, List[(String, Float)]]): Map[String, PredictModel] = {
+    val labelToRules = rules.map({case (label, ruleList) => (label, new DocumentRules(label, ruleList))})
+    Map(MultiClass.MODEL_KEY -> new GangModel(models(MultiClass.MODEL_KEY), labelToRules))
   }
 }
 
@@ -270,18 +422,3 @@ class KClass1FP(engine: Engine,
 //}
 //
 //
-///**
-//  * Trains 1 multi-class model using a single feature pipeline.
-//  *
-//  * @param engine
-//  * @param rDDGenerator
-//  * @param featurePipeline
-//  * @param furnace
-//  */
-//class MultiClass1FP(engine: Engine,
-//                rDDGenerator: RDDGenerator,
-//                featurePipeline: FeaturePipeline,
-//                furnace: Furnace)
-//  extends BaseTrainer(engine, rDDGenerator) with StrictLogging {
-//
-//}

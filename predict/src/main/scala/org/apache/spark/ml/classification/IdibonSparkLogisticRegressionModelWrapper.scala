@@ -37,12 +37,17 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
       assert(delta > 0, s"Expected ${coefficients.size} but got ${features.size} which was smaller.")
       logger.trace(s"Predicting with ${delta} OOV dimensions.")
       val sparseVector = features.asInstanceOf[SparseVector]
+      val stoppingIndex = {
+        val index = sparseVector.indices.indexWhere(_ >= coefficients.size)
+        if (index > -1) index
+        else sparseVector.indices.size
+      }
       // can take slice since indices are always are in order of value, and thus new features
       // will always be at the end.
       val modifiedFeatures = Vectors.sparse(
         coefficients.size,
-        sparseVector.indices.slice(0, coefficients.size - delta),
-        sparseVector.values.slice(0, coefficients.size - delta))
+        sparseVector.indices.slice(0, stoppingIndex),
+        sparseVector.values.slice(0, stoppingIndex))
       super.predictProbability(modifiedFeatures)
     } else {
       super.predictProbability(features)

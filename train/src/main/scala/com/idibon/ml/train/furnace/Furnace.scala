@@ -21,7 +21,7 @@ trait Furnace[T] {
     * @param pipeline
     * @return
     */
-  def fit(label: String, data: DataFrame, pipeline: FeaturePipeline): MLModel
+  def fit(label: String, data: T, pipeline: FeaturePipeline): MLModel
 
   /**
     * Function is used for featurizing data.
