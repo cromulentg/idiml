@@ -7,16 +7,14 @@ import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.common.Engine
 
 import java.io.File
+import com.idibon.ml.train.alloy.MultiClass
 import com.typesafe.scalalogging.StrictLogging
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.json4s._
-import org.json4s.native.JsonMethods.parse
-import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
-import scala.io.Source
 import scala.util.{Success, Try}
 
 
@@ -39,25 +37,47 @@ trait SparkDataGenerator [T]{
   def getLabeledPointData(engine: Engine,
                           pipeline: FeaturePipeline,
                           docs: () => TraversableOnce[JObject]): Option[Map[String, T]]
+
+  /**
+    * Add a shutdown hook to make sure that we clean up all temp files,
+    * regardless of how the JVM terminates.
+    *
+    * @param trainerTemp
+    * @param files
+    */
+  protected def addShutdownHook(trainerTemp: File, files: Map[String, Try[File]]): Unit = {
+    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run {
+        // delete all of the temporary files
+        files.foreach(_ match {
+          case (labelName: String, file: Success[File]) => file.get.delete
+          case _ => {}
+        })
+        // and the random parent folder
+        trainerTemp.delete
+      }
+    })
+  }
+
+  /**
+    * Creates subdirectory where data should be stored.
+    *
+    * @return
+    */
+  protected def createTrainingDirs(): File = {
+    /* use a random subdirectory within the system temp directory for
+    * storing the intermediate training files */
+    val trainerTemp = FileSystems.getDefault.getPath(
+      System.getProperty("java.io.tmpdir"), "idiml", "training",
+      Math.abs(SecureRandom.getInstance("SHA1PRNG").nextInt).toString).toFile
+
+    trainerTemp.mkdirs()
+
+    trainerTemp
+  }
 }
 
-/**
-  * Place holder for creating multiclass RDDs.
-  */
-object MultiClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with StrictLogging {
-  override def getLabeledPointData(engine: Engine,
-                                   pipeline: FeaturePipeline,
-                                   docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]] = ???
-}
-
-/**
-  * RDDGenerator that produces data for KClasses, where each class is binary.
-  *
-  * Produces an RDD of LabeledPoints given a list of documents with annotations. This is intended for use with MLlib
-  * for performing logistic regression during training.
-  *
-  */
-object KClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with StrictLogging {
+abstract class DataFrameBase extends SparkDataGenerator[DataFrame] with StrictLogging {
 
   /** Produces a DataFrame of LabeledPoints for each distinct label name.
     *
@@ -105,14 +125,15 @@ object KClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with Stric
     } else {
       Some(files.map({ case (label, file) => {
         label -> sqlContext.read.parquet(file.get.getAbsolutePath)
-      }}))
+      }
+      }))
     }
   }
 
   /**
     * Converts the in memory RDDs to dataframes that have been persisted to
     * parquet format on disk at the location of trainerTemp.
- *
+    *
     * @param trainerTemp the base directory where to save these files.
     * @param sqlContext the sql context to use to create data frames
     * @param perLabelRDDs the map of label -> RDD[LabeledPoints] to convert.
@@ -148,45 +169,14 @@ object KClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with Stric
   }
 
   /**
-    * Add a shutdown hook to make sure that we clean up all temp files,
-    * regardless of how the JVM terminates.
+    * Creates a map of label -> RDD of labeled points.
     *
-    * @param trainerTemp
-    * @param files
-    */
-  protected def addShutdownHook(trainerTemp: File, files: Map[String, Try[File]]): Unit = {
-    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run {
-        // delete all of the temporary files
-        files.foreach(_ match {
-          case (labelName: String, file: Success[File]) => file.get.delete
-          case _ => {}
-        })
-        // and the random parent folder
-        trainerTemp.delete
-      }
-    })
-  }
-
-  /**
-    * Subdirectory
-    *
+    * @param engine the engine to use to parallelize the data
+    * @param perLabelLPs map of label to list of labeled points
     * @return
     */
-  protected def createTrainingDirs(): File = {
-    /* use a random subdirectory within the system temp directory for
-    * storing the intermediate training files */
-    val trainerTemp = FileSystems.getDefault.getPath(
-      System.getProperty("java.io.tmpdir"), "idiml", "training",
-      Math.abs(SecureRandom.getInstance("SHA1PRNG").nextInt).toString).toFile
-
-    trainerTemp.mkdirs();
-
-    trainerTemp
-  }
-
-  protected def createPerLabelRDDs(engine: Engine,
-                                   perLabelLPs: Map[String, ListBuffer[LabeledPoint]]): Map[String, RDD[LabeledPoint]] = {
+  def createPerLabelRDDs(engine: Engine,
+                         perLabelLPs: Map[String, List[LabeledPoint]]): Map[String, RDD[LabeledPoint]] = {
     val perLabelRDDs = HashMap[String, RDD[LabeledPoint]]()
     val logLine = perLabelLPs.map {
       case (label, lp) => {
@@ -205,6 +195,138 @@ object KClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with Stric
     perLabelRDDs.toMap
   }
 
+  def createPerLabelLPs(pipeline: FeaturePipeline,
+                        docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]]
+}
+
+/**
+  * RDDGenerator that produces data for KClasses, where each class is binary.
+  *
+  * Produces an RDD of LabeledPoints given a list of documents with annotations. This is intended for use with MLlib
+  * for performing logistic regression during training.
+  *
+  */
+class KClassDataFrameGenerator extends DataFrameBase {
+
+  /**
+    * Creates a map of label -> list of labelled points for that label.
+    *
+    * This shares feature vectors for a document across labels.
+    *
+    * @param pipeline
+    * @param docs
+    * @return
+    */
+  override def createPerLabelLPs(pipeline: FeaturePipeline,
+                        docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]] = {
+    implicit val formats = org.json4s.DefaultFormats
+    docs().flatMap(document => {
+      val annotations = (document \ "annotations").extract[JArray]
+      // Run the pipeline to generate the feature vector -- so we will be sharing a reference to this.
+      // CAVEAT: we might need to create an explicit FeatureVector for each label in the future.
+      val featureVector = pipeline(document)
+      // create list of (label, points)
+      annotations.arr.map({ jsonValue => {
+        // for each annotation, we assume it was provided so we can make a training point out of it.
+        val JString(label) = jsonValue \ "label" \ "name"
+        val JBool(isPositive) = jsonValue \ "isPositive"
+        // Assign a number that MLlib understands
+        val labelNumeric = if (isPositive) 1.0 else 0.0
+        // Create labeled points
+        (label, LabeledPoint(labelNumeric, featureVector))
+      }})
+      // need to covert toList for groupBy to work...
+    }).toList
+      // group by label
+      .groupBy({ case (label, point) => label})
+      // need to change (label, List((label, pt))) to just (label, List(pt))
+      .map({ case (label, listLabelAndPoint) => {
+        (label, listLabelAndPoint.map({case (_, pt) => pt}))
+    }}) // it's implicitly converted into a map so no need for explicit toMap
+  }
+}
+
+/**
+  * Place holder for creating multiclass RDDs.
+  *
+  * TODO: refactor to just return DataFrames, and delegating using RDDs to underlying furnaces.
+  */
+class MultiClassRDDGenerator extends SparkDataGenerator[RDD[LabeledPoint]] with StrictLogging {
+
+  /** Produces a DataFrame of LabeledPoints for each distinct label name.
+    *
+    * Dataframes are persisted to parquet format and that's what they're backed by
+    *
+    * Creates a set of labeled points for each label in the training document
+    * set, writes the points out to a temporary Parquet file, and re-loads
+    * the file as a DataFrame ready for training.
+    *
+    * Callers should provide a callback function which returns a traversable
+    * list of documents; this function will be called multiple times, and
+    * each invocation of the function must return an instance that will
+    * traverse over the exact set of documents traversed by previous instances.
+    *
+    * Traversed documents should match the format generated by
+    * idibin.git:/idibin/bin/open_source_integration/export_training_to_idiml.rb
+    *
+    *   { "content": "Who drives a chevy maliby Would you recommend it?
+    *     "metadata": { "iso_639_1": "en" },
+    *     "annotations: [{ "label": { "name": "Intent" }, "isPositive": true }]}
+    *
+    * @param engine: the current idiml engine context
+    * @param pipeline: a FeaturePipeline to use for processing documents. Already primed.
+    * @param docs: a callback function returning the training documents
+    * @return a Map from label name to a DataFrame of LabeledPoints for that label
+    */
+  override def getLabeledPointData(engine: Engine,
+                                   pipeline: FeaturePipeline,
+                                   docs: () => TraversableOnce[JObject]): Option[Map[String, RDD[LabeledPoint]]] = {
+    val perLabelLPs = createPerLabelLPs(pipeline, docs)
+    // Generate the RDDs, given the per-label list of LabeledPoints we just created -- now it's all in memory.
+    val perLabelRDDs = createPerLabelRDDs(engine, perLabelLPs)
+    Some(perLabelRDDs)
+
+    // create training directories - return file where to save stuff.
+    val trainerTemp = createTrainingDirs()
+    val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
+    // convert RDDs to data frames
+    val files = createPerLabelDFs(trainerTemp, sqlContext, perLabelRDDs)
+    // make sure the files go away
+    addShutdownHook(trainerTemp, files)
+
+    // only train if all labels were successfully stored
+    if (files.exists({ case (_, file) => file.isFailure })) {
+      None
+    } else {
+      Some(files.map({ case (label, file) => {
+        label -> sqlContext.read.parquet(file.get.getAbsolutePath).rdd.map(row => {
+          LabeledPoint(row.getDouble(0), row.getAs[Vector](1))
+        })
+      }
+      }))
+    }
+  }
+
+
+  /**
+    * Creates a map of label -> RDD of labeled points.
+    *
+    * @param engine the engine to use to parallelize the data
+    * @param perLabelLPs map of label to list of labeled points
+    * @return
+    */
+  def createPerLabelRDDs(engine: Engine,
+                         perLabelLPs: Map[String, List[LabeledPoint]]): Map[String, RDD[LabeledPoint]] = {
+    perLabelLPs.map {
+      case (label, lp) => {
+        val splits = lp.groupBy(x => x.label).map(x => s"Polarity: ${x._1}, Size: ${x._2.size}").toList
+        if (label.equals(MultiClass.MODEL_KEY))
+          logger.info(s"\nCreated ${lp.size} multi-class data points; with splits $splits")
+        (label, engine.sparkContext.parallelize(lp).persist())
+      }
+    }
+  }
+
   /**
     * Creates a map of label -> list of labelled points for that label.
     *
@@ -212,34 +334,75 @@ object KClassDataFrameGenerator extends SparkDataGenerator[DataFrame] with Stric
     * @param docs
     * @return
     */
-  protected def createPerLabelLPs(pipeline: FeaturePipeline,
-                                  docs: () => TraversableOnce[JObject]):
-  Map[String, ListBuffer[LabeledPoint]] = {
+  def createPerLabelLPs(pipeline: FeaturePipeline,
+                                 docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]] = {
     implicit val formats = org.json4s.DefaultFormats
-    val perLabelLPs = HashMap[String, ListBuffer[LabeledPoint]]()
-    docs().foreach(document => {
+    val labelToIntMap = HashMap[String, Int]()
+    var numClasses = 0
+    val trainingData = docs().flatMap(document => {
+      // Run the pipeline to generate the feature vector
+      val featureVector = pipeline(document)
+      // get annotations
       val annotations = (document \ "annotations").extract[JArray]
-      // for each annotation, we assume it was provided so we can make a training point out of it.
-      for (entry <- annotations.arr) {
-        val JString(label) = entry \ "label" \ "name"
-        val JBool(isPositive) = entry \ "isPositive"
-
+      // for each annotation create a labelled point
+      annotations.arr.map({ jsonValue => {
+        // for each annotation, we assume it was provided so we can make a training point out of it.
+        val JString(label) = jsonValue \ "label" \ "name"
+        val JBool(isPositive) = jsonValue \ "isPositive"
         // If we haven't seen this label before, instantiate a list
-        if (!perLabelLPs.contains(label)) {
-          perLabelLPs(label) = new ListBuffer[LabeledPoint]()
+        if (!labelToIntMap.contains(label)) {
+          labelToIntMap.put(label, numClasses)
+          numClasses += 1
         }
+        val labelNumber = labelToIntMap.get(label).get
+        (isPositive, LabeledPoint(labelNumber, featureVector))
+      }})// discard negative polarity annotations (can I do that in the above step?)
+        .filter({case (isPositive, lbPt) => isPositive})
+        // map it to just points
+        .map({case (_, lbPt) => lbPt})
+    }).toList
+    // TODO: think admittedly a very big hack....
+    val label_to_num = labelToIntMap.map({ case (label, num) => (label, List(LabeledPoint(num, Vectors.zeros(0))))}).toMap
+    // TODO: with this hack need to guard against labels being like this
+    label_to_num + (MultiClass.MODEL_KEY -> trainingData)
+  }
 
-        // Assign a number that MLlib understands
-        val labelNumeric = if (isPositive) 1.0 else 0.0
 
-        // Run the pipeline to generate the feature vector
-        val featureVector = pipeline(document)
-
-        // Create labeled points
-        perLabelLPs(label) += LabeledPoint(labelNumeric, featureVector)
-      }
+  /**
+    * Converts the in memory RDDs to dataframes that have been persisted to
+    * parquet format on disk at the location of trainerTemp.
+    *
+    * @param trainerTemp the base directory where to save these files.
+    * @param sqlContext the sql context to use to create data frames
+    * @param perLabelRDDs the map of label -> RDD[LabeledPoints] to convert.
+    * @return map of label -> file (location of parquet file)
+    */
+  def createPerLabelDFs(trainerTemp: File,
+                        sqlContext: org.apache.spark.sql.SQLContext,
+                        perLabelRDDs: Map[String, RDD[LabeledPoint]]): Map[String, Try[File]] = {
+    perLabelRDDs.zipWithIndex.map({ case ((label, rdd), index) => {
+      (label, Try({
+        /* can't call File.createTempFile here, because the parquet writer
+         * doesn't like to overwrite files, including the empty file created
+         * by File.createTempFile, so use the integer index of the label
+         * within a random temp directory. :angry: */
+        val file = new File(trainerTemp, s"idiml-${index}.parquet")
+        logger.info(s"Saving RDD for $label to $file")
+        try {
+          sqlContext.createDataFrame(rdd)
+            .write.parquet(file.getAbsolutePath)
+          file
+        } catch {
+          case error: Throwable => {
+            /* if saving fails for any reason, delete the temporary file
+             * and map store a Failure in the map */
+            logger.error(s"Failed to save training data for $label", error)
+            file.delete
+            throw error
+          }
+        }
+      }))
+    }
     })
-    perLabelLPs.toMap
   }
 }
-

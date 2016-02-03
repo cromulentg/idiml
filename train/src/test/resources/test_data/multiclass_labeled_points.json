@@ -1,0 +1,2 @@
+{ "content": "Who drives a chevy malibu? Would you recommend it?", "metadata": { "iso_639_1": "en" }, "annotations": [ { "label": { "name": "Intent to Buy" }, "isPositive": true } ] }
+{ "content": "I like to eat bananas.", "metadata": { "iso_639_1": "en" }, "annotations": [ { "label": { "name": "Monkey" }, "isPositive": true }, { "label": { "name": "Intent to Buy" }, "isPositive": false }] }

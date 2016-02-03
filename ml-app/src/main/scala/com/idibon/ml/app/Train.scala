@@ -6,7 +6,7 @@ import com.idibon.ml.train.furnace.{SimpleLogisticRegression, XValLogisticRegres
 import scala.io.Source
 import scala.util.Failure
 import org.json4s._
-import com.idibon.ml.train.{KClassDataFrameGenerator, KClassDataFrameGenerator$}
+import com.idibon.ml.train.{KClassDataFrameGenerator}
 
 import com.typesafe.scalalogging.StrictLogging
 
@@ -42,7 +42,7 @@ object Train extends Tool with StrictLogging {
       // default to tri-grams
       val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
       val furnace = new XValLogisticRegression(engine)
-      new KClass1FP(engine, KClassDataFrameGenerator, furnace).trainAlloy(
+      new KClass1FP(engine, new KClassDataFrameGenerator(), furnace).trainAlloy(
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))
             .getLines.map(line => parse(line).extract[JObject])
