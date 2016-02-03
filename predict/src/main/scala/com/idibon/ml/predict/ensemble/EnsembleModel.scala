@@ -15,6 +15,8 @@ import org.json4s._
 case class EnsembleModel(label: String, models: List[PredictModel])
     extends PredictModel with Archivable[EnsembleModel, EnsembleModelLoader] {
 
+  val indexToModel = models.zipWithIndex.map({case (model, index) => (index, model)}).toMap
+
   /**
     * The method used to predict from a FULL DOCUMENT!
     *
@@ -26,10 +28,8 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     */
   override def predict(document: JObject,
                        options: PredictOptions): PredictResult = {
-    // create list of (index, model)
-    val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
-    val results: List[(Int, PredictResult)] = zipped.par.map(m =>
+    val results: List[(Int, PredictResult)] = indexToModel.par.map(m =>
       (m._1, m._2.predict(document, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
     combineResults(results.sortBy(_._1).map(_._2))
@@ -43,10 +43,8 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     */
   override def predict(features: Vector,
                        options: PredictOptions): PredictResult = {
-    // create list of (index, model)
-    val zipped = (models.indices, models).zipped.toList
     // delegate to underlying models
-    val results: List[(Int, PredictResult)] = zipped.par.map(m =>
+    val results: List[(Int, PredictResult)] = indexToModel.par.map(m =>
       (m._1, m._2.predict(features, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
     combineResults(results.sortBy(_._1).map(_._2))
