@@ -1,7 +1,7 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.train.alloy.KClass1FP
-import com.idibon.ml.train.datagenerator.KClassDataFrameGenerator
+import com.idibon.ml.train.datagenerator.SparkDataGeneratorFactory
 import com.idibon.ml.train.furnace._
 
 import scala.io.Source
@@ -37,13 +37,15 @@ object Train extends Tool with StrictLogging {
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
     easterEgg.map(egg => new Thread(egg).start)
 
+    val dataGeneratorConfig = """{"jsonClass":"KClassDataFrameGeneratorBuilder"}"""
+    val dataGenerator = SparkDataGeneratorFactory.getDataGenerator(dataGeneratorConfig)
     val furnaceConfig = """{"jsonClass":"XValLogisticRegressionBuilder", "maxIterations":100}"""
     val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
     try{
       val startTime = System.currentTimeMillis()
       // default to tri-grams
       val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
-      new KClass1FP(engine, new KClassDataFrameGenerator(), furnace).trainAlloy(
+      new KClass1FP(engine, dataGenerator, furnace).trainAlloy(
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))
             .getLines.map(line => parse(line).extract[JObject])
