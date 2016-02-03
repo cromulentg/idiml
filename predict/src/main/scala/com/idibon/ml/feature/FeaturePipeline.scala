@@ -139,6 +139,7 @@ class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, In
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(List(
+      JField("version", JString(FeaturePipeline.SchemaVersion)),
       JField("transforms",
         JArray(this.state.transforms.map({ case (name, xf) => {
           // create the serialized TransformEntry representation
@@ -200,6 +201,7 @@ class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, In
     * Takes in a list of integers, and matches them with the corresponding
     * FeatureTransformer and then calls that transformer with that feature
     * subsection and to return a human readable feature name for that index.
+ *
     * @param indexes
     * @return
     */
@@ -256,6 +258,7 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     implicit val formats = DefaultFormats
 
     FeaturePipeline.logger.trace(s"[$this] loading")
+
     val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
     val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
 
@@ -297,6 +300,7 @@ private[feature] object FeaturePipeline {
   val OutputStage = "$output"
   val DocumentInput = "$document"
   val DefaultName = "<undefined>"
+  val SchemaVersion = "0.0.1"
 
   val logger = Logger(org.slf4j.LoggerFactory
     .getLogger(classOf[FeaturePipeline]))
@@ -590,9 +594,9 @@ private[feature] object FeaturePipeline {
 
 // all internal state maintained by the FeaturePipeline
 private[this] case class LoadState(graph: Seq[PipelineStage],
-                                   pipeline: Seq[PipelineEntry],
-                                   inverters: Seq[FeatureTransformer],
-                                   transforms: Map[String, FeatureTransformer])
+                                      pipeline: Seq[PipelineEntry],
+                                      inverters: Seq[FeatureTransformer],
+                                      transforms: Map[String, FeatureTransformer])
 
 
 // Schema for each entry within the transforms JSON array
