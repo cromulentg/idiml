@@ -31,14 +31,12 @@ object MultiClass {
   * CAVEAT:
   *  - Assumes labels are mutually exclusive. i.e. there is only ever one that is correct.
   *
-  * @param engine
-  * @param dataGen
-  * @param furnace
+  * @param builder
   */
-class MultiClass1FP(engine: Engine,
-                    dataGen: SparkDataGenerator,
-                    furnace: Furnace)
-  extends BaseTrainer(engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+class MultiClass1FP(builder: MultiClass1FPBuilder)
+  extends BaseTrainer(builder.engine,
+    builder.dataGenBuilder.build(),
+    builder.furnaceBuilder.build(builder.engine)) with OneFeaturePipeline with StrictLogging {
   /**
     * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
     *

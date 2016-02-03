@@ -8,10 +8,10 @@ import org.json4s.native.Serialization.{writePretty}
   * Static object to house global defaults for data generator builders.
   */
 object BuilderDefaults {
-  implicit val formats = Serialization.formats(ShortTypeHints(List(
+  val classHints = List(
     classOf[MultiClassDataFrameGeneratorBuilder],
-    classOf[KClassDataFrameGeneratorBuilder]
-  )))
+    classOf[KClassDataFrameGeneratorBuilder])
+  implicit val formats = Serialization.formats(ShortTypeHints(classHints))
 }
 
 trait SparkDataGeneratorBuilder {
@@ -31,10 +31,10 @@ trait SparkDataGeneratorBuilder {
   }
 }
 
-class MultiClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
+case class MultiClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
   override def build(): MultiClassDataFrameGenerator = new MultiClassDataFrameGenerator()
 }
 
-class KClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
+case class KClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
   override def build(): KClassDataFrameGenerator = new KClassDataFrameGenerator()
 }

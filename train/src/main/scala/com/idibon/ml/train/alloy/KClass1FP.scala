@@ -2,10 +2,8 @@ package com.idibon.ml.train.alloy
 
 import java.util
 
-import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.ml.MLModel
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
-import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JObject
 
@@ -14,14 +12,12 @@ import scala.util.{Failure, Try}
 /**
   * Trains K models using a global feature pipeline.
   *
-  * @param engine
-  * @param dataGen
-  * @param furnace
+  * @param builder
   */
-class KClass1FP(engine: Engine,
-                dataGen: SparkDataGenerator,
-                furnace: Furnace)
-  extends BaseTrainer(engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+class KClass1FP(builder: KClass1FPBuilder)
+  extends BaseTrainer(builder.engine,
+    builder.dataGenBuilder.build(),
+    builder.furnaceBuilder.build(builder.engine)) with OneFeaturePipeline with StrictLogging {
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.

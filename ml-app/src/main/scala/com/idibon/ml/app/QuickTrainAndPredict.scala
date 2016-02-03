@@ -2,7 +2,7 @@ package com.idibon.ml.app
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
-import com.idibon.ml.train.alloy.{MultiClass1FP}
+import com.idibon.ml.train.alloy.{AlloyFactory, MultiClass1FP}
 import com.idibon.ml.train.datagenerator.{SparkDataGeneratorFactory, MultiClassDataFrameGenerator}
 import com.idibon.ml.train.furnace.{FurnaceFactory}
 import com.typesafe.scalalogging.StrictLogging
@@ -46,8 +46,19 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val dataGenerator = SparkDataGeneratorFactory.getDataGenerator(dataGeneratorConfig)
     val furnaceConfig = """{"jsonClass":"MultiClassLRFurnaceBuilder", "maxIterations":1}"""
     val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
-    val model = new MultiClass1FP(
-      engine, dataGenerator, furnace).trainAlloy(
+    val actualConfig = """{
+                           "jsonClass":"MultiClass1FPBuilder",
+                           "dataGenBuilder":{
+                             "jsonClass":"MultiClassDataFrameGeneratorBuilder"
+                           },
+                           "furnaceBuilder":{
+                             "jsonClass":"MultiClassLRFurnaceBuilder",
+                             "maxIterations":100,
+                             "tolerance": 1.0E-4,
+                           }
+                         }"""
+    val trainer = AlloyFactory.getTrainer(engine, actualConfig)
+    val model = trainer.trainAlloy(
       () => { // training data
       Source.fromFile(cli.getOptionValue('i'))
         .getLines.map(line => parse(line).extract[JObject])

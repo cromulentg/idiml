@@ -1,7 +1,7 @@
 package com.idibon.ml.app
 
-import com.idibon.ml.train.alloy.KClass1FP
-import com.idibon.ml.train.datagenerator.SparkDataGeneratorFactory
+import com.idibon.ml.train.alloy.{AlloyFactory, KClass1FPBuilder, KClass1FP}
+import com.idibon.ml.train.datagenerator.{KClassDataFrameGeneratorBuilder, SparkDataGeneratorFactory}
 import com.idibon.ml.train.furnace._
 
 import scala.io.Source
@@ -37,15 +37,37 @@ object Train extends Tool with StrictLogging {
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
     easterEgg.map(egg => new Thread(egg).start)
 
-    val dataGeneratorConfig = """{"jsonClass":"KClassDataFrameGeneratorBuilder"}"""
-    val dataGenerator = SparkDataGeneratorFactory.getDataGenerator(dataGeneratorConfig)
-    val furnaceConfig = """{"jsonClass":"XValLogisticRegressionBuilder", "maxIterations":100}"""
-    val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
+    val actualConfig = """{
+                           "jsonClass":"KClass1FPBuilder",
+                           "dataGenBuilder":{
+                             "jsonClass":"KClassDataFrameGeneratorBuilder"
+                           },
+                           "furnaceBuilder":{
+                             "jsonClass":"XValLogisticRegressionBuilder",
+                             "maxIterations":100,
+                             "regParams":[
+                               0.001,
+                               0.01,
+                               0.1
+                             ],
+                             "tolerances":[
+                               1.0E-4
+                             ],
+                             "elasticNetParams":[
+                               0.9,
+                               1.0
+                             ],
+                             "numFolds":10
+                           }
+                         }"""
+    // Can also instantiate with defaults programmatically like:
+    //  val trainer = KClass1FPBuilder().build(engine)
+    val trainer = AlloyFactory.getTrainer(engine, actualConfig)
     try{
       val startTime = System.currentTimeMillis()
       // default to tri-grams
       val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
-      new KClass1FP(engine, dataGenerator, furnace).trainAlloy(
+      trainer.trainAlloy(
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))
             .getLines.map(line => parse(line).extract[JObject])

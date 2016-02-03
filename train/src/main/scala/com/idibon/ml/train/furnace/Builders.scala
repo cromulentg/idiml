@@ -21,13 +21,14 @@ object BuilderDefaults {
   val REGULARIZATION_PARAMETERS = Array(REGULARIZATION_PARAMETER, 0.01, 0.1)
   val ELASTIC_NET_PARAMETERS = Array(ELASTIC_NET_PARAMETER, 1.0)
 
-  /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
-     The only requirement is that has a 'jsonClass' field with one of the names of the classes
-     below.*/
-  implicit val formats = Serialization.formats(ShortTypeHints(List(
+  val classHints = List(
     classOf[MultiClassLRFurnaceBuilder],
     classOf[SimpleLogisticRegressionBuilder],
-    classOf[XValLogisticRegressionBuilder])))
+    classOf[XValLogisticRegressionBuilder])
+  /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
+       The only requirement is that has a 'jsonClass' field with one of the names of the classes
+       below.*/
+  implicit val formats = Serialization.formats(ShortTypeHints(classHints))
 }
 
 /**
