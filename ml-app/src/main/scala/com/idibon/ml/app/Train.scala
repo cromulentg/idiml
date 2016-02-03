@@ -1,7 +1,7 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.train.alloy.KClass1FP
-import com.idibon.ml.train.furnace.{SimpleLogisticRegression, XValLogisticRegression}
+import com.idibon.ml.train.furnace._
 
 import scala.io.Source
 import scala.util.Failure
@@ -37,11 +37,12 @@ object Train extends Tool with StrictLogging {
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
     easterEgg.map(egg => new Thread(egg).start)
 
+    val furnaceConfig = """{"jsonClass":"XValLogisticRegressionBuilder", "maxIterations":100}"""
+    val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
     try{
       val startTime = System.currentTimeMillis()
       // default to tri-grams
       val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
-      val furnace = new XValLogisticRegression(engine)
       new KClass1FP(engine, new KClassDataFrameGenerator(), furnace).trainAlloy(
         () => { // training data
           Source.fromFile(cli.getOptionValue('i'))

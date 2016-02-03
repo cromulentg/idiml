@@ -49,7 +49,7 @@ class SimpleLogisticRegressionSpec extends FunSpec
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val simple = new SimpleLogisticRegression(engine)
+      val simple = new SimpleLogisticRegressionBuilder().build(engine)
       val features = simple.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
@@ -120,7 +120,7 @@ class XValLogisticRegressionSpec extends FunSpec
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val xval = new XValLogisticRegression(engine)
+      val xval = new XValLogisticRegressionBuilder().build(engine)
       val features = xval.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])

@@ -50,7 +50,7 @@ class MultiClassLRFurnaceSpec extends FunSpec
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val mclrf = new MultiClassLRFurnace(engine)
+      val mclrf = new MultiClassLRFurnaceBuilder().build(engine)
       val features = mclrf.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])

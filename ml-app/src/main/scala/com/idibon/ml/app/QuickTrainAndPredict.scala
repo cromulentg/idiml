@@ -1,11 +1,10 @@
 package com.idibon.ml.app
 
-import com.idibon.ml.app.Train._
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
 import com.idibon.ml.train.MultiClassDataFrameGenerator
-import com.idibon.ml.train.alloy.{MultiClass1FPRDD, MultiClass1FP}
-import com.idibon.ml.train.furnace.MultiClassLRFurnace
+import com.idibon.ml.train.alloy.{MultiClass1FPRDD}
+import com.idibon.ml.train.furnace.{FurnaceFactory}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -43,7 +42,8 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val cli = parseCommandLine(argv)
     val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
     val startTime = System.currentTimeMillis()
-    val furnace = new MultiClassLRFurnace(engine)
+    val furnaceConfig = """{"jsonClass":"MultiClassLRFurnaceBuilder", "maxIterations":1}"""
+    val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
     val model = new MultiClass1FPRDD(
       engine, new MultiClassDataFrameGenerator(), furnace).trainAlloy(
       () => { // training data

@@ -16,15 +16,15 @@ import org.json4s.JsonAST.JObject
 /**
   * This builds a multinomial LR model based off of MLLIB.
   *
-  * @param engine
+  * @param builder
   */
-class MultiClassLRFurnace(engine: Engine)
-    extends Furnace[Classification] with StrictLogging {
-
-  val maxIterations = 100
+class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
+  extends Furnace[Classification] with StrictLogging {
+  val engine: Engine = builder.engine
+  val maxIterations = builder.maxIterations
+  val tolerance = builder.tolerance
+  val regParam = builder.regParam
   var labelToInt: Map[String, Int] = Map()
-  val tolerance = 1e-4
-  val regParam = 0.01
 
   /**
     * Function fits a model to data in the dataframe.
