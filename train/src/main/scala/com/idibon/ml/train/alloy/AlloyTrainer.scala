@@ -1,25 +1,18 @@
 package com.idibon.ml.train.alloy
 
-import java.util
-
 import com.idibon.ml.alloy.{JarAlloy, Alloy}
 import com.idibon.ml.common.Engine
-import com.idibon.ml.feature.bagofwords.{CaseTransform, BagOfWordsTransformer}
-import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.ngram.NgramTransformer
-import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
-import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
-import com.idibon.ml.predict.{PredictModel, PredictResult, Classification}
+import com.idibon.ml.predict.{Classification}
 import com.idibon.ml.predict.ensemble.GangModel
+import com.typesafe.scalalogging.StrictLogging
+import com.idibon.ml.predict.PredictModel
 import com.idibon.ml.predict.rules.DocumentRules
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.idibon.ml.train.furnace.Furnace
-import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JObject
 
 import scala.collection.mutable
-import scala.util.{Failure, Try}
+import scala.util.{Try}
 
 /**
   * This is the trait that an alloy trainer implements.
@@ -98,31 +91,7 @@ trait AlloyTrainer {
   }
 }
 
-trait OneFeaturePipeline {
 
-  /**
-    * Creates a single feature pipeline from the passed in configuration.
-    *
-    * @param config
-    * @return
-    */
-  def createFeaturePipeline(config: JObject): FeaturePipeline = {
-    implicit val formats = org.json4s.DefaultFormats
-    val ngramSize = (config \ "ngram").extract[Int]
-    //TODO: unhardcode this
-    (FeaturePipelineBuilder.named("pipeline")
-      += FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams")
-      += FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords")
-      += FeaturePipelineBuilder.entry("bagOfWords",
-      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
-      "convertToTokens", "languageDetector")
-      += FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector")
-      += FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document")
-      += FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document")
-      := "convertToIndex")
-  }
-
-}
 
 /**
   * Base class for trainers that follow a fairly orthodox approach to training.
@@ -191,6 +160,7 @@ abstract class BaseTrainer(engine: Engine, dataGen: SparkDataGenerator,
 
 }
 
+<<<<<<< 100f7701e9c6e970b584dcff48afb68f51c68473
 /**
   * Trains K models using a global feature pipeline.
   *
@@ -385,6 +355,9 @@ class MultiClass1FPRDD(engine: Engine, dataGen: SparkDataGenerator,
     Try(Map(MultiClass.MODEL_KEY -> model))
   }
 }
+=======
+
+>>>>>>> Refactors AlloyTrainers into separate files
 
 ///**
 //  * Trains K models using K feature pipelines - one for each model.

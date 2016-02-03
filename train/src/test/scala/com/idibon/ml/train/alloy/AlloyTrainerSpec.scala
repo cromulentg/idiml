@@ -8,10 +8,6 @@ import org.scalatest._
 class AlloyTrainerSpec extends FunSpec
   with Matchers with BeforeAndAfter with ParallelTestExecution with BeforeAndAfterAll {
 
-  describe("MultiClass1FPRDD tests") {
-    //TODO:
-  }
-
   describe("MultiClass1FP tests") {
     //TODO:
   }
