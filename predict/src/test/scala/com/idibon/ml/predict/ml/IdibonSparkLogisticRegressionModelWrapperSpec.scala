@@ -14,8 +14,13 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
     "test", Vectors.sparse(10, Array(0, 3, 5), Array(0.3, 0.2, 0.1)), 0.0)
 
   describe("predict probability") {
-    it("handles vectors of different sizes well") {
+    it("handles vectors of different sizes well when we need to prune.") {
       val result = model.predictProbability(Vectors.sparse(11, Array(0, 3, 11), Array(1.0, 1.0, 1.0)))
+      result shouldBe Vectors.sparse(2, Array(0, 1), Array(0.3775406687981454,0.6224593312018546))
+    }
+
+    it("handles vectors of different sizes well") {
+      val result = model.predictProbability(Vectors.sparse(11, Array(0, 3, 9), Array(1.0, 1.0, 0.0)))
       result shouldBe Vectors.sparse(2, Array(0, 1), Array(0.3775406687981454,0.6224593312018546))
     }
 

@@ -1,7 +1,7 @@
 package com.idibon.ml.predict.ml
 
 
-import java.io.{IOException, DataInputStream, DataOutputStream}
+import java.io.{DataInputStream, DataOutputStream, IOException}
 
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
@@ -10,10 +10,8 @@ import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, 
 import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
-import org.apache.spark.mllib.linalg.{Vectors, Vector}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s._
-
-import scala.collection.mutable.ListBuffer
 
 /**
   * @author "Stefan Krawczyk <stefan@idibon.com>"
@@ -21,8 +19,8 @@ import scala.collection.mutable.ListBuffer
   * This class implements our LogisticRegressionModel.
   */
 case class IdibonLogisticRegressionModel(label: String,
-                                    lrm: IdibonSparkLogisticRegressionModelWrapper,
-                                    featurePipeline: FeaturePipeline) extends MLModel
+                                         lrm: IdibonSparkLogisticRegressionModelWrapper,
+                                         featurePipeline: FeaturePipeline) extends MLModel
   with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] with StrictLogging {
 
   /**
@@ -41,6 +39,7 @@ case class IdibonLogisticRegressionModel(label: String,
 
   /**
     * The method used to predict from a vector of features.
+    *
     * @param features Vector of features to use for prediction.
     * @param options Object of predict options.
     * @return
@@ -64,6 +63,7 @@ case class IdibonLogisticRegressionModel(label: String,
 
   /**
     * Returns the type of model. Perhaps this should be an enum?
+    *
     * @return
     */
   override def getType(): String = this.getClass().getName()
@@ -71,6 +71,7 @@ case class IdibonLogisticRegressionModel(label: String,
   /**
     * The model will use a subset of features passed in. This method
     * should return the ones used.
+    *
     * @return Vector (likely SparseVector) where indices correspond to features
     *         that were used.
     */
@@ -106,8 +107,6 @@ case class IdibonLogisticRegressionModel(label: String,
       JField("feature-meta", featurePipelineMeta.getOrElse(JNothing))
     )))
   }
-
-
 }
 
 object IdibonLogisticRegressionModel extends StrictLogging {
@@ -171,7 +170,7 @@ object IdibonLogisticRegressionModel extends StrictLogging {
 
 /** Paired loader class for IdibonLogisticRegressionModel instances */
 class IdibonLogisticRegressionModelLoader
-    extends ArchiveLoader[IdibonLogisticRegressionModel] with StrictLogging {
+  extends ArchiveLoader[IdibonLogisticRegressionModel] with StrictLogging {
 
 
   /** Reloads the object from the Alloy
@@ -195,8 +194,8 @@ class IdibonLogisticRegressionModelLoader
     }
     val coeffs = reader.within("model").resource("coefficients.libsvm")
     val (intercept: Double,
-        coefficients: Vector,
-        uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
+    coefficients: Vector,
+    uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
     coeffs.close()
     val featureMeta = (config.get \ "feature-meta").extract[JObject]
     val featurePipeline = new FeaturePipelineLoader().load(
