@@ -21,7 +21,7 @@ import org.json4s._
   * @param engine the engine context to use for RDD & DataFrame generation
   * @tparam T The type of trainer to expect to train on.
   */
-abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace[DataFrame] with StrictLogging {
+abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace with StrictLogging {
 
   /**
     * Function to take care of featurizing the data.
@@ -33,7 +33,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace[Data
     * @return a map from label name to the training DataFrame for that label
     */
   override def featurizeData(rawData: () => TraversableOnce[JObject],
-                             dataGen: SparkDataGenerator[DataFrame],
+                             dataGen: SparkDataGenerator,
                              featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]] = {
     // produces data frames
     dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
