@@ -114,6 +114,40 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
     sigFeatures.map(x => (x._1, x._2.toList)).toList
   }
 
+  /**
+    * Helper method to return a vector of indicies that correspond to features used by the model.
+    * We cannot just return the weights, since the weight vector indicies cover weights for
+    * all labels in the multinomial case. In the binomial case we can just return the weights
+    * vector.
+    *
+    * @return Vector where the indicies represent features used in the model.
+    */
+  def getFeaturesUsed(): Vector = {
+    if (numClasses == 2) {
+      assert(numFeatures == weights.numActives, "number of features and weights should match in MLLIB LR model.")
+      weights.toSparse
+    } else {
+      // want to take first numFeatures non-zero entries in dense vector
+      val indicies = new Array[Int](numFeatures)
+      val values = new Array[Double](numFeatures)
+      assert(numFeatures <= dataWithBiasSize, "number of features should be equal to or smaller than nonZero values")
+      var i = 0
+      var k = 0
+      while (i < numFeatures && k < numFeatures) {
+        val v = weightsArray(k)
+        if (v != 0.0) {
+          indicies(i) = k
+          values(i) = v
+          i += 1
+        }
+        k += 1
+      }
+      if (i < numFeatures)
+        Vectors.sparse(numFeatures, indicies.slice(0, i), values.slice(0, i))
+      else
+        Vectors.sparse(numFeatures, indicies, values)
+    }
+  }
 }
 
 /**

@@ -78,4 +78,39 @@ class IdibonSparkMLLIBLRWrapperSpec extends FunSpec
       result(2) shouldBe (2, List())
     }
   }
+
+  describe("gets features used tests") {
+    it("Gets features used in binary case where all are used") {
+      val model = new IdibonSparkMLLIBLRWrapper(
+        Vectors.sparse(10,
+          Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+          Array(0.6, 0.8, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1)).toDense, 0.0, 10, 2)
+      model.getFeaturesUsed() shouldBe Vectors.sparse(10,
+        Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+        Array(0.6, 0.8, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1))
+    }
+    it("Gets features used in binary case where only some are used") {
+      val model = new IdibonSparkMLLIBLRWrapper(
+        Vectors.sparse(10, Array(0, 3, 5), Array(0.6, 0.8, 0.1)).toDense, 0.0, 10, 2)
+      model.getFeaturesUsed() shouldBe Vectors.sparse(10, Array(0, 3, 5), Array(0.6, 0.8, 0.1))
+    }
+    it("Gets features used in n-ary case where all are used") {
+      val multinomialmodel = new IdibonSparkMLLIBLRWrapper(
+        Vectors.sparse(20,
+          Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19),
+          Array(0.6, 0.8, 0.1, 0.3, 0.4, 0.05, 0.6, 0.8, 0.1, 0.3, 0.4, 0.05, 0.6, 0.8, 0.1, 0.3, 0.4, 0.05, 0.1, 0.1)
+        ).toDense, 0.0, 10, 3)
+      multinomialmodel.getFeaturesUsed() shouldBe Vectors.sparse(10,
+        Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+        Array(0.6, 0.8, 0.1, 0.3, 0.4, 0.05, 0.6, 0.8, 0.1, 0.3)
+      )
+    }
+    it("Gets features used in n-ary case where only some are used") {
+      val multinomialmodel = new IdibonSparkMLLIBLRWrapper(
+        Vectors.sparse(20, Array(0, 3, 5, 10, 13, 15), Array(0.6, 0.8, 0.1, 0.3, 0.4, 0.05)).toDense, 0.0, 10, 3)
+      multinomialmodel.getFeaturesUsed() shouldBe Vectors.sparse(10,
+        Array(0, 3, 5), Array(0.6, 0.8, 0.1))
+    }
+
+  }
 }
