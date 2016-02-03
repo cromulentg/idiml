@@ -6,7 +6,7 @@ import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
-import com.idibon.ml.predict.{MultiLabelDocumentResultBuilder, PredictResult, PredictOptions}
+import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
@@ -22,18 +22,11 @@ import org.json4s._
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
 case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
-                                   lrm: IdibonSparkMLLIBLRWrapper,
-                                   featurePipeline: FeaturePipeline) extends MLModel
-  with Archivable[IdibonMultiClassLRModel, IdibonMultiClassLRModelLoader] with StrictLogging {
+  lrm: IdibonSparkMLLIBLRWrapper, featurePipeline: FeaturePipeline)
+    extends MLModel(featurePipeline) with StrictLogging
+    with Archivable[IdibonMultiClassLRModel, IdibonMultiClassLRModelLoader] {
 
   val intToLabel = labelToInt.map({case (label, index) => (index, label)}).toMap
-
-  /**
-    * Returns the type of model.
-    *
-    * @return canonical class name.
-    */
-  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method
@@ -42,7 +35,7 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
     * @return Vector (likely SparseVector) where indices correspond to features
     *         that were used.
     */
-  override def getFeaturesUsed(): Vector = {
+  def getFeaturesUsed(): Vector = {
     return lrm.getFeaturesUsed()
   }
 
@@ -53,11 +46,11 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
     * @param options  Object of predict options.
     * @return
     */
-  override def predict(features: Vector, options: PredictOptions): PredictResult = {
+  override def predictVector(features: Vector, options: PredictOptions): PredictResult = {
     val results = lrm.predictProbability(features)
     logger.trace(s"input = ${features.toString} output=${results.toString}")
 
-    val builder = new MultiLabelDocumentResultBuilder(this.getType(), labelToInt.keys.toList)
+    val builder = new MultiLabelDocumentResultBuilder("", labelToInt.keys.toList)
     results.foreachActive((intIndex, prob) => {
       val label: String = intToLabel(intIndex)
       builder.setProbability(label, prob.toFloat)
@@ -78,19 +71,6 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
       }})
     }
     builder.build()
-  }
-
-  /**
-    * The method used to predict from a FULL DOCUMENT!
-    *
-    * The model needs to handle "featurization" here.
-    *
-    * @param document the JObject to pull from.
-    * @param options  Object of predict options.
-    * @return
-    */
-  override def predict(document: JObject, options: PredictOptions): PredictResult = {
-    return predict(featurePipeline.apply(document), options)
   }
 
   /** Serializes the object within the Alloy

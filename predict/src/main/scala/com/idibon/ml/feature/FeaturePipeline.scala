@@ -19,7 +19,8 @@ import com.idibon.ml.common.Reflect._
 /** The feature pipeline transforms documents into feature vectors
   */
 class FeaturePipeline(state: LoadState, outputDimensions: Option[Seq[(String, Int)]] = None)
-  extends Archivable[FeaturePipeline, FeaturePipelineLoader] with StrictLogging {
+    extends Archivable[FeaturePipeline, FeaturePipelineLoader]
+    with Function1[JObject, Vector] with StrictLogging {
   val totalDimensions = outputDimensions.map(seq => seq.map(_._2).sum).getOrElse(-1)
   val isFrozen = outputDimensions.isDefined
 

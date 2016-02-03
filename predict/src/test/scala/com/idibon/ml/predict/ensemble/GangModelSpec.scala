@@ -63,8 +63,10 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             )))))))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
-      val gang1Pred = gang1.predict(doc, new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
-      val gang2Pred = gang2.predict(doc, new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
+      val gang1Pred = gang1.predict(Document.document(doc),
+        new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
+      val gang2Pred = gang2.predict(Document.document(doc),
+        new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
       gang1Pred shouldBe gang2Pred
     }
 
@@ -115,7 +117,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working"),
         "metadata" -> JObject(List(("number", JDouble(0.5))))))
       val actual: MultiLabelDocumentResult = gang1.predict(
-        doc, new PredictOptionsBuilder().build()).asInstanceOf[MultiLabelDocumentResult]
+        Document.document(doc), new PredictOptionsBuilder().build())
+        .asInstanceOf[MultiLabelDocumentResult]
       actual.labels shouldBe List("blabel", "alabel")
       actual.matchCounts shouldBe List(1, 1)
       actual.probabilities shouldEqual List(0.2f, 0.2f)
@@ -127,7 +130,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working"),
         "metadata" -> JObject(List(("number", JDouble(0.5))))))
       val actual: MultiLabelDocumentResult = gang1.predict(
-        doc, new PredictOptionsBuilder().build()).asInstanceOf[MultiLabelDocumentResult]
+        Document.document(doc), new PredictOptionsBuilder().build())
+        .asInstanceOf[MultiLabelDocumentResult]
       actual.labels shouldBe List("blabel", "alabel")
       actual.matchCounts shouldBe List(3, 1)
       actual.probabilities shouldEqual List(0.4666667f, 0.2f)
@@ -141,7 +145,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working"),
         "metadata" -> JObject(List(("number", JDouble(0.5))))))
       val actual: MultiLabelDocumentResult = gang1.predict(
-        doc, new PredictOptionsBuilder().showSignificantFeatures(0.4f).build()).asInstanceOf[MultiLabelDocumentResult]
+        Document.document(doc), new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
+        .asInstanceOf[MultiLabelDocumentResult]
       actual.labels shouldBe List("blabel", "alabel")
       // since we whitelist/blacklist - we drop all the other model results, hence match count of 1.
       actual.matchCounts shouldBe List(1, 1)
@@ -156,7 +161,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val doc = new JObject(List("content" -> new JString("string matching is working"),
         "metadata" -> JObject(List(("number", JDouble(0.5))))))
       val actual: MultiLabelDocumentResult = gang1.predict(
-        doc, new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
+        Document.document(doc), new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
         .asInstanceOf[MultiLabelDocumentResult]
       actual.labels shouldBe List("blabel", "alabel")
       actual.matchCounts shouldBe List(3, 3)
@@ -171,12 +176,11 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
   * Fake class to make it easy to test combining results.
   * @param labels
   */
-case class FakeMCModel(labels: List[String]) extends MLModel with Archivable[FakeMCModel, FakeMCModelLoader] {
-  override def predict(document: JObject, options: PredictOptions): PredictResult = {
-    predict(Vectors.zeros(0), options)
-  }
+case class FakeMCModel(labels: List[String])
+    extends MLModel((doc: JObject) => Vectors.zeros(0))
+    with Archivable[FakeMCModel, FakeMCModelLoader] {
 
-  override def predict(features: Vector, options: PredictOptions): PredictResult = {
+  override def predictVector(features: Vector, options: PredictOptions): PredictResult = {
     val builder = new MultiLabelDocumentResultBuilder("test", labels)
       labels.foreach(label => {
         builder.setProbability(label, 0.2f)
@@ -190,8 +194,6 @@ case class FakeMCModel(labels: List[String]) extends MLModel with Archivable[Fak
   }
 
   override def getFeaturesUsed(): Vector = ???
-
-  override def getType(): String = this.getClass().getName()
 
   override def save(writer: Alloy.Writer): Option[JObject] = {
     val out = writer.resource("stuff")

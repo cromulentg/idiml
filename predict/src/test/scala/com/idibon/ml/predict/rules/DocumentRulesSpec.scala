@@ -3,7 +3,7 @@ package com.idibon.ml.predict.rules
 import java.util.regex.Pattern
 
 import com.idibon.ml.alloy.IntentAlloy
-import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict._
 import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg.SparseVector
 import org.json4s._
@@ -244,21 +244,12 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
   }
 
-  describe("predict from vector") {
-    it("Should throw exception") {
-      intercept[RuntimeException] {
-        new DocumentRules("a-label", List()).predict(
-          new SparseVector(1, Array(0), Array(0)), new PredictOptionsBuilder().build())
-      }
-    }
-  }
-
   describe("predict from JSON object") {
     it("Should predict properly when there is a match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("is", 1.0f)))
-      val actual = model.predict(
-        doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(Document.document(doc),
+        new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe "a-label"
       actual.probability shouldBe 1.0
     }
@@ -266,8 +257,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should predict properly when there is no match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("/no[thing].*/", 1.0f)))
-      val actual = model.predict(
-        doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(Document.document(doc),
+        new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe "a-label"
       actual.probability shouldBe 0.0
     }

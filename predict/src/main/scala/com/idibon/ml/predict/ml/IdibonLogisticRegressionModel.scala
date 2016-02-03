@@ -6,7 +6,7 @@ import java.io.{DataInputStream, DataOutputStream, IOException}
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Codec
-import com.idibon.ml.predict.{PredictOptions, SingleLabelDocumentResultBuilder, PredictResult}
+import com.idibon.ml.predict._
 import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
@@ -19,23 +19,10 @@ import org.json4s._
   * This class implements our LogisticRegressionModel.
   */
 case class IdibonLogisticRegressionModel(label: String,
-                                         lrm: IdibonSparkLogisticRegressionModelWrapper,
-                                         featurePipeline: FeaturePipeline) extends MLModel
-  with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] with StrictLogging {
-
-  /**
-    * The method used to predict from a FULL DOCUMENT!
-    *
-    * The model needs to handle "featurization" here.
-    *
-    * @param document the JObject to pull from.
-    * @param options Object of predict options.
-    * @return
-    */
-  override def predict(document: JObject,
-                       options: PredictOptions): PredictResult = {
-    return predict(featurePipeline.apply(document), options)
-  }
+  lrm: IdibonSparkLogisticRegressionModelWrapper,
+  featurePipeline: FeaturePipeline)
+    extends MLModel(featurePipeline) with StrictLogging
+    with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
 
   /**
     * The method used to predict from a vector of features.
@@ -44,11 +31,11 @@ case class IdibonLogisticRegressionModel(label: String,
     * @param options Object of predict options.
     * @return
     */
-  override def predict(features: Vector,
-                       options: PredictOptions): PredictResult = {
+  override def predictVector(features: Vector,
+      options: PredictOptions): PredictResult = {
     val results: Vector = lrm.predictProbability(features)
     logger.trace(s"$label: input = ${features.toString} output=${results.toString}")
-    val builder = new SingleLabelDocumentResultBuilder(this.getType(), label)
+    val builder = new SingleLabelDocumentResultBuilder("", label)
     // get the result of 1, the positive class we're interested in. 0 will be 1.0 minus this value.
     // TODO: change this if we move from binary use case.
     builder.setProbability(results.apply(1).toFloat)
@@ -60,13 +47,6 @@ case class IdibonLogisticRegressionModel(label: String,
     }
     builder.build()
   }
-
-  /**
-    * Returns the type of model. Perhaps this should be an enum?
-    *
-    * @return
-    */
-  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method

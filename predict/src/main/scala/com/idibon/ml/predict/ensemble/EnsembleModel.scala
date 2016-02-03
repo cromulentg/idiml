@@ -2,7 +2,7 @@ package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
-import com.idibon.ml.predict.{PredictResult, PredictModel, PredictOptions, SingleLabelDocumentResult}
+import com.idibon.ml.predict._
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -26,26 +26,11 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     * @param options Object of predict options.
     * @return
     */
-  override def predict(document: JObject,
+  override def predict(document: Document,
                        options: PredictOptions): PredictResult = {
     // delegate to underlying models
     val results: List[(Int, PredictResult)] = indexToModel.par.map(m =>
       (m._1, m._2.predict(document, options))).toList
-    // Reorder list to match models list since we ran in parallel, order isn't guaranteed
-    combineResults(results.sortBy(_._1).map(_._2))
-  }
-
-  /**
-    * The method used to predict from a vector of features.
-    * @param features Vector of features to use for prediction.
-    * @param options Object of predict options.
-    * @return
-    */
-  override def predict(features: Vector,
-                       options: PredictOptions): PredictResult = {
-    // delegate to underlying models
-    val results: List[(Int, PredictResult)] = indexToModel.par.map(m =>
-      (m._1, m._2.predict(features, options))).toList
     // Reorder list to match models list since we ran in parallel, order isn't guaranteed
     combineResults(results.sortBy(_._1).map(_._2))
   }
@@ -57,15 +42,9 @@ case class EnsembleModel(label: String, models: List[PredictModel])
     */
   def combineResults(results: List[PredictResult]): SingleLabelDocumentResult = {
     // combine results -- hardcoded object here for now
-    val combiner = new WeightedAverageDocumentPredictionCombiner(this.getType(), this.label)
+    val combiner = new WeightedAverageDocumentPredictionCombiner("", this.label)
     combiner.combine(results)
   }
-
-  /**
-    * Returns the type of model. Perhaps this should be an enum?
-    * @return
-    */
-  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method

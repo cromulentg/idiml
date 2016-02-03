@@ -18,23 +18,6 @@ import org.json4s._
   */
 case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictModel])
   extends PredictModel with Archivable[GangModel, GangModelLoader] {
-  /**
-    * The method used to predict from a vector of features.
-    *
-    * @param features Vector of features to use for prediction.
-    * @param options  Object of predict options.
-    * @return
-    */
-  override def predict(features: Vector, options: PredictOptions): PredictResult = {
-    val mldr: MultiLabelDocumentResult = multiLabelModel
-      .predict(features, options)
-      .asInstanceOf[MultiLabelDocumentResult]
-    val labelResults = models.par
-      .map({ case (label, model) =>
-        (label, model.predict(features, options).asInstanceOf[SingleLabelDocumentResult])})
-      .toList.toMap
-    combineResults(mldr, labelResults)
-  }
 
   /**
     * Helper method to combine results.
@@ -49,7 +32,7 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
     val labelResults = multiResult.par.map({case sldr => {
       val label: String = sldr.label
       if (singleResults.get(label).isDefined){
-        new WeightedAverageDocumentPredictionCombiner(this.getType(), label)
+        new WeightedAverageDocumentPredictionCombiner("", label)
           .combine(List(sldr, singleResults(label)))
       } else {
         sldr
@@ -60,17 +43,10 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
       .map({case sldr => {
       (sldr.getLabel(),
         new SingleLabelDocumentResultBuilder(
-          this.getType(), sldr.getLabel()).copyFromExistingSingleLabelDocumentResult(sldr))
+          "", sldr.getLabel()).copyFromExistingSingleLabelDocumentResult(sldr))
     }}).toMap
-    new MultiLabelDocumentResultBuilder(this.getType(), labelResults).build()
+    new MultiLabelDocumentResultBuilder("", labelResults).build()
   }
-
-  /**
-    * Returns the type of model.
-    *
-    * @return canonical class name.
-    */
-  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method
@@ -90,7 +66,7 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
     * @param options  Object of predict options.
     * @return
     */
-  override def predict(document: JObject, options: PredictOptions): PredictResult = {
+  override def predict(document: Document, options: PredictOptions): PredictResult = {
     val mldr: MultiLabelDocumentResult = multiLabelModel
       .predict(document, options)
       .asInstanceOf[MultiLabelDocumentResult]

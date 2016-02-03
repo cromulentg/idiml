@@ -1,5 +1,6 @@
 package com.idibon.ml.alloy;
 
+import com.idibon.ml.predict.Document;
 import com.idibon.ml.predict.PredictModel;
 import com.idibon.ml.predict.PredictOptions;
 import com.idibon.ml.predict.PredictResult;
@@ -30,8 +31,9 @@ public abstract class BaseAlloy implements Alloy {
         _labelToUUID = Collections.unmodifiableMap(labelToUUID);
     }
 
-    @Override public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options) {
+    @Override public Map<String, PredictResult> predict(JsonAST.JObject json, PredictOptions options) {
         // TODO: predict over all? or just a single one? or?
+        final Document document = Document.document(json);
         Map<String, PredictResult> results = new HashMap<>();
         for(Map.Entry<String, PredictModel> entry: _labelModelMap.entrySet()) {
             String name = entry.getKey().equals(GangModel.MULTI_CLASS_LABEL()) ? "--multiclass model--" : entry.getKey();

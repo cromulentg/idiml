@@ -2,7 +2,7 @@ package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.predict.{PredictOptionsBuilder, SingleLabelDocumentResult}
+import com.idibon.ml.predict.{Document, PredictOptionsBuilder, SingleLabelDocumentResult}
 import com.idibon.ml.common.EmbeddedEngine
 import org.json4s._
 import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
@@ -64,7 +64,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val ensembleModel = new EnsembleModel("blabel", List(docRules))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
       val actual: SingleLabelDocumentResult = ensembleModel.predict(
-        doc, new PredictOptionsBuilder().build())
+        Document.document(doc), new PredictOptionsBuilder().build())
         .asInstanceOf[SingleLabelDocumentResult]
       actual.label shouldBe "blabel"
       actual.matchCount shouldBe 2
@@ -78,7 +78,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val ensembleModel = new EnsembleModel("blabel", List(docRules1, docRules2))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
       val actual = ensembleModel.predict(
-        doc, new PredictOptionsBuilder()
+        Document.document(doc), new PredictOptionsBuilder()
           .showSignificantFeatures(0.0f)
           .build())
         .asInstanceOf[SingleLabelDocumentResult]
@@ -94,7 +94,7 @@ class EnsembleModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val ensembleModel = new EnsembleModel("blabel", List(docRules1, docRules2))
       val doc = new JObject(List("content" -> new JString("string matching is working")))
       val actual = ensembleModel.predict(
-        doc, new PredictOptionsBuilder()
+        Document.document(doc), new PredictOptionsBuilder()
           .showSignificantFeatures(0.0f)
           .build())
         .asInstanceOf[SingleLabelDocumentResult]

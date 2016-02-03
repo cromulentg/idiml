@@ -60,7 +60,7 @@ class JarAlloy(models: Map[String, PredictModel], uuids: Map[String, String])
     // save class types of models
     saveMapOfData(
       baseWriter,
-      this.models.map({ case (label, m) => (label, JString(m.getType()))}).toList,
+      this.models.map({ case (label, m) => (label, JString(m.getClass.getName))}).toList,
       JarAlloy.MODEL_CLASS)
     // save models
     saveMapOfData(

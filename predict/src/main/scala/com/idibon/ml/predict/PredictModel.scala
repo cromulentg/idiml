@@ -1,39 +1,14 @@
 package com.idibon.ml.predict
 
-import org.apache.spark.mllib.linalg.Vector
-import org.json4s._
-
-
-/**
-  * "Interface" for prediction. Extends alloy reader and writer.
-  *
-  */
+/** Basic interfaces used for predictive analytics */
 trait PredictModel {
-
   /**
     * The method used to predict from a vector of features.
     * @param features Vector of features to use for prediction.
     * @param options Object of predict options.
     * @return
     */
-  def predict(features: Vector, options: PredictOptions): PredictResult
-
-  /**
-    * The method used to predict from a FULL DOCUMENT!
-    *
-    * The model needs to handle "featurization" here.
-    *
-    * @param document the JObject to pull from.
-    * @param options Object of predict options.
-    * @return
-    */
-  def predict(document: JObject, options: PredictOptions): PredictResult
-
-  /**
-    * Returns the type of model.
-    * @return canonical class name.
-    */
-  def getType(): String
+  def predict(document: Document, options: PredictOptions): PredictResult
 
   /**
     * The model will use a subset of features passed in. This method
@@ -41,5 +16,5 @@ trait PredictModel {
     * @return Vector (likely SparseVector) where indices correspond to features
     *         that were used.
     */
-  def getFeaturesUsed(): Vector
+  def getFeaturesUsed(): org.apache.spark.mllib.linalg.Vector
 }

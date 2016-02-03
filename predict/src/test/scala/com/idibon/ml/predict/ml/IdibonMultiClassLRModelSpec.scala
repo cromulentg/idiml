@@ -8,7 +8,7 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.predict.{PredictOptionsBuilder}
+import com.idibon.ml.predict.{Document, PredictOptionsBuilder}
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s.JsonDSL._
@@ -65,8 +65,10 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       // get alloy back & predict on it.
       val resurrectedAlloy = JarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
-      val result1 = alloy.predict(doc, options).get(label).getTopResult()
-      val result2 = resurrectedAlloy.predict(doc, options).get(label).getTopResult()
+      val result1 = alloy.predict(doc, options)
+        .get(label).getTopResult()
+      val result2 = resurrectedAlloy.predict(doc, options)
+        .get(label).getTopResult()
       result2.matchCount shouldBe result1.matchCount
       result2.probability shouldBe result1.probability
     }
@@ -108,7 +110,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder().build())
+      val result = model.predict(Document.document(doc), new PredictOptionsBuilder().build())
       result.getTopResult().getLabel() shouldBe "alabel"
       result.getTopResult().probability shouldBe 0.60992575f
       result.getTopResult().matchCount shouldBe 1
@@ -123,7 +125,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "blabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder()
+      val result = model.predict(Document.document(doc), new PredictOptionsBuilder()
         .showSignificantFeatures(0.75f).build()).getTopResult()
       result.getLabel() shouldBe "blabel"
       result.probability shouldBe 0.7413506f
