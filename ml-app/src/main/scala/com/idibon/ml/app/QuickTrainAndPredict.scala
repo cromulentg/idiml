@@ -3,7 +3,7 @@ package com.idibon.ml.app
 import com.idibon.ml.app.Train._
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
-import com.idibon.ml.train.MultiClassRDDGenerator
+import com.idibon.ml.train.MultiClassDataFrameGenerator
 import com.idibon.ml.train.alloy.{MultiClass1FPRDD, MultiClass1FP}
 import com.idibon.ml.train.furnace.MultiClassLRFurnace
 import com.typesafe.scalalogging.StrictLogging
@@ -45,7 +45,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val startTime = System.currentTimeMillis()
     val furnace = new MultiClassLRFurnace(engine)
     val model = new MultiClass1FPRDD(
-      engine, new MultiClassRDDGenerator(), furnace).trainAlloy(
+      engine, new MultiClassDataFrameGenerator(), furnace).trainAlloy(
       () => { // training data
       Source.fromFile(cli.getOptionValue('i'))
         .getLines.map(line => parse(line).extract[JObject])

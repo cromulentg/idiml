@@ -7,18 +7,22 @@ import com.idibon.ml.train.SparkDataGenerator
 import com.idibon.ml.train.alloy.MultiClass
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.classification.{IdibonSparkMLLIBLRWrapper, LogisticRegressionWithLBFGS}
+import org.apache.spark.mllib.linalg.{Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.json4s.JsonAST.JObject
 
 /**
   * This builds a multinomial LR model based off of MLLIB.
+  *
   * @param engine
   */
-class MultiClassLRFurnace(engine: Engine) extends Furnace[RDD[LabeledPoint]] with StrictLogging {
+class MultiClassLRFurnace(engine: Engine) extends Furnace with StrictLogging {
 
   val maxIterations = 100
   var labelToInt: Map[String, Int] = Map()
+  val tolerance = 1e-4
+  val regParam = 0.01
 
   /**
     * Function fits a model to data in the dataframe.
@@ -28,11 +32,18 @@ class MultiClassLRFurnace(engine: Engine) extends Furnace[RDD[LabeledPoint]] wit
     * @param pipeline
     * @return
     */
-  override def fit(label: String, data: RDD[LabeledPoint], pipeline: FeaturePipeline): MLModel = {
-    val model = new LogisticRegressionWithLBFGS()
+  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline): MLModel = {
+    // convert to rdd
+    val rddData = data.rdd.map(row => LabeledPoint(row.getDouble(0), row.getAs[Vector](1)))
+    val trainer = new LogisticRegressionWithLBFGS()
       .setNumClasses(labelToInt.size)
       .setIntercept(true)
-      .run(data.cache())
+    trainer.optimizer
+      .setConvergenceTol(tolerance)
+      .setRegParam(regParam)
+      .setNumIterations(maxIterations)
+    // run training
+    val model = trainer.run(rddData.cache())
 
     // TODO: log some stats?
     val wrapper = IdibonSparkMLLIBLRWrapper.wrap(model)
@@ -42,23 +53,28 @@ class MultiClassLRFurnace(engine: Engine) extends Furnace[RDD[LabeledPoint]] wit
   /**
     * Function is used for featurizing data.
     *
+    * It inspects the labels returned by the data generator to know how to
+    * map string labels to integer indexes used by the featurized data. This
+    * is then used in Fit to determine how many classes there are.
+    *
     * @param rawData
     * @param dataGen
     * @param featurePipeline primed pipeline
     * @return
     */
   override def featurizeData(rawData: () => TraversableOnce[JObject],
-                             dataGen: SparkDataGenerator[RDD[LabeledPoint]],
+                             dataGen: SparkDataGenerator,
                              featurePipeline: FeaturePipeline):
-  Option[Map[String, RDD[LabeledPoint]]] = {
+  Option[Map[String, DataFrame]] = {
     val data = dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
+
     // lets set what we're actually fitting to what integer label
     labelToInt = data match {
       case Some(data) => {
         // recreate label to Int
         data
           .filter(x => !x._1.equals(MultiClass.MODEL_KEY))
-          .map({case (label, df) => (label, df.collect()(0).label.toInt)})
+          .map({case (label, df) => (label, df.collect()(0).getDouble(0).toInt)})
       }
       case _ => return None
     }

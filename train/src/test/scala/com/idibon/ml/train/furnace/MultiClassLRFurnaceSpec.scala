@@ -6,7 +6,7 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.train.alloy.MultiClass
-import com.idibon.ml.train.{MultiClassRDDGenerator}
+import com.idibon.ml.train.{MultiClassDataFrameGenerator}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.json4s._
@@ -54,7 +54,7 @@ class MultiClassLRFurnaceSpec extends FunSpec
       val features = mclrf.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new MultiClassRDDGenerator, primedPipeline)
+      }, new MultiClassDataFrameGenerator, primedPipeline)
       features.get.size shouldBe 1
       features.get.keys.toList shouldBe List(MultiClass.MODEL_KEY)
       val points = features.get(MultiClass.MODEL_KEY).collect()
