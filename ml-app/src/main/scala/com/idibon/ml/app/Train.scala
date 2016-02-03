@@ -1,12 +1,12 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.train.alloy.KClass1FP
+import com.idibon.ml.train.datagenerator.KClassDataFrameGenerator
 import com.idibon.ml.train.furnace._
 
 import scala.io.Source
 import scala.util.Failure
 import org.json4s._
-import com.idibon.ml.train.{KClassDataFrameGenerator}
 
 import com.typesafe.scalalogging.StrictLogging
 

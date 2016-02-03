@@ -2,8 +2,8 @@ package com.idibon.ml.app
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
-import com.idibon.ml.train.MultiClassDataFrameGenerator
 import com.idibon.ml.train.alloy.{MultiClass1FPRDD}
+import com.idibon.ml.train.datagenerator.MultiClassDataFrameGenerator
 import com.idibon.ml.train.furnace.{FurnaceFactory}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._

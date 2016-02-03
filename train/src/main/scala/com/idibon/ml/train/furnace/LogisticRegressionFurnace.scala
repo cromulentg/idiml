@@ -3,8 +3,8 @@ package com.idibon.ml.train.furnace
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.Classification
-import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
-import com.idibon.ml.train.SparkDataGenerator
+import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel}
+import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator

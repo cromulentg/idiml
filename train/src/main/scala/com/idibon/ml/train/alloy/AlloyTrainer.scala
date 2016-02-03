@@ -13,12 +13,9 @@ import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeatureP
 import com.idibon.ml.predict.{PredictModel, PredictResult, Classification}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.train.SparkDataGenerator
+import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.json4s.JObject
 
 import scala.collection.mutable
