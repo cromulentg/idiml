@@ -1,5 +1,6 @@
 package com.idibon.ml.app
 
+import com.idibon.ml.app.Train._
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
 import com.idibon.ml.train.alloy.{AlloyFactory, MultiClass1FP}
@@ -8,6 +9,7 @@ import com.idibon.ml.train.furnace.{FurnaceFactory}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
+import org.json4s.native.Serialization._
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -25,7 +27,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
       .addOption("i", "input", true, "Input file with training data")
       .addOption("o", "output", true, "Output alloy file")
       .addOption("r", "rules", true, "Input file with rules data")
-      .addOption("n", "ngram", true, "Maximum n-gram size")
+      .addOption("c", "config", false, "JSON Config file for creating a trainer.")
 
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
   }
@@ -42,22 +44,13 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val cli = parseCommandLine(argv)
     val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
     val startTime = System.currentTimeMillis()
-    val dataGeneratorConfig = """{"jsonClass":"MultiClassDataFrameGeneratorBuilder"}"""
-    val dataGenerator = SparkDataGeneratorFactory.getDataGenerator(dataGeneratorConfig)
-    val furnaceConfig = """{"jsonClass":"MultiClassLRFurnaceBuilder", "maxIterations":1}"""
-    val furnace = FurnaceFactory.getFurnace(engine, furnaceConfig)
-    val actualConfig = """{
-                           "jsonClass":"MultiClass1FPBuilder",
-                           "dataGenBuilder":{
-                             "jsonClass":"MultiClassDataFrameGeneratorBuilder"
-                           },
-                           "furnaceBuilder":{
-                             "jsonClass":"MultiClassLRFurnaceBuilder",
-                             "maxIterations":100,
-                             "tolerance": 1.0E-4,
-                           }
-                         }"""
-    val trainer = AlloyFactory.getTrainer(engine, actualConfig)
+    // get the config file else the default one
+    val configFilePath = if (cli.getOptionValue('c', "").isEmpty()) {
+      getClass.getClassLoader.getResource("trainerConfigs/base_multiclass_config.json").getPath()
+    } else cli.getOptionValue('c')
+    val trainingJobJValue = parse(Source.fromFile(configFilePath).reader())
+    logger.info(s"Reading in Config ${writePretty(trainingJobJValue)}")
+    val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
     val model = trainer.trainAlloy(
       () => { // training data
       Source.fromFile(cli.getOptionValue('i'))
@@ -71,7 +64,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
           List()
         }
       },
-      Some(JObject(List(JField("pipelineConfig", JObject(List(JField("ngram", JInt(ngramSize)))))))) // option config
+      Some(trainingJobJValue.extract[JObject])
     )
     val elapsed = System.currentTimeMillis - startTime
     logger.info(s"Training completed in $elapsed ms")

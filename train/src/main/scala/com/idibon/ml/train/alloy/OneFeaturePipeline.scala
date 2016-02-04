@@ -1,11 +1,7 @@
 package com.idibon.ml.train.alloy
 
-import com.idibon.ml.feature.bagofwords.{CaseTransform, BagOfWordsTransformer}
-import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.ngram.NgramTransformer
-import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
-import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
+import com.idibon.ml.common.Engine
+import com.idibon.ml.feature.{FeaturePipeline, FeaturePipelineLoader}
 import org.json4s.JObject
 
 /**
@@ -19,19 +15,9 @@ trait OneFeaturePipeline {
     * @param config
     * @return
     */
-  def createFeaturePipeline(config: JObject): FeaturePipeline = {
+  def createFeaturePipeline(engine: Engine, config: JObject): FeaturePipeline = {
     implicit val formats = org.json4s.DefaultFormats
-    val ngramSize = (config \ "ngram").extract[Int]
-    //TODO: unhardcode this
-    (FeaturePipelineBuilder.named("pipeline")
-      += FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "ngrams")
-      += FeaturePipelineBuilder.entry("ngrams", new NgramTransformer(1, ngramSize), "bagOfWords")
-      += FeaturePipelineBuilder.entry("bagOfWords",
-      new BagOfWordsTransformer(List(Tag.Word, Tag.Punctuation), CaseTransform.ToLower),
-      "convertToTokens", "languageDetector")
-      += FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector")
-      += FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document")
-      += FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document")
-      := "convertToIndex")
+
+    new FeaturePipelineLoader().load(engine, None, Some(config))
   }
 }

@@ -32,7 +32,7 @@ class KClass1FP(builder: KClass1FPBuilder)
                     pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
-      case Some(config) => createFeaturePipeline(config)
+      case Some(config) => createFeaturePipeline(this.engine, config)
       case _ => return Failure(new IllegalArgumentException("No feature pipeline config passed."))
     }
     // prime the pipeline
