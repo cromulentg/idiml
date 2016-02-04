@@ -2,7 +2,8 @@ package com.idibon.ml.train.furnace
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
-import com.idibon.ml.predict.ml.{IdibonMultiClassLRModel, MLModel}
+import com.idibon.ml.predict.Classification
+import com.idibon.ml.predict.ml.IdibonMultiClassLRModel
 import com.idibon.ml.train.SparkDataGenerator
 import com.idibon.ml.train.alloy.MultiClass
 import com.typesafe.scalalogging.StrictLogging
@@ -17,7 +18,8 @@ import org.json4s.JsonAST.JObject
   *
   * @param engine
   */
-class MultiClassLRFurnace(engine: Engine) extends Furnace with StrictLogging {
+class MultiClassLRFurnace(engine: Engine)
+    extends Furnace[Classification] with StrictLogging {
 
   val maxIterations = 100
   var labelToInt: Map[String, Int] = Map()
@@ -32,7 +34,7 @@ class MultiClassLRFurnace(engine: Engine) extends Furnace with StrictLogging {
     * @param pipeline
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline): MLModel = {
+  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline) = {
     // convert to rdd
     val rddData = data.rdd.map(row => LabeledPoint(row.getDouble(0), row.getAs[Vector](1)))
     val trainer = new LogisticRegressionWithLBFGS()

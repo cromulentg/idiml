@@ -7,7 +7,7 @@ import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.predict.{SingleLabelDocumentResult, PredictOptionsBuilder, PredictModel}
+import com.idibon.ml.predict._
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s._
@@ -66,10 +66,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       // get alloy back & predict on it.
       val resurrectedAlloy = JarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
-      val result1 = alloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]
-      val result2 = resurrectedAlloy.predict(doc, options).get(label).asInstanceOf[SingleLabelDocumentResult]
-      result2.matchCount shouldBe result1.matchCount
-      result2.probability shouldBe result1.probability
+      val result1 = alloy.predict(doc, options)
+      val result2 = resurrectedAlloy.predict(doc, options)
+      result1 shouldBe result2
     }
   }
 
@@ -110,9 +109,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
-      result.probability shouldBe 0.16617252f
-      result.matchCount shouldBe 1
+      val result = model.predict(Document.document(doc), PredictOptions.DEFAULT)
+      result.head.probability shouldBe 0.16617252f
+      result.head.matchCount shouldBe 1
     }
     it("should return significant features") {
       val intercept = -1.123
@@ -121,11 +120,11 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder()
-        .showSignificantFeatures(0.35f).build()).asInstanceOf[SingleLabelDocumentResult]
-      result.probability shouldBe 0.16617252f
-      result.matchCount shouldBe 1
-      result.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
+      val result = model.predict(Document.document(doc),
+        new PredictOptionsBuilder().showSignificantFeatures(0.35f).build())
+      result.head.probability shouldBe 0.16617252f
+      result.head.matchCount shouldBe 1
+      result.head.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
     }
   }
 

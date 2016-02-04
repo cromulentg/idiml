@@ -10,7 +10,10 @@ package com.idibon.ml.predict
   *                                    a threshold with significant features, it should use the
   *                                    value here.
   */
-case class PredictOptions(significantFeatureThreshold: Float = PredictOptions.NO_FEATURES)
+case class PredictOptions(significantFeatureThreshold: Float = PredictOptions.NO_FEATURES) {
+  /** true if significant features should be included in the result */
+  def includeSignificantFeatures = !significantFeatureThreshold.isNaN
+}
 
 /**
   * Builder class to create a PredictOptions object.

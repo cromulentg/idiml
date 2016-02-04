@@ -22,7 +22,7 @@ import scala.util.{Failure, Try}
   * @param rules a list of tuples of rule & weights.
   */
 case class DocumentRules(label: String, rules: List[(String, Float)])
-    extends RulesModel with StrictLogging
+    extends PredictModel[Classification] with StrictLogging
     with Archivable[DocumentRules, DocumentRulesLoader] {
 
   // log a warning message if any of the rules has an invalid weight
@@ -39,23 +39,6 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
   rulesCache.filter(_._2.isFailure).foreach({ case (p, r) => {
     logger.warn(s"[$this] unable to compile $p: ${r.failed.get.getMessage}")
   }})
-
-  /**
-    * The method used to predict from a vector of features.
-    * @param features Vector of features to use for prediction.
-    * @param options Object of predict options.
-    * @return
-    */
-  override def predict(features: Vector,
-                       options: PredictOptions): PredictResult = {
-    throw new RuntimeException("Not implemented for rules.")
-  }
-
-  /**
-    * Returns the type of model.
-    * @return canonical class name.
-    */
-  override def getType(): String = this.getClass().getName()
 
   /**
     * The model will use a subset of features passed in. This method
@@ -105,11 +88,10 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     * @param options Object of predict options.
     * @return
     */
-  override def predict(document: JObject,
-                       options: PredictOptions): PredictResult = {
+  def predict(doc: Document, options: PredictOptions): Seq[Classification] = {
     // Takes $document out of the JObject and runs rules over them.
-    val content: String = (document \ "content").asInstanceOf[JString].s
-    docPredict(content, !options.significantFeatureThreshold.isNaN())
+    val content: String = (doc.json \ "content").asInstanceOf[JString].s
+    Seq(docPredict(content, options.includeSignificantFeatures))
   }
 
   /**
@@ -118,11 +100,10 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     * @param significantFeatures
     * @return
     */
-  def docPredict(content: String, significantFeatures: Boolean): SingleLabelDocumentResult = {
-    val dpr = new SingleLabelDocumentResultBuilder(this.getType(), this.label)
+  def docPredict(content: String, significantFeatures: Boolean): Classification = {
     val matchesCount = getDocumentMatchCounts(content)
     // calculate pseudo prob.
-    val (psuedoProb, totalCount, whiteOrBlackRule) = calculatePseudoProbability(matchesCount)
+    val (pseudoProb, totalCount, whiteOrBlackRule) = calculatePseudoProbability(matchesCount)
     // significant features are anything that matched; with the caveat that if white/blacklist rules
     // were triggered, only they are significant
     // only take rules that have a count greater than 0 and one of:
@@ -140,11 +121,14 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     } else {
       List()
     }
-    dpr.setProbability(psuedoProb)
-      .addSignificantFeatures(sigFeatures)
-      .setMatchCount(totalCount)
-      .setFlags(PredictResultFlag.FORCED, whiteOrBlackRule)
-    dpr.build()
+
+    if (whiteOrBlackRule) {
+      Classification(this.label, pseudoProb, totalCount,
+        PredictResultFlag.mask(PredictResultFlag.FORCED), sigFeatures)
+    } else {
+      Classification(this.label, pseudoProb, totalCount,
+        PredictResultFlag.NO_FLAGS, sigFeatures)
+    }
   }
 
   /**

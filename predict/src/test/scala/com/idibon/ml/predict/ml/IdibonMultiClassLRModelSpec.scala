@@ -8,7 +8,7 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.predict.{PredictOptionsBuilder}
+import com.idibon.ml.predict.{Document, PredictOptionsBuilder}
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s.JsonDSL._
@@ -55,8 +55,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
-      val labelToModel = Map((GangModel.MULTI_CLASS_LABEL -> model))
-      val alloy = new JarAlloy(labelToModel, Map[String, String]())
+      val alloy = new JarAlloy(Map("0" -> model), Map[String, String]())
       tempFilename = "save123.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
@@ -65,10 +64,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       // get alloy back & predict on it.
       val resurrectedAlloy = JarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
-      val result1 = alloy.predict(doc, options).get(label).getTopResult()
-      val result2 = resurrectedAlloy.predict(doc, options).get(label).getTopResult()
-      result2.matchCount shouldBe result1.matchCount
-      result2.probability shouldBe result1.probability
+      val result1 = alloy.predict(doc, options)
+      val result2 = resurrectedAlloy.predict(doc, options)
+      result1 shouldBe result2
     }
   }
 
@@ -108,13 +106,13 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder().build())
-      result.getTopResult().getLabel() shouldBe "alabel"
-      result.getTopResult().probability shouldBe 0.60992575f
-      result.getTopResult().matchCount shouldBe 1
-      val secondResult = result.getAllResults().get(1)
-      secondResult.getLabel() shouldBe "!alabel"
-      secondResult.probability shouldBe 0.39007428f
+      val result = model.predict(Document.document(doc), new PredictOptionsBuilder().build())
+      result.head.label shouldBe "alabel"
+      result.head.probability shouldBe (0.60992575f +- 0.0001f)
+      result.head.matchCount shouldBe 1
+      val secondResult = result.tail.head
+      secondResult.label shouldBe "!alabel"
+      secondResult.probability shouldBe (0.39007428f +- 0.0001f)
       secondResult.matchCount shouldBe 1
     }
     it("should return significant features") {
@@ -123,10 +121,10 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "blabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
-      val result = model.predict(doc, new PredictOptionsBuilder()
-        .showSignificantFeatures(0.75f).build()).getTopResult()
-      result.getLabel() shouldBe "blabel"
-      result.probability shouldBe 0.7413506f
+      val result = model.predict(Document.document(doc),
+        new PredictOptionsBuilder().showSignificantFeatures(0.75f).build()).head
+      result.label shouldBe "blabel"
+      result.probability shouldBe (0.7413506f +- 0.0001f)
       result.matchCount shouldBe 1
       result.significantFeatures shouldBe List(("token- ", 0.7946197f))
     }

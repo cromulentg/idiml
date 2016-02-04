@@ -16,61 +16,12 @@ import org.json4s._
   * @param multiLabelModel This is the main action piece. Needs to return MultiLabelDocumentResult.
   * @param models Map of label -> model. Okay to be empty.
   */
-case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictModel])
-  extends PredictModel with Archivable[GangModel, GangModelLoader] {
-  /**
-    * The method used to predict from a vector of features.
-    *
-    * @param features Vector of features to use for prediction.
-    * @param options  Object of predict options.
-    * @return
-    */
-  override def predict(features: Vector, options: PredictOptions): PredictResult = {
-    val mldr: MultiLabelDocumentResult = multiLabelModel
-      .predict(features, options)
-      .asInstanceOf[MultiLabelDocumentResult]
-    val labelResults = models.par
-      .map({ case (label, model) =>
-        (label, model.predict(features, options).asInstanceOf[SingleLabelDocumentResult])})
-      .toList.toMap
-    combineResults(mldr, labelResults)
-  }
+case class GangModel(models: Map[String, PredictModel[Classification]])
+    extends PredictModel[Classification]
+    with Archivable[GangModel, GangModelLoader] {
 
-  /**
-    * Helper method to combine results.
-    *
-    * @param multiResult
-    * @param singleResults
-    * @return
-    */
-  def combineResults(multiResult: MultiLabelDocumentResult, singleResults: Map[String, SingleLabelDocumentResult]): PredictResult = {
-
-    // for each label in the multi result - just do single label result and use that combiner
-    val labelResults = multiResult.par.map({case sldr => {
-      val label: String = sldr.label
-      if (singleResults.get(label).isDefined){
-        new WeightedAverageDocumentPredictionCombiner(this.getType(), label)
-          .combine(List(sldr, singleResults(label)))
-      } else {
-        sldr
-      }
-    }})// create sorted list by probability (but sorted by label for tie breaking)
-      .toList.sortWith(_.label < _.label).sortWith(_.probability > _.probability)
-      // now create label, single label result tuple.
-      .map({case sldr => {
-      (sldr.getLabel(),
-        new SingleLabelDocumentResultBuilder(
-          this.getType(), sldr.getLabel()).copyFromExistingSingleLabelDocumentResult(sldr))
-    }}).toMap
-    new MultiLabelDocumentResultBuilder(this.getType(), labelResults).build()
-  }
-
-  /**
-    * Returns the type of model.
-    *
-    * @return canonical class name.
-    */
-  override def getType(): String = this.getClass().getName()
+  /** Used to reduce multiple Classifications for a label into a final result */
+  private [this] val _reducer: PredictResultReduction[Classification] = Classification
 
   /**
     * The model will use a subset of features passed in. This method
@@ -90,15 +41,15 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
     * @param options  Object of predict options.
     * @return
     */
-  override def predict(document: JObject, options: PredictOptions): PredictResult = {
-    val mldr: MultiLabelDocumentResult = multiLabelModel
-      .predict(document, options)
-      .asInstanceOf[MultiLabelDocumentResult]
-    val labelResults = models.par
-      .map({ case (label, model) =>
-        (label, model.predict(document, options).asInstanceOf[SingleLabelDocumentResult])})
-      .toList.toMap
-    combineResults(mldr, labelResults)
+  def predict(document: Document, options: PredictOptions): Seq[Classification] = {
+    /* classify against all of the models, concatenate all of the results,
+     * then group all of the partial results for each label together and
+     * pass them to the reducer to compute the final result. return the
+     * results for all labels sorted by probability */
+    models.par.map({ case (label, model) => model.predict(document, options) })
+      .toList.flatten.groupBy(_.label)
+      .map({ case (label, components) => _reducer.reduce(components) }).toSeq
+      .sortWith(_.probability > _.probability)
   }
 
   /** Serializes the object within the Alloy
@@ -118,8 +69,9 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
   override def save(writer: Writer): Option[JObject] = {
     implicit val formats = org.json4s.DefaultFormats
     // create list of model types by label
-    val modelTypes = (List((GangModel.MULTI_CLASS_LABEL, multiLabelModel.getClass.getName, multiLabelModel))
-      ++ models.map({case (label, model) => (label, model.getClass.getName, model)})).toList
+    val modelTypes = models.map({case (label, model) => {
+      (label, model.getClass.getName, model)
+    }}).toList
     //save each model into it's own space
     val modelMetadata: List[JField] = modelTypes.map {
       case (label, typ, model) => {
@@ -129,8 +81,7 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
           JField("class", JString(typ)))))
       }
     }
-    val labels = JArray(
-      List(JString(GangModel.MULTI_CLASS_LABEL)) ++ models.map({case (label, _) => JString(label)}))
+    val labels = JArray(models.map({case (label, _) => JString(label)}).toList)
     // create JSON config to return
     val gangMetadata = JObject(List(
       JField("labels", labels),
@@ -138,10 +89,6 @@ case class GangModel(multiLabelModel: PredictModel, models: Map[String, PredictM
     ))
     Some(gangMetadata)
   }
-}
-
-object GangModel {
-  val MULTI_CLASS_LABEL = "\u000all"
 }
 
 /** Paired loader class for EnsembleModel objects */
@@ -167,10 +114,9 @@ class GangModelLoader extends ArchiveLoader[GangModel] {
       // get model metadata JObject
       val indivMeta = (modelMeta \ name \ "config").extract[Option[JObject]]
       (name, ArchiveLoader
-        .reify[PredictModel](modelType, engine, reader.within(name), indivMeta)
-        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel]))
+        .reify[PredictModel[Classification]](modelType, engine, reader.within(name), indivMeta)
+        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Classification]]))
     }).toMap
-    new GangModel(models(GangModel.MULTI_CLASS_LABEL),
-      models.filter(x => !x._1.equals(GangModel.MULTI_CLASS_LABEL)))
+    new GangModel(models)
   }
 }

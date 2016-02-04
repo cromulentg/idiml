@@ -2,7 +2,8 @@ package com.idibon.ml.train.furnace
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
-import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel, MLModel}
+import com.idibon.ml.predict.Classification
+import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
 import com.idibon.ml.train.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
@@ -21,7 +22,8 @@ import org.json4s._
   * @param engine the engine context to use for RDD & DataFrame generation
   * @tparam T The type of trainer to expect to train on.
   */
-abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace with StrictLogging {
+abstract class LogisticRegressionFurnace[T](engine: Engine)
+    extends Furnace[Classification] with StrictLogging {
 
   /**
     * Function to take care of featurizing the data.
@@ -45,7 +47,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine) extends Furnace with
     * @param data
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline): MLModel = {
+  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline) = {
     val lr = fitModel(getEstimator(), data)
     logTrainingSummary(label, lr)
     // wrap into one we want
