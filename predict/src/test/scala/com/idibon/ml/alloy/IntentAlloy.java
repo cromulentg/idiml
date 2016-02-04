@@ -1,10 +1,10 @@
 package com.idibon.ml.alloy;
 
 import java.io.*;
-import java.util.Map;
+import java.util.List;
 
 import com.idibon.ml.predict.PredictOptions;
-import com.idibon.ml.predict.PredictResult;
+import com.idibon.ml.predict.Classification;
 import org.json4s.JsonAST;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Michelle Casbon <michelle@idibon.com>
  */
-public class IntentAlloy implements Alloy {
+public class IntentAlloy implements Alloy<Classification> {
     private static Logger logger = LoggerFactory.getLogger(IntentAlloy.class);
     private String _path;
     private double _random;
@@ -34,8 +34,8 @@ public class IntentAlloy implements Alloy {
     }
 
     @Override
-    public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options) {
-        return null;
+    public List<Classification> predict(JsonAST.JObject document, PredictOptions options) {
+        return java.util.Collections.emptyList();
     }
 
     @Override public void save(String path) throws IOException {

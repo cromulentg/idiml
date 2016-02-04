@@ -7,7 +7,7 @@ import org.json4s.JsonAST;
 import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Interface for interacting with Alloys
@@ -15,7 +15,7 @@ import java.util.Map;
  * Provides model, feature pipeline, and task configuration I/O to
  * the prediction and training engines.
  */
-public interface Alloy {
+public interface Alloy<T extends PredictResult> {
 
     /**
      * Operations for reading objects from an Alloy.
@@ -64,7 +64,7 @@ public interface Alloy {
      * @param options
      * @return
      */
-    public Map<String, PredictResult> predict(JsonAST.JObject document, PredictOptions options);
+    public List<T> predict(JsonAST.JObject document, PredictOptions options);
 
     /**
      * Top level method to save an alloy.

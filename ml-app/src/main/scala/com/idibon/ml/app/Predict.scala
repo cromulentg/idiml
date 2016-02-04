@@ -32,12 +32,13 @@ object Predict extends Tool {
     val cli = parseCommandLine(argv)
 
     val model = JarAlloy.load(engine, cli.getOptionValue('a'))
+      .asInstanceOf[JarAlloy[Classification]]
 
     /* results will be written to the output file by a consumer thread;
      * after the last document is predicted, the main thread will post
      * a sentinel value of None to cause the result output thread to
      * terminate. */
-    val results = new LinkedBlockingQueue[Option[(JObject, Map[String, PredictResult])]]
+    val results = new LinkedBlockingQueue[Option[(JObject, Seq[Classification])]]
     val output = new org.apache.commons.csv.CSVPrinter(
       new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8"),
       org.apache.commons.csv.CSVFormat.RFC4180)
@@ -53,14 +54,13 @@ object Predict extends Tool {
               /* initialize the CSV header structure and label output order
                * on the first valid row, after the labels are known */
               if (labels.isEmpty) {
-                labels = Some(prediction.keys.toList.sorted)
+                labels = Some(prediction.map(_.label).sortWith(_ < _))
                 output.printRecord((Seq("Name", "Content") ++
                   labels.get.map(l => List(l, s"features[$l]")).flatten).asJava)
               }
               // output the prediction result and original content in JSON
-              val labelResults = labels.get.map(l => {
-                val result = prediction(l).asInstanceOf[SingleLabelDocumentResult]
-                List(result.probability, result.significantFeatures.map(_._1))
+              val labelResults = prediction.sortWith(_.label < _.label).map(r => {
+                List(r.probability, r.significantFeatures.map(_._1))
               }).reduce(_ ++ _)
               val row = (Seq(
                 (document \ "name").extract[Option[String]].getOrElse(""),
@@ -81,7 +81,7 @@ object Predict extends Tool {
           val document = parse(line).extract[JObject]
           val result = model.predict(document,
             (new PredictOptionsBuilder).showSignificantFeatures(0.1f).build)
-          results.offer(Some((document, result.asScala.toMap)))
+          results.offer(Some((document, result.asScala)))
         })
     } finally {
       // send the sentinel value to shut down the output thread

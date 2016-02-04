@@ -10,11 +10,10 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.ngram.NgramTransformer
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
-import com.idibon.ml.predict.PredictModel
-import com.idibon.ml.predict.ensemble.{GangModel, EnsembleModel}
-import com.idibon.ml.predict.ml.{MLModel}
+import com.idibon.ml.predict.{PredictModel, PredictResult, Classification}
+import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.train.{SparkDataGenerator}
+import com.idibon.ml.train.SparkDataGenerator
 import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -56,7 +55,7 @@ trait AlloyTrainer {
     */
   def trainAlloy(docs: () => TraversableOnce[JObject],
                  rules: () => TraversableOnce[JObject],
-                 config: Option[JObject]): Try[Alloy]
+                 config: Option[JObject]): Try[Alloy[Classification]]
 
   /**
     * Creates a map of label to rules from some JSON data.
@@ -91,15 +90,14 @@ trait AlloyTrainer {
     * @param rules
     * @return
     */
-  def mergeRulesWithModels(models: Map[String, MLModel],
-                           rules: Map[String, List[(String, Float)]]): Map[String, PredictModel] = {
-    models.map({case (label, mlmodel) => {
-      // Rule
-      val ruleModel = new DocumentRules(label, rules.getOrElse(label, List()))
-      // Ensemble
-      val ensembleModel = new EnsembleModel(label, List[PredictModel](mlmodel, ruleModel))
-      (label, ensembleModel)
-    }})
+  def mergeRulesWithModels(models: Map[String, PredictModel[Classification]],
+    rules: Map[String, List[(String, Float)]]): GangModel = {
+
+    // give each model a unique name in the gang
+    val allModels = (models.map({ case (l, m) => (s"model.$l", m) })) ++
+      rules.map({ case (l, d) => (s"rules.$l", new DocumentRules(l, d)) })
+
+    new GangModel(allModels.toMap)
   }
 }
 
@@ -136,9 +134,8 @@ trait OneFeaturePipeline {
   * @param dataGen
   * @param furnace
   */
-abstract class BaseTrainer(engine: Engine,
-                           dataGen: SparkDataGenerator,
-                           furnace: Furnace) extends AlloyTrainer {
+abstract class BaseTrainer(engine: Engine, dataGen: SparkDataGenerator,
+  furnace: Furnace[Classification]) extends AlloyTrainer {
 
   /** Trains a model and generates an Alloy from it
     *
@@ -163,7 +160,7 @@ abstract class BaseTrainer(engine: Engine,
     */
   override def trainAlloy(docs: () => TraversableOnce[JObject],
                           rules: () => TraversableOnce[JObject],
-                          config: Option[JObject]): Try[Alloy] = {
+                          config: Option[JObject]): Try[Alloy[Classification]] = {
     implicit val formats = org.json4s.DefaultFormats
     // Create uuidsByLabel TODO: Figure out how this should be passed in.
     val uuidsByLabel = Map[String, String]()
@@ -180,7 +177,7 @@ abstract class BaseTrainer(engine: Engine,
       // create PredictModels with Rules
       .map(this.mergeRulesWithModels(_, parsedRules))
       // create Alloy
-      .map(new JarAlloy(_, uuidsByLabel))
+      .map(gang => new JarAlloy(Map("gang" -> gang), uuidsByLabel))
   }
 
   /**
@@ -192,8 +189,8 @@ abstract class BaseTrainer(engine: Engine,
     * @return
     */
   def melt(rawData: () => TraversableOnce[JObject],
-           dataGen: SparkDataGenerator,
-           pipelineConfig: Option[JObject]): Try[Map[String, MLModel]]
+    dataGen: SparkDataGenerator,
+    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]]
 
 }
 
@@ -204,10 +201,10 @@ abstract class BaseTrainer(engine: Engine,
   * @param dataGen
   * @param furnace
   */
-class KClass1FP(engine: Engine,
-                dataGen: SparkDataGenerator,
-                furnace: Furnace)
-  extends BaseTrainer(engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+class KClass1FP(engine: Engine, dataGen: SparkDataGenerator,
+  furnace: Furnace[Classification])
+    extends BaseTrainer(engine, dataGen, furnace)
+    with OneFeaturePipeline with StrictLogging {
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.
@@ -219,7 +216,7 @@ class KClass1FP(engine: Engine,
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(config)
@@ -283,10 +280,10 @@ object MultiClass {
   * @param dataGen
   * @param furnace
   */
-class MultiClass1FP(engine: Engine,
-                    dataGen: SparkDataGenerator,
-                    furnace: Furnace)
-  extends BaseTrainer(engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+class MultiClass1FP(engine: Engine, dataGen: SparkDataGenerator,
+  furnace: Furnace[Classification])
+    extends BaseTrainer(engine, dataGen, furnace)
+    with OneFeaturePipeline with StrictLogging {
   /**
     * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
     *
@@ -297,7 +294,7 @@ class MultiClass1FP(engine: Engine,
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(config)
@@ -346,10 +343,10 @@ class MultiClass1FP(engine: Engine,
   * @param dataGen
   * @param furnace
   */
-class MultiClass1FPRDD(engine: Engine,
-                       dataGen: SparkDataGenerator,
-                       furnace: Furnace)
-  extends BaseTrainer(engine, dataGen, furnace) with OneFeaturePipeline with StrictLogging {
+class MultiClass1FPRDD(engine: Engine, dataGen: SparkDataGenerator,
+  furnace: Furnace[Classification])
+    extends BaseTrainer(engine, dataGen, furnace)
+    with OneFeaturePipeline with StrictLogging {
   /**
     * This is the method where each alloy trainer does its magic and creates the MLModel(s) required.
     *
@@ -360,7 +357,7 @@ class MultiClass1FPRDD(engine: Engine,
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(config)
@@ -389,19 +386,6 @@ class MultiClass1FPRDD(engine: Engine,
     primedPipeline.prune(isNotUsed)
     // return MLModel
     Try(Map(MultiClass.MODEL_KEY -> model))
-  }
-
-  /**
-    * Multiclass implemenation of taking MLModels and creating Predict models that have rules with them.
-    *
-    * @param models
-    * @param rules
-    * @return
-    */
-  override def mergeRulesWithModels(models: Map[String, MLModel],
-                                    rules: Map[String, List[(String, Float)]]): Map[String, PredictModel] = {
-    val labelToRules = rules.map({case (label, ruleList) => (label, new DocumentRules(label, ruleList))})
-    Map(MultiClass.MODEL_KEY -> new GangModel(models(MultiClass.MODEL_KEY), labelToRules))
   }
 }
 

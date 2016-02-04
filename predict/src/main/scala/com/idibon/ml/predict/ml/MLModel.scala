@@ -11,13 +11,12 @@ import org.json4s.JObject
   * document content into suitable feature vectors, or may perform
   * the prediction operation using a pre-transformed vector.
   */
-abstract class MLModel(featureTransform: (JObject) => Vector)
-    extends PredictModel {
+abstract class MLModel[+T <: PredictResult](featureExtract: (JObject) => Vector)
+    extends PredictModel[T] {
 
-  def predict(document: Document,
-    options: PredictOptions): PredictResult = {
+  def predict(document: Document, options: PredictOptions): Seq[T] = {
 
-    val features = featureTransform(document.json)
+    val features = featureExtract(document.json)
     predictVector(features, options)
   }
 
@@ -28,5 +27,5 @@ abstract class MLModel(featureTransform: (JObject) => Vector)
     * @param options requested optional prediction behavior
     */
   protected def predictVector(features: Vector,
-    options: PredictOptions): PredictResult = ???
+    options: PredictOptions): Seq[T] = ???
 }

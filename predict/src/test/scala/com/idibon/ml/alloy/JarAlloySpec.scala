@@ -4,9 +4,9 @@ import java.io._
 import java.util.Random
 import java.util.jar.{JarFile, JarOutputStream, Manifest}
 
-import com.idibon.ml.predict.ensemble.{EnsembleModel}
+import com.idibon.ml.predict._
+import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.predict.{PredictModel, PredictOptionsBuilder, SingleLabelDocumentResult}
 import com.idibon.ml.common.EmbeddedEngine
 import scala.collection.mutable
 import org.json4s._
@@ -56,11 +56,9 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     it("saves and loads ensemble model of rules as intended") {
       val docRules1 = new DocumentRules("alabel", List())
       val docRules2 = new DocumentRules("alabel", List(("is", 0.5f)))
-      val ensemble = new EnsembleModel("alabel", List(docRules1, docRules2))
       val random = new Random().nextLong()
-      val labelToModel = new mutable.HashMap[String, PredictModel]()
-      labelToModel.put("alabel", ensemble)
-      val alloy = new JarAlloy(labelToModel.toMap, Map[String, String]())
+      val labelToModel = Map("gang" -> new GangModel(Map("0" -> docRules1, "1" -> docRules2)))
+      val alloy = new JarAlloy(labelToModel, Map[String, String]())
       tempFilename = s"test_${random}.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
@@ -70,12 +68,9 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       val resurrectedAlloy = JarAlloy.load(new EmbeddedEngine, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val documentObject: JsonAST.JObject = JObject(List(("content", JString("content IS awesome"))))
-      val result1 = alloy.predict(documentObject, options).get("alabel")
-        .asInstanceOf[SingleLabelDocumentResult]
-      val result2 = resurrectedAlloy.predict(documentObject, options).get("alabel")
-        .asInstanceOf[SingleLabelDocumentResult]
-      result2.matchCount shouldBe result1.matchCount
-      result2.probability shouldBe result1.probability
+      val result1 = alloy.predict(documentObject, options)
+      val result2 = resurrectedAlloy.predict(documentObject, options)
+      result2 shouldBe result1
     }
   }
 

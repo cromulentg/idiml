@@ -67,11 +67,8 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val resurrectedAlloy = JarAlloy.load(null, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val result1 = alloy.predict(doc, options)
-        .get(label).asInstanceOf[SingleLabelDocumentResult]
       val result2 = resurrectedAlloy.predict(doc, options)
-        .get(label).asInstanceOf[SingleLabelDocumentResult]
-      result2.matchCount shouldBe result1.matchCount
-      result2.probability shouldBe result1.probability
+      result1 shouldBe result2
     }
   }
 
@@ -112,10 +109,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
-      val result = model.predict(Document.document(doc),
-        new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
-      result.probability shouldBe 0.16617252f
-      result.matchCount shouldBe 1
+      val result = model.predict(Document.document(doc), PredictOptions.DEFAULT)
+      result.head.probability shouldBe 0.16617252f
+      result.head.matchCount shouldBe 1
     }
     it("should return significant features") {
       val intercept = -1.123
@@ -126,10 +122,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
       val result = model.predict(Document.document(doc),
         new PredictOptionsBuilder().showSignificantFeatures(0.35f).build())
-        .asInstanceOf[SingleLabelDocumentResult]
-      result.probability shouldBe 0.16617252f
-      result.matchCount shouldBe 1
-      result.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
+      result.head.probability shouldBe 0.16617252f
+      result.head.matchCount shouldBe 1
+      result.head.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
     }
   }
 

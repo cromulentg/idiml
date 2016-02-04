@@ -11,7 +11,7 @@ import org.json4s.JsonDSL._
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Archivable, ArchiveLoader}
-import com.idibon.ml.predict.PredictModel
+import com.idibon.ml.predict.{PredictModel, PredictResult}
 
 // required for java object conversions
 import scala.collection.JavaConverters._
@@ -32,8 +32,8 @@ import scala.collection.mutable
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
-class JarAlloy(models: Map[String, PredictModel], uuids: Map[String, String])
-    extends BaseAlloy(models.asJava, uuids.asJava) with StrictLogging {
+class JarAlloy[T <: PredictResult](models: Map[String, PredictModel[T]], uuids: Map[String, String])
+    extends BaseAlloy[T](models.values.toList.asJava, uuids.asJava) with StrictLogging {
 
 
   /**
@@ -138,7 +138,7 @@ object JarAlloy extends StrictLogging {
     * @param path path to jar file
     * @return
     */
-  def load(engine: Engine, path: String): JarAlloy = {
+  def load[T <: PredictResult](engine: Engine, path: String): JarAlloy[T] = {
     implicit val formats = org.json4s.DefaultFormats
     val jarFile: File = new File(path)
     val jar: JarFile = new JarFile(jarFile)
@@ -157,14 +157,12 @@ object JarAlloy extends StrictLogging {
     val modelClassesMap = readMapOfData(baseReader, MODEL_CLASS).extract[Map[String, String]]
     val modelMetadata = readMapOfData(baseReader, MODEL_META)
     // using reflection create that class and call the load method and reify models.
-    val labelModels: mutable.Map[String, PredictModel] = new mutable.HashMap[String, PredictModel]
-    val labelToUUID: mutable.Map[String, String] = new mutable.HashMap[String, String]
+    val labelModels = new mutable.HashMap[String, PredictModel[T]]
+    val labelToUUID = new mutable.HashMap[String, String]
     for((label, modelClass) <- modelClassesMap) {
       // Reify the model.
-      val model: PredictModel = ArchiveLoader.reify[PredictModel](
-        Class.forName(modelClass),
-        engine,
-        baseReader.within(label),
+      val model = ArchiveLoader.reify[PredictModel[T]](
+        Class.forName(modelClass), engine, baseReader.within(label),
         // extra the right model metadata to send down
         Some((modelMetadata \ label).extract[JObject])).get
       // have to create these maps this way because we're dealing with Java in the end.

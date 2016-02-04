@@ -10,40 +10,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static scala.collection.JavaConversions.seqAsJavaList;
 
 /**
  * Alloy base class.
  *
  * Basically encompasses everything to run predictions for a task.
  */
-public abstract class BaseAlloy implements Alloy {
+public abstract class BaseAlloy<T extends PredictResult> implements Alloy<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseAlloy.class);
 
-    private final Map<String, PredictModel> _labelModelMap;
+    private final List<PredictModel<T>> _models;
 
     private final Map<String, String> _labelToUUID;
 
-    public BaseAlloy(Map<String, PredictModel> labelModelMap, Map<String, String> labelToUUID) {
-        _labelModelMap = Collections.unmodifiableMap(labelModelMap);
+    public BaseAlloy(List<PredictModel<T>> models, Map<String, String> labelToUUID) {
+        _models = Collections.unmodifiableList(models);
         _labelToUUID = Collections.unmodifiableMap(labelToUUID);
     }
 
-    @Override public Map<String, PredictResult> predict(JsonAST.JObject json, PredictOptions options) {
-        // TODO: predict over all? or just a single one? or?
+    @Override public List<T> predict(JsonAST.JObject json, PredictOptions options) {
         final Document document = Document.document(json);
-        Map<String, PredictResult> results = new HashMap<>();
-        for(Map.Entry<String, PredictModel> entry: _labelModelMap.entrySet()) {
-            String name = entry.getKey().equals(GangModel.MULTI_CLASS_LABEL()) ? "--multiclass model--" : entry.getKey();
-            LOGGER.trace("Predicting for " + name);
-            PredictResult prediction = entry.getValue().predict(document, options);
-            for(PredictResult result: prediction.getAllResults()){
-                LOGGER.trace(result.getLabel() + " " + result.toString());
-                results.put(result.getLabel(), result);
-            }
-        }
-        return results;
+        /* classify the document against all models, concatenating the list of
+         * PredictResult objects returned by each */
+        return _models.stream()
+            .flatMap(m -> seqAsJavaList(m.predict(document, options)).stream())
+            .collect(java.util.stream.Collectors.toList());
     }
 }

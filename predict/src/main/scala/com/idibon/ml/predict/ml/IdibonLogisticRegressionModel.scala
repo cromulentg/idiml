@@ -21,31 +21,34 @@ import org.json4s._
 case class IdibonLogisticRegressionModel(label: String,
   lrm: IdibonSparkLogisticRegressionModelWrapper,
   featurePipeline: FeaturePipeline)
-    extends MLModel(featurePipeline) with StrictLogging
+    extends MLModel[Classification](featurePipeline) with StrictLogging
     with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
 
-  /**
-    * The method used to predict from a vector of features.
+  /** The method used to predict from a vector of features.
     *
     * @param features Vector of features to use for prediction.
     * @param options Object of predict options.
-    * @return
+    * @return a single PredictResult for the label classified by this model
     */
   override def predictVector(features: Vector,
-      options: PredictOptions): PredictResult = {
-    val results: Vector = lrm.predictProbability(features)
-    logger.trace(s"$label: input = ${features.toString} output=${results.toString}")
-    val builder = new SingleLabelDocumentResultBuilder("", label)
-    // get the result of 1, the positive class we're interested in. 0 will be 1.0 minus this value.
-    // TODO: change this if we move from binary use case.
-    builder.setProbability(results.apply(1).toFloat)
-    builder.setMatchCount(1)
-    if (!options.significantFeatureThreshold.isNaN()) {
-      val indexSigFeatures = lrm.getSignificantFeatures(features, options.significantFeatureThreshold)
-      val indexToHumanFeatures = featurePipeline.getHumanReadableFeature(indexSigFeatures.map(x => x._1))
-      builder.addSignificantFeatures(indexSigFeatures.map(x => (indexToHumanFeatures.get(x._1).get, x._2)).toList)
+      options: PredictOptions): Seq[Classification] = {
+
+    /* get the result of 1, the positive class we're interested in.
+     * 0 will be 1.0 minus this value. */
+    val probability = lrm.predictProbability(features)(1).toFloat
+
+    val significantFeatures = if (options.includeSignificantFeatures) {
+      val indices = lrm.getSignificantFeatures(features,
+        options.significantFeatureThreshold)
+      val human = featurePipeline.getHumanReadableFeature(indices.map(_._1))
+      indices.map({ case (index, weight) => (human(index), weight) })
+    } else {
+      Seq[(String, Float)]()
     }
-    builder.build()
+
+    // FIXME: return number of matched features in matchCount, not 1
+    Seq(Classification(this.label, probability,
+      1, PredictResultFlag.NO_FLAGS, significantFeatures))
   }
 
   /**

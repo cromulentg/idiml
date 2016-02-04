@@ -248,19 +248,17 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("Should predict properly when there is a match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("is", 1.0f)))
-      val actual = model.predict(Document.document(doc),
-        new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(Document.document(doc), PredictOptions.DEFAULT).head
       actual.label shouldBe "a-label"
-      actual.probability shouldBe 1.0
+      actual.probability shouldBe 1.0f
     }
 
     it("Should predict properly when there is no match") {
       val doc = new JObject(List("content" -> new JString("this is some content")))
       val model = new DocumentRules("a-label", List(("/str[ij]ng/", 1.0f), ("/no[thing].*/", 1.0f)))
-      val actual = model.predict(Document.document(doc),
-        new PredictOptionsBuilder().build()).asInstanceOf[SingleLabelDocumentResult]
+      val actual = model.predict(Document.document(doc), PredictOptions.DEFAULT).head
       actual.label shouldBe "a-label"
-      actual.probability shouldBe 0.0
+      actual.probability shouldBe 0.0f
     }
   }
 
