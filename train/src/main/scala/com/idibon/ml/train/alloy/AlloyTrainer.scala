@@ -91,8 +91,6 @@ trait AlloyTrainer {
   }
 }
 
-
-
 /**
   * Base class for trainers that follow a fairly orthodox approach to training.
   *

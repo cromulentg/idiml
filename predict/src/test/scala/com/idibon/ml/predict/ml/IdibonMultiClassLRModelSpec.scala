@@ -22,7 +22,7 @@ class IdibonMultiClassLRModelSpec extends FunSpec
 with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   val pipeline: FeaturePipeline = (FeaturePipelineBuilder.named("StefansPipeline")
-    += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
+    += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
     += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language"))
     += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))

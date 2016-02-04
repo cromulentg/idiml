@@ -37,7 +37,7 @@ class MultiClassLRFurnaceSpec extends FunSpec
   before {
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
-      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
+      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
