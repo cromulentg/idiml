@@ -75,9 +75,8 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   describe("Loads as intended") {
     it("Throws exception on unhandled version") {
       intercept[IOException] {
-        new IdibonLogisticRegressionModelLoader().load(null,
-          null,  Some(JObject(List[JField](
-            ("version", JString("0.0.0")), ("label", JString("alabel"))))))
+        new IdibonLogisticRegressionModelLoader().load(null, null, Some(JObject(List[JField](
+                            ("version", JString("0.0.0")), ("label", JString("alabel"))))))
       }
     }
   }

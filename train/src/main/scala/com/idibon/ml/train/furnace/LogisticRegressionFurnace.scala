@@ -3,8 +3,8 @@ package com.idibon.ml.train.furnace
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.Classification
-import com.idibon.ml.predict.ml.IdibonLogisticRegressionModel
-import com.idibon.ml.train.SparkDataGenerator
+import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel}
+import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
@@ -94,14 +94,15 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
 /**
   * Trains a logistic regression model with the passed in parameters.
   *
-  * @param engine
+  * @param builder
   */
-class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[LogisticRegression](engine) {
-  //TODO: make this configurable
-  val maxIterations = 100
-  val elasticNetParam = 0.9
-  val regressionParam = 0.001
-  val tolerance = 1e-4
+class SimpleLogisticRegression(builder: SimpleLogisticRegressionBuilder)
+  extends LogisticRegressionFurnace[LogisticRegression](builder.engine) {
+
+  val maxIterations = builder.maxIterations
+  val elasticNetParam = builder.elasticNetParam.head
+  val regParam = builder.regParam.head
+  val tolerance = builder.tolerance.head
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.
@@ -123,23 +124,24 @@ class SimpleLogisticRegression(engine: Engine) extends LogisticRegressionFurnace
     new LogisticRegression()
       .setElasticNetParam(elasticNetParam)
       .setMaxIter(maxIterations)
-      .setRegParam(regressionParam)
+      .setRegParam(regParam)
       .setTol(tolerance)
   }
 }
 
+
 /**
   * Performs cross validation to choose a logistic regression model.
   *
-  * @param engine
+  * @param builder
   */
-class XValLogisticRegression(engine: Engine) extends LogisticRegressionFurnace[CrossValidator](engine) {
-  //TODO: make this configurable
-  val maxIterations = 100
-  val regressionParams = Array(0.001, 0.01, 0.1)
-  val elasticNetParams = Array(0.9, 1.0)
-  val numberOfFolds = 10
-  val tolerances = Array(1e-4)
+class XValLogisticRegression(builder: XValLogisticRegressionBuilder)
+  extends LogisticRegressionFurnace[CrossValidator](builder.engine) {
+  val maxIterations = builder.maxIterations
+  val regressionParams = builder.regParam
+  val elasticNetParams = builder.elasticNetParam
+  val numberOfFolds = builder.numFolds
+  val tolerances = builder.tolerance
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.

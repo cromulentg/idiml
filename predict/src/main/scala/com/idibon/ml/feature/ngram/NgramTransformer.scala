@@ -46,7 +46,7 @@ class NgramTransformer(min: Int, max: Int) extends FeatureTransformer
 /** Paired loader class for NgramTransformer instances. */
 class NgramTransformerLoader extends ArchiveLoader[NgramTransformer] {
 
-  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]) = {
+  def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]) = {
     implicit val formats = DefaultFormats
 
     val ngramConfig = config.map(_.extract[NgramConfig])

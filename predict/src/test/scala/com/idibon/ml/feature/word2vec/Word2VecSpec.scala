@@ -17,7 +17,7 @@ class Word2VecSpec extends FunSpec with Matchers {
 
     def loadModel(): Word2VecTransformer = {
       val loader = new Word2VecTransformerLoader()
-      val transform = loader.load(new EmbeddedEngine, intentAlloy.reader, Some(config))
+      val transform = loader.load(new EmbeddedEngine, Some(intentAlloy.reader), Some(config))
       transform
     }
 

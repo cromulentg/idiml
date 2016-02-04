@@ -2,7 +2,8 @@ package com.idibon.ml.train.furnace
 
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict.{PredictModel, PredictResult}
-import com.idibon.ml.train.SparkDataGenerator
+import com.idibon.ml.predict.ml.{MLModel}
+import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import org.apache.spark.sql.DataFrame
 import org.json4s.JsonAST.JObject
 

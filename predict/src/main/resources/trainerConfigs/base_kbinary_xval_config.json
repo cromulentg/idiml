@@ -1,0 +1,111 @@
+{
+  "trainerConfig": {
+    "jsonClass": "KClass1FPBuilder",
+    "dataGenBuilder": {
+      "jsonClass": "KClassDataFrameGeneratorBuilder"
+    },
+    "furnaceBuilder": {
+      "jsonClass": "XValLogisticRegressionBuilder",
+      "maxIterations": 10,
+      "regParam": [
+        0.001,
+        0.01,
+        0.1
+      ],
+      "tolerance": [
+        1.0E-4
+      ],
+      "elasticNetParam": [
+        0.9,
+        1.0
+      ],
+      "numFolds": 10
+    }
+  },
+  "pipelineConfig": {
+    "pipeline": [
+      {
+        "inputs": [
+          "ngrams"
+        ],
+        "name": "convertToIndex"
+      },
+      {
+        "inputs": [
+          "bagOfWords"
+        ],
+        "name": "ngrams"
+      },
+      {
+        "inputs": [
+          "convertToTokens",
+          "languageDetector"
+        ],
+        "name": "bagOfWords"
+      },
+      {
+        "inputs": [
+          "contentExtractor",
+          "languageDetector"
+        ],
+        "name": "convertToTokens"
+      },
+      {
+        "inputs": [
+          "$document"
+        ],
+        "name": "languageDetector"
+      },
+      {
+        "inputs": [
+          "$document"
+        ],
+        "name": "contentExtractor"
+      },
+      {
+        "inputs": [
+          "convertToIndex"
+        ],
+        "name": "$output"
+      }
+    ],
+    "transforms": [
+      {
+        "class": "com.idibon.ml.feature.ContentExtractor",
+        "name": "contentExtractor"
+      },
+      {
+        "class": "com.idibon.ml.feature.ngram.NgramTransformer",
+        "config": {
+          "max": 3,
+          "min": 1
+        },
+        "name": "ngrams"
+      },
+      {
+        "class": "com.idibon.ml.feature.language.LanguageDetector",
+        "name": "languageDetector"
+      },
+      {
+        "class": "com.idibon.ml.feature.tokenizer.TokenTransformer",
+        "name": "convertToTokens"
+      },
+      {
+        "class": "com.idibon.ml.feature.indexer.IndexTransformer",
+        "name": "convertToIndex"
+      },
+      {
+        "class": "com.idibon.ml.feature.bagofwords.BagOfWordsTransformer",
+        "config": {
+          "accept": [
+            "Word",
+            "Punctuation"
+          ],
+          "transform": "ToLower"
+        },
+        "name": "bagOfWords"
+      }
+    ],
+    "version": "0.0.1"
+  }
+}

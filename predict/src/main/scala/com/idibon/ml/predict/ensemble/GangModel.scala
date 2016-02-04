@@ -103,7 +103,7 @@ class GangModelLoader extends ArchiveLoader[GangModel] {
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  override def load(engine: Engine, reader: Reader, config: Option[JObject]): GangModel = {
+  override def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): GangModel = {
     implicit val formats = org.json4s.DefaultFormats
     val labels = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
@@ -114,7 +114,7 @@ class GangModelLoader extends ArchiveLoader[GangModel] {
       // get model metadata JObject
       val indivMeta = (modelMeta \ name \ "config").extract[Option[JObject]]
       (name, ArchiveLoader
-        .reify[PredictModel[Classification]](modelType, engine, reader.within(name), indivMeta)
+        .reify[PredictModel[Classification]](modelType, engine, Some(reader.get.within(name)), indivMeta)
         .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Classification]]))
     }).toMap
     new GangModel(models)

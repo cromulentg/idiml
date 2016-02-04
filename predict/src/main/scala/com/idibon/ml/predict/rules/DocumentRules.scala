@@ -229,12 +229,12 @@ class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
     *               call to { @link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
-  override def load(engine: Engine, reader: Reader, config: Option[JObject]): DocumentRules = {
+  override def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): DocumentRules = {
     // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
     implicit val formats = org.json4s.DefaultFormats
     val label = (config.get \ "label").extract[String]
     val jsonObject: JValue = parse(
-      Codec.String.read(reader.resource(DocumentRules.RULE_RESOURCE_NAME)))
+      Codec.String.read(reader.get.resource(DocumentRules.RULE_RESOURCE_NAME)))
 
     val ruleJsonValue = jsonObject.extract[List[Map[String, Float]]]
     val rules = ruleJsonValue.flatMap(x => x.toList)

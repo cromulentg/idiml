@@ -162,7 +162,7 @@ object JarAlloy extends StrictLogging {
     for((label, modelClass) <- modelClassesMap) {
       // Reify the model.
       val model = ArchiveLoader.reify[PredictModel[T]](
-        Class.forName(modelClass), engine, baseReader.within(label),
+        Class.forName(modelClass), engine, Some(baseReader.within(label)),
         // extra the right model metadata to send down
         Some((modelMetadata \ label).extract[JObject])).get
       // have to create these maps this way because we're dealing with Java in the end.
