@@ -1,6 +1,7 @@
 package com.idibon.ml.train.alloy
 
 import com.idibon.ml.common.Engine
+import com.idibon.ml.predict.{PredictResult, Classification}
 import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGeneratorBuilder, KClassDataFrameGeneratorBuilder, SparkDataGeneratorBuilder}
 import com.idibon.ml.train.furnace.{MultiClassLRFurnaceBuilder, XValLogisticRegressionBuilder, FurnaceBuilder}
 import org.json4s.ShortTypeHints
@@ -54,7 +55,7 @@ trait AlloyTrainerBuilder {
   * @param furnaceBuilder The builder that produces the class to fit models.
   */
 case class KClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGeneratorBuilder = new KClassDataFrameGeneratorBuilder(),
-                            private[alloy] var furnaceBuilder: FurnaceBuilder = new XValLogisticRegressionBuilder())
+                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new XValLogisticRegressionBuilder())
   extends AlloyTrainerBuilder {
   private[alloy] var engine: Engine = null
 
@@ -71,7 +72,7 @@ case class KClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGenerato
   * @param furnaceBuilder The builder that produces the class to fit models.
   */
 case class MultiClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGeneratorBuilder = new MultiClassDataFrameGeneratorBuilder(),
-                                private[alloy] var furnaceBuilder: FurnaceBuilder = new MultiClassLRFurnaceBuilder())
+                                private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new MultiClassLRFurnaceBuilder())
   extends AlloyTrainerBuilder {
   private[alloy] var engine: Engine = null
 

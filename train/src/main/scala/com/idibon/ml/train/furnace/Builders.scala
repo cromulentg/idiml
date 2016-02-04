@@ -1,6 +1,7 @@
 package com.idibon.ml.train.furnace
 
 import com.idibon.ml.common.Engine
+import com.idibon.ml.predict.{Classification, PredictResult}
 import org.json4s.ShortTypeHints
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization.{writePretty}
@@ -36,8 +37,9 @@ object BuilderDefaults {
   *
   * Enforces what kind of convention we want to follow.
   *
+  * @tparam T
   */
-trait FurnaceBuilder {
+trait FurnaceBuilder[T <: PredictResult] {
 
   private[furnace] var engine: Engine = null
   /**
@@ -47,7 +49,7 @@ trait FurnaceBuilder {
     * @param engine
     * @return
     */
-  def build(engine: Engine): Furnace
+  def build(engine: Engine): Furnace[T]
 
   /**
     * Creates a pretty printed JSON string.
@@ -66,7 +68,7 @@ trait FurnaceBuilder {
   * Furnaces that create a single LR model should implement this trait.
   *
   */
-trait LogisticRegressionBasedFurnaceBuilder[B] extends FurnaceBuilder {
+trait LogisticRegressionBasedFurnaceBuilder[B] extends FurnaceBuilder[Classification] {
 
   def setMaxIterations(maxIterations: Int): B
 
@@ -82,7 +84,7 @@ trait LogisticRegressionBasedFurnaceBuilder[B] extends FurnaceBuilder {
   * implement this trait.
   *
   */
-trait LogisticRegressionParameterSearchBasedFurnaceBuilder[B] extends FurnaceBuilder {
+trait LogisticRegressionParameterSearchBasedFurnaceBuilder[B] extends FurnaceBuilder[Classification] {
 
   def setMaxIterations(maxIterations: Int): B
 

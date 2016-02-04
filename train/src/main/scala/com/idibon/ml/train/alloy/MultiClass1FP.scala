@@ -3,7 +3,7 @@ package com.idibon.ml.train.alloy
 import java.util
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.PredictModel
+import com.idibon.ml.predict.{Classification, PredictModel}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.ml.MLModel
 import com.idibon.ml.predict.rules.DocumentRules
@@ -47,7 +47,7 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, MLModel]] = {
+                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(this.engine, config)
@@ -76,18 +76,5 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     primedPipeline.prune(isNotUsed)
     // return MLModel
     Try(Map(MultiClass.MODEL_KEY -> model))
-  }
-
-  /**
-    * Multiclass implemenation of taking MLModels and creating Predict models that have rules with them.
-    *
-    * @param models
-    * @param rules
-    * @return
-    */
-  override def mergeRulesWithModels(models: Map[String, MLModel],
-                                    rules: Map[String, List[(String, Float)]]): Map[String, PredictModel] = {
-    val labelToRules = rules.map({case (label, ruleList) => (label, new DocumentRules(label, ruleList))})
-    Map(MultiClass.MODEL_KEY -> new GangModel(models(MultiClass.MODEL_KEY), labelToRules))
   }
 }

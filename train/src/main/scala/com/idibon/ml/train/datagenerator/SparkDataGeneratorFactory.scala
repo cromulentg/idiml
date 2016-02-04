@@ -1,6 +1,5 @@
 package com.idibon.ml.train.datagenerator
 
-import com.idibon.ml.train.datagenerator.BuilderDefaults
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.native.Serialization.{read}
 
