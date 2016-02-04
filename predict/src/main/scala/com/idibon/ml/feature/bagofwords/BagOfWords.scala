@@ -72,7 +72,7 @@ class BagOfWordsTransformer(accept: Seq[Tag.Value],
 
 /** Paired loader for BagOfWordsTransformer */
 class BagOfWordsTransformerLoader extends ArchiveLoader[BagOfWordsTransformer] {
-  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]) = {
+  def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]) = {
     implicit val formats = DefaultFormats
 
     val bowConfig = config.get.extract[BagOfWordsConfig]

@@ -254,7 +254,7 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     *                  pipeline was last saved
     * @return this
     */
-  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): FeaturePipeline = {
+  def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): FeaturePipeline = {
     // configure format converters for json4s
     implicit val formats = DefaultFormats
 
@@ -263,16 +263,23 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
     val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
 
+
     /* instantiate all of the transformers and pass any configuration data
-     * to them, generating a map of the transform name to the reified
-     * transformer object. */
+             * to them, generating a map of the transform name to the reified
+             * transformer object. */
     val transforms = xfJson.map(obj => {
       FeaturePipeline.checkTransformerName(obj.name)
-      (obj.name -> reify(engine, reader.within(obj.name), obj))
+      val resourceReader = if (reader.isDefined) Some(reader.get.within(obj.name)) else None
+      (obj.name -> reify(engine, resourceReader, obj))
     }).toMap
-
     val pipeline = FeaturePipeline.bind(transforms, pipeJson)
-    pipeline.freezePipeline()
+    reader match {
+      case Some(reader) => {
+        pipeline.freezePipeline()
+      }
+      case None => pipeline
+    }
+
   }
 
 
@@ -287,7 +294,7 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     *               name, class and optional configuration information.
     * @return   tuple of the transformer name and the reified object
     */
-  private def reify(engine: Engine, reader: Alloy.Reader, entry: TransformEntry):
+  private def reify(engine: Engine, reader: Option[Alloy.Reader], entry: TransformEntry):
   FeatureTransformer = {
 
     val transformClass = Class.forName(entry.`class`)

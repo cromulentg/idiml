@@ -70,7 +70,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, intentAlloy.reader, null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
 
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
     }
@@ -185,7 +185,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, intentAlloy.reader, null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
       transform2.numDimensions shouldBe 5
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
@@ -206,7 +206,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, intentAlloy.reader, null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
       transform2.freeze()
       transform2.numDimensions shouldBe 5
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex

@@ -75,7 +75,7 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
     * @param config archived configuration data returned by a previous
     * @return a Word2VecTransformer
     */
-  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): Word2VecTransformer = {
+  def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): Word2VecTransformer = {
     implicit val formats = DefaultFormats
     val path = (config.get \ "path").extract[String]
     val model = Word2VecModel.load(engine.sparkContext, path)

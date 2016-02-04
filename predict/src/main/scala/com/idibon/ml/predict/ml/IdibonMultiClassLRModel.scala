@@ -191,7 +191,7 @@ class IdibonMultiClassLRModelLoader
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  override def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonMultiClassLRModel = {
+  override def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): IdibonMultiClassLRModel = {
     implicit val formats = DefaultFormats
     val version = (config.get \ "version" ).extract[String]
     version match {
@@ -199,7 +199,7 @@ class IdibonMultiClassLRModelLoader
         logger.info(s"Attemping to load version [v. $version] for multiclass LR.")
       case _ => throw new IOException(s"Unable to load, unhandled version [v. $version] for multiclass LR.")
     }
-    val coeffs = reader.within("model").resource("coefficients.libsvm")
+    val coeffs = reader.get.within("model").resource("coefficients.libsvm")
     val (intercept: Double,
          coefficients: Vector,
          labelToInt: Map[String, Int],
@@ -207,7 +207,7 @@ class IdibonMultiClassLRModelLoader
     coeffs.close()
     val featureMeta = (config.get \ "feature-meta").extract[JObject]
     val featurePipeline = new FeaturePipelineLoader().load(
-      engine, reader.within("featurePipeline"), Some(featureMeta))
+      engine, Some(reader.get.within("featurePipeline")), Some(featureMeta))
     new IdibonMultiClassLRModel(
       labelToInt,
       new IdibonSparkMLLIBLRWrapper(coefficients, intercept, numFeatures, labelToInt.size),

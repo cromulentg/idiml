@@ -1,6 +1,6 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.alloy.{Codec, Alloy, IntentAlloy}
+import com.idibon.ml.alloy.{Alloy, Codec, IntentAlloy}
 import com.idibon.ml.common.{Engine, ArchiveLoader, Archivable, EmbeddedEngine}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
@@ -63,7 +63,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             ("class", JString("com.idibon.ml.predict.rules.DocumentRules"))))
             )))))))
       metadata shouldBe expectedMetadata
-      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
+      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       val gang1Pred = gang1.predict(Document.document(doc),
         new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
       val gang2Pred = gang2.predict(Document.document(doc),
@@ -92,7 +92,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
             )))))))
       metadata shouldBe expectedMetadata
-      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
+      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       gang1 shouldBe gang2
     }
 
@@ -108,7 +108,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             ("class",JString("com.idibon.ml.predict.ensemble.FakeMCModel")))))
             ))))))
       metadata shouldBe expectedMetadata
-      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, alloy.reader(), metadata)
+      val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       gang1 shouldBe gang2
     }
   }
@@ -207,8 +207,8 @@ case class FakeMCModel(labels: List[String])
 }
 
 class FakeMCModelLoader extends ArchiveLoader[FakeMCModel] {
-  override def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): FakeMCModel = {
-    val in = reader.resource("stuff")
+  override def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): FakeMCModel = {
+    val in = reader.get.resource("stuff")
     val size = Codec.VLuint.read(in)
     val labels = (0 until size).map(_ => {
       val label = Codec.String.read(in)

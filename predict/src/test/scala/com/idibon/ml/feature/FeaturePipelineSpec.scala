@@ -1,6 +1,7 @@
 package com.idibon.ml.feature
 
 import com.idibon.ml.alloy.Alloy
+import com.idibon.ml.alloy.Alloy.Reader
 import com.idibon.ml.test.VerifyLogging
 import com.idibon.ml.feature.tokenizer.Token
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine, EmbeddedEngine}
@@ -186,7 +187,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val dummyReader = createMockReader
       val dummyWriter = createMockWriter
       val json = parse(unparsed).asInstanceOf[JObject]
-      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyReader, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyReader), Some(json))
       val result = pipeline.save(dummyWriter)
         .map(j => compact(render(j))).getOrElse("")
       result shouldBe unparsed
@@ -216,7 +217,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"B","inputs":[]},
   {"name":"$output","inputs":["A","B"]}]}""").asInstanceOf[JObject]
 
-      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json))
+      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyAlloy), Some(json))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
         Vectors.sparse(6,Array(0,1,2,3,4,5),Array(1.0,0.0,1.0,0.0,-1.0,0.5))
@@ -238,7 +239,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
 
-      (new FeaturePipelineLoader).load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+      (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyAlloy), Some(json.asInstanceOf[JObject]))
       loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
     }
 
@@ -259,7 +260,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 }""")
 
       val pipeline = (new FeaturePipelineLoader)
-        .load(new EmbeddedEngine, dummyAlloy, Some(json.asInstanceOf[JObject]))
+                    .load(new EmbeddedEngine, Some(dummyAlloy), Some(json.asInstanceOf[JObject]))
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
@@ -617,7 +618,7 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
 private [this] class ArchivableTransformLoader
     extends ArchiveLoader[ArchivableTransform] {
 
-  def load(engine: Engine, r: Alloy.Reader, config: Option[JObject]): ArchivableTransform = {
+  def load(engine: Engine, r: Option[Reader], config: Option[JObject]): ArchivableTransform = {
     new ArchivableTransform(config)
   }
 }

@@ -22,7 +22,6 @@ import org.json4s._
     *
     *   @author Michelle Casbon <michelle@idibon.com>
     *   @author Stefan Krawczyk <stefan@idibon.com>
-    *
     * @param frozen whether the index size is frozen and can be added to.
     * @param frozenSize the frozen size - needed incase the index is pruned once frozen.
     */
@@ -180,27 +179,31 @@ import org.json4s._
   class IndexTransformLoader extends ArchiveLoader[IndexTransformer] {
 
     /** Loads the IndexTransformer from an Alloy */
-    def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]): IndexTransformer = {
-      val fis = new FeatureInputStream(
-        reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
+    def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): IndexTransformer = {
+      reader match {
+        case None => new IndexTransformer()
+        case Some(reader) => {
+          val fis = new FeatureInputStream(
+            reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
 
-      // read boolean for frozen
-      val frozen = fis.readBoolean()
-      // read int for frozen size
-      val frozenSize = Codec.VLuint.read(fis)
+          // read boolean for frozen
+          val frozen = fis.readBoolean()
+          // read int for frozen size
+          val frozenSize = Codec.VLuint.read(fis)
 
-      // Retrieve the number of elements in the featureIndex map
-      val size = Codec.VLuint.read(fis)
+          // Retrieve the number of elements in the featureIndex map
+          val size = Codec.VLuint.read(fis)
 
-      val transformer = new IndexTransformer(frozen, frozenSize)
+          val transformer = new IndexTransformer(frozen, frozenSize)
 
-      1 to size foreach { _ =>
-        val feature = fis.readFeature
-        val value = Codec.VLuint.read(fis)
-        transformer.featureIndex += (feature -> value)
+          1 to size foreach { _ =>
+            val feature = fis.readFeature
+            val value = Codec.VLuint.read(fis)
+            transformer.featureIndex += (feature -> value)
+          }
+          transformer
+        }
       }
-
-      transformer
     }
   }
 

@@ -75,7 +75,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, Some(alloy.reader()), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file
@@ -87,7 +87,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       val jsonConfig = docRules.save(alloy.writer())
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, alloy.reader(), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, Some(alloy.reader()), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
       //TODO: remove file

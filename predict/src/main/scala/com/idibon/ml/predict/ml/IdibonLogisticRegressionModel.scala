@@ -166,7 +166,7 @@ class IdibonLogisticRegressionModelLoader
     *               call to { @link com.idibon.ml.common.Archivable#save}
     * @return this object
     */
-  def load(engine: Engine, reader: Reader, config: Option[JObject]): IdibonLogisticRegressionModel = {
+  def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): IdibonLogisticRegressionModel = {
     implicit val formats = DefaultFormats
     val label = (config.get \ "label" ).extract[String]
     val version = (config.get \ "version" ).extract[String]
@@ -175,14 +175,14 @@ class IdibonLogisticRegressionModelLoader
         logger.info(s"Attemping to load version [v. $version] for '$label'")
       case _ => throw new IOException(s"Unable to load, unhandled version [v. $version] for '$label'")
     }
-    val coeffs = reader.within("model").resource("coefficients.libsvm")
+    val coeffs = reader.get.within("model").resource("coefficients.libsvm")
     val (intercept: Double,
     coefficients: Vector,
     uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
     coeffs.close()
     val featureMeta = (config.get \ "feature-meta").extract[JObject]
     val featurePipeline = new FeaturePipelineLoader().load(
-      engine, reader.within("featurePipeline"), Some(featureMeta))
+      engine, Some(reader.get.within("featurePipeline")), Some(featureMeta))
 
     new IdibonLogisticRegressionModel(
       label,

@@ -82,7 +82,7 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
 /** Paired loader class for SkipgramTransformer instances. */
 class SkipgramTransformerLoader extends ArchiveLoader[SkipgramTransformer] {
 
-  def load(engine: Engine, reader: Alloy.Reader, config: Option[JObject]) = {
+  def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]) = {
     implicit val formats = DefaultFormats
 
     val skipgramConfig = config.map(_.extract[SkipgramConfig])
