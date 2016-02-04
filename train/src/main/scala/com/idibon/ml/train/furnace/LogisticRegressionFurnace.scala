@@ -8,7 +8,7 @@ import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.ml.tuning.{ParamGridBuilder, CrossValidator}
+import org.apache.spark.ml.tuning.{TrainValidationSplit, ParamGridBuilder, CrossValidator}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.json4s.JsonAST.JObject
@@ -179,5 +179,55 @@ class XValLogisticRegression(builder: XValLogisticRegressionBuilder)
       .setEstimatorParamMaps(paramGrid)
       .setNumFolds(numberOfFolds) // Use 3+ in practice
     cv
+  }
+}
+
+
+/**
+  * Performs hold out set evaluation to choose a logistic regression model.
+  *
+  * It randomly splits the incoming data and then uses it to figure out which options work the best.
+  *
+  * @param builder
+  */
+class HoldOutSetLogisticRegressionFurnace(builder: HoldOutSetLogisticRegressionFurnaceBuilder)
+  extends LogisticRegressionFurnace[TrainValidationSplit](builder.engine) {
+  val maxIterations = builder.maxIterations
+  val regressionParams = builder.regParam
+  val elasticNetParams = builder.elasticNetParam
+  val tolerances = builder.tolerance
+  val trainingSplit = builder.trainingSplit
+
+  /**
+    * Method that fits data and returns a Logistic Regression Model ready for battle.
+    *
+    * @param estimator
+    * @param data
+    * @return
+    */
+  protected def fitModel(estimator: TrainValidationSplit, data: DataFrame): LogisticRegressionModel = {
+    estimator.fit(data.cache()).bestModel.asInstanceOf[LogisticRegressionModel]
+  }
+
+  /**
+    * Creates the cross validator for finding the parameters for the LogisticRegressionModel.
+    *
+    * @return
+    */
+  override protected def getEstimator(): TrainValidationSplit = {
+    val lr = new LogisticRegression().setMaxIter(maxIterations)
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(lr.regParam, regressionParams)
+      .addGrid(lr.elasticNetParam, elasticNetParams)
+      .addGrid(lr.tol, tolerances)
+      .build()
+    logger.info("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
+    val trainValidationSplit = new TrainValidationSplit()
+      .setEstimator(lr)
+      .setEvaluator(new BinaryClassificationEvaluator()) //Uses Area Under ROC Curve
+      .setEstimatorParamMaps(paramGrid)
+      // 80% of the data will be used for training and the remaining 20% for validation.
+      .setTrainRatio(trainingSplit)
+    trainValidationSplit
   }
 }

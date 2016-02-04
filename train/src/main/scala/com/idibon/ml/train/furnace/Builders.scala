@@ -20,6 +20,7 @@ object BuilderDefaults {
   // if you're doing only one iteration of model params, you take the head of the array of params.
   // that way XVal and SimpleLR can share code easily without separate cases.
   val NUMBER_OF_FOLDS = 10
+  val TRAINING_SPLIT = 0.8
   val TOLERANCES = Array(TOLERANCE)
   val REGULARIZATION_PARAMETERS = Array(REGULARIZATION_PARAMETER, 0.01, 0.1)
   val ELASTIC_NET_PARAMETERS = Array(ELASTIC_NET_PARAMETER, 1.0)
@@ -27,7 +28,8 @@ object BuilderDefaults {
   val classHints = List(
     classOf[MultiClassLRFurnaceBuilder],
     classOf[SimpleLogisticRegressionBuilder],
-    classOf[XValLogisticRegressionBuilder])
+    classOf[XValLogisticRegressionBuilder],
+    classOf[HoldOutSetLogisticRegressionFurnaceBuilder])
   /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
        The only requirement is that has a 'jsonClass' field with one of the names of the classes
        below.*/
@@ -145,8 +147,6 @@ trait HasTrainingDevSplit { self =>
 /**
   * Builder class to make it easy to create the right SimpleLogisticRegression Furnace.
   *
-  * TODO: Doc for each method to explain what is happening.
-  *
   * @param maxIterations
   * @param regParam
   * @param tolerance
@@ -156,7 +156,10 @@ case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: I
                                            private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
                                            private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
                                            private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS)
-  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization with HasElasticNet {
+  extends FurnaceBuilder[Classification]
+    with HasStochasticOptimizer
+    with HasRegularization
+    with HasElasticNet {
 
   /**
     * Each builder needs to have a one of these that takes an engine and
@@ -181,7 +184,9 @@ case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: I
 case class MultiClassLRFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
                                       private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
                                       private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES)
-  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization {
+  extends FurnaceBuilder[Classification]
+    with HasStochasticOptimizer
+    with HasRegularization {
 
   /**
     * Each builder needs to have a one of these that takes an engine and
@@ -199,19 +204,53 @@ case class MultiClassLRFurnaceBuilder(private[furnace] var maxIterations: Int = 
 /**
   * Builder class to make it easy to create the right XValLR Furnace.
   *
-  * TODO: Doc for each method to explain what is happening.
-  *
+  * @param maxIterations
+  * @param regParam
+  * @param tolerance
+  * @param elasticNetParam
+  * @param numFolds
   */
 case class XValLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
                                          private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
                                          private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
                                          private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
                                          private[furnace] var numFolds: Int = BuilderDefaults.NUMBER_OF_FOLDS)
-  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization with HasElasticNet{
+  extends FurnaceBuilder[Classification]
+    with HasStochasticOptimizer
+    with HasRegularization
+    with HasElasticNet
+    with HasXValidation {
 
 
   override def build(engine: Engine): XValLogisticRegression = {
     this.engine = engine
     new XValLogisticRegression(this)
+  }
+}
+
+
+/**
+  * Builder class to make it easy to create the right Hold Out Set Furnace.
+  *
+  * @param maxIterations
+  * @param regParam
+  * @param tolerance
+  * @param elasticNetParam
+  * @param trainingSplit
+  */
+case class HoldOutSetLogisticRegressionFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
+                                                      private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                                      private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
+                                                      private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
+                                                      private[furnace] var trainingSplit: Double = BuilderDefaults.TRAINING_SPLIT)
+  extends FurnaceBuilder[Classification]
+    with HasStochasticOptimizer
+    with HasRegularization
+    with HasElasticNet
+    with HasTrainingDevSplit {
+
+  override def build(engine: Engine): HoldOutSetLogisticRegressionFurnace = {
+    this.engine = engine
+    new HoldOutSetLogisticRegressionFurnace(this)
   }
 }
