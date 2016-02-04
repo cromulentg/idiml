@@ -100,9 +100,9 @@ class SimpleLogisticRegression(builder: SimpleLogisticRegressionBuilder)
   extends LogisticRegressionFurnace[LogisticRegression](builder.engine) {
 
   val maxIterations = builder.maxIterations
-  val elasticNetParam = builder.elasticNetParam
-  val regParam = builder.regParam
-  val tolerance = builder.tolerance
+  val elasticNetParam = builder.elasticNetParam.head
+  val regParam = builder.regParam.head
+  val tolerance = builder.tolerance.head
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.
@@ -138,10 +138,10 @@ class SimpleLogisticRegression(builder: SimpleLogisticRegressionBuilder)
 class XValLogisticRegression(builder: XValLogisticRegressionBuilder)
   extends LogisticRegressionFurnace[CrossValidator](builder.engine) {
   val maxIterations = builder.maxIterations
-  val regressionParams = builder.regParams
-  val elasticNetParams = builder.elasticNetParams
+  val regressionParams = builder.regParam
+  val elasticNetParams = builder.elasticNetParam
   val numberOfFolds = builder.numFolds
-  val tolerances = builder.tolerances
+  val tolerances = builder.tolerance
 
   /**
     * Method that fits data and returns a Logistic Regression Model ready for battle.

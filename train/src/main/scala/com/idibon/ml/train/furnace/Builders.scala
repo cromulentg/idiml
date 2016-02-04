@@ -10,13 +10,15 @@ import org.json4s.native.Serialization.{writePretty}
   * Static object with global defaults for builders.
   */
 object BuilderDefaults {
-  // LogisticRegression Defaults
+  // LogisticRegression Defaults -- These are the base defaults
   val TOLERANCE = 1e-4
   val REGULARIZATION_PARAMETER = 0.001
   val MAX_ITERATIONS = 100
   val ELASTIC_NET_PARAMETER = 0.9
 
-  // parameter search related defaults
+  // parameter search related defaults -- everything is largely based off of arrays, so
+  // if you're doing only one iteration of model params, you take the head of the array of params.
+  // that way XVal and SimpleLR can share code easily without separate cases.
   val NUMBER_OF_FOLDS = 10
   val TOLERANCES = Array(TOLERANCE)
   val REGULARIZATION_PARAMETERS = Array(REGULARIZATION_PARAMETER, 0.01, 0.1)
@@ -37,7 +39,7 @@ object BuilderDefaults {
   *
   * Enforces what kind of convention we want to follow.
   *
-  * @tparam T
+  * @tparam T The parameterized type of furnace we want to build.
   */
 trait FurnaceBuilder[T <: PredictResult] {
 
@@ -64,37 +66,80 @@ trait FurnaceBuilder[T <: PredictResult] {
   }
 }
 
+/*
+ Each type of parameter that we could set lives in its own trait.
+ Each trait has a `self` to reference to make it easy to create builders
+ that work for us.
+ Each trait has a an `abstract` declaration of a variable that's needed. It's up to the
+ extending class to declare that in its constructor.
+ */
+
 /**
-  * Furnaces that create a single LR model should implement this trait.
-  *
+  * Use this if you're iterating and want to know when to stop things.
   */
-trait LogisticRegressionBasedFurnaceBuilder[B] extends FurnaceBuilder[Classification] {
+trait HasStochasticOptimizer { self =>
+  private[furnace] var maxIterations: Int
+  private[furnace] var tolerance: Array[Double]
 
-  def setMaxIterations(maxIterations: Int): B
+  def setMaxIterations(maxIterations: Int): self.type = {
+    this.maxIterations = maxIterations
+    self
+  }
 
-  def setRegParam(regParam: Double): B
-
-  def setTolerance(tolerance: Double): B
-
-  def setElasticNetParam(elasticNetParam: Double): B
+  def setTolerance(tolerance: Array[Double]): self.type = {
+    this.tolerance = tolerance
+    self
+  }
 }
 
 /**
-  * Furnaces that search over a bunch of parameters and output a single LR model should
-  * implement this trait.
-  *
+  * If you can regularize your weights, use this.
   */
-trait LogisticRegressionParameterSearchBasedFurnaceBuilder[B] extends FurnaceBuilder[Classification] {
+trait HasRegularization { self =>
 
-  def setMaxIterations(maxIterations: Int): B
+  private[furnace] var regParam: Array[Double]
 
-  def setRegParams(regParams: Array[Double]): B
+  def setRegParam(regParam: Array[Double]): self.type = {
+    this.regParam = regParam
+    self
+  }
+}
 
-  def setTolerances(tolerances: Array[Double]): B
+/**
+  * If you have an elastic net parameter, use this.
+  */
+trait HasElasticNet { self =>
+  private[furnace] var elasticNetParam: Array[Double]
 
-  def setElasticNetParams(elasticNetParams: Array[Double]): B
+  def setElasticNetParam(elasticNetParam: Array[Double]): self.type = {
+    this.elasticNetParam = elasticNetParam
+    self
+  }
+}
 
-  def setNumberOfFolds(numFolds: Int): B
+/**
+  * If you want to perform XValidation - specify they number of folds.
+  */
+trait HasXValidation { self =>
+  private[furnace] var numFolds: Int
+
+  def setNumberOfFolds(numFolds: Int): self.type = {
+    this.numFolds = numFolds
+    self
+  }
+}
+
+/**
+  * If you want to split your training set into train & dev to tune parameters.
+  */
+trait HasTrainingDevSplit { self =>
+
+  private[furnace] var trainingSplit: Double
+
+  def setTrainingSplit(trainingSplit: Double): self.type = {
+    this.trainingSplit = trainingSplit
+    self
+  }
 }
 
 /**
@@ -108,29 +153,11 @@ trait LogisticRegressionParameterSearchBasedFurnaceBuilder[B] extends FurnaceBui
   * @param elasticNetParam
   */
 case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
-                                           private[furnace] var regParam: Double = BuilderDefaults.REGULARIZATION_PARAMETER,
-                                           private[furnace] var tolerance: Double = BuilderDefaults.TOLERANCE,
-                                           private[furnace] var elasticNetParam: Double = BuilderDefaults.ELASTIC_NET_PARAMETER)
-  extends LogisticRegressionBasedFurnaceBuilder[SimpleLogisticRegressionBuilder]{
+                                           private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                           private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
+                                           private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS)
+  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization with HasElasticNet {
 
-  override def setElasticNetParam(elasticNetParam: Double): SimpleLogisticRegressionBuilder = {
-    this.elasticNetParam = elasticNetParam
-    this
-  }
-  override def setMaxIterations(maxIterations: Int): SimpleLogisticRegressionBuilder = {
-    this.maxIterations = maxIterations
-    this
-  }
-
-  override def setTolerance(tolerance: Double): SimpleLogisticRegressionBuilder = {
-    this.tolerance = tolerance
-    this
-  }
-
-  override def setRegParam(regParam: Double): SimpleLogisticRegressionBuilder = {
-    this.regParam = regParam
-    this
-  }
   /**
     * Each builder needs to have a one of these that takes an engine and
     * returns a furnace
@@ -152,28 +179,9 @@ case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: I
   * @param tolerance
   */
 case class MultiClassLRFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
-                                      private[furnace] var regParam: Double = BuilderDefaults.REGULARIZATION_PARAMETER,
-                                      private[furnace] var tolerance: Double = BuilderDefaults.TOLERANCE)
-  extends LogisticRegressionBasedFurnaceBuilder[MultiClassLRFurnaceBuilder] {
-
-  override def setMaxIterations(maxIterations: Int): MultiClassLRFurnaceBuilder = {
-    this.maxIterations = maxIterations
-    this
-  }
-
-  override def setTolerance(tolerance: Double): MultiClassLRFurnaceBuilder = {
-    this.tolerance = tolerance
-    this
-  }
-
-  override def setElasticNetParam(elasticNetParam: Double): MultiClassLRFurnaceBuilder = {
-    throw new NotImplementedError("Multi class LR Furnace does not take elastic net parameter")
-  }
-
-  override def setRegParam(regParam: Double): MultiClassLRFurnaceBuilder = {
-    this.regParam = regParam
-    this
-  }
+                                      private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                      private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES)
+  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization {
 
   /**
     * Each builder needs to have a one of these that takes an engine and
@@ -195,36 +203,12 @@ case class MultiClassLRFurnaceBuilder(private[furnace] var maxIterations: Int = 
   *
   */
 case class XValLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
-                                         private[furnace] var regParams: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
-                                         private[furnace] var tolerances: Array[Double] = BuilderDefaults.TOLERANCES,
-                                         private[furnace] var elasticNetParams: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
+                                         private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                         private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
+                                         private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
                                          private[furnace] var numFolds: Int = BuilderDefaults.NUMBER_OF_FOLDS)
-  extends LogisticRegressionParameterSearchBasedFurnaceBuilder[XValLogisticRegressionBuilder]{
+  extends FurnaceBuilder[Classification] with HasStochasticOptimizer with HasRegularization with HasElasticNet{
 
-  override def setMaxIterations(maxIterations: Int): XValLogisticRegressionBuilder = {
-    this.maxIterations = maxIterations
-    this
-  }
-
-  override def setRegParams(regParams: Array[Double]): XValLogisticRegressionBuilder = {
-    this.regParams = regParams
-    this
-  }
-
-  override def setElasticNetParams(elasticNetParams: Array[Double]): XValLogisticRegressionBuilder = {
-    this.elasticNetParams = elasticNetParams
-    this
-  }
-
-  def setNumberOfFolds(numberOfFolds: Int): XValLogisticRegressionBuilder = {
-    this.numFolds = numberOfFolds
-    this
-  }
-
-  override def setTolerances(tolerances: Array[Double]): XValLogisticRegressionBuilder = {
-    this.tolerances = tolerances
-    this
-  }
 
   override def build(engine: Engine): XValLogisticRegression = {
     this.engine = engine

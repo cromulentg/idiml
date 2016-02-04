@@ -22,8 +22,8 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
   extends Furnace[Classification] with StrictLogging {
   val engine: Engine = builder.engine
   val maxIterations = builder.maxIterations
-  val tolerance = builder.tolerance
-  val regParam = builder.regParam
+  val tolerance = builder.tolerance.head
+  val regParam = builder.regParam.head
   var labelToInt: Map[String, Int] = Map()
 
   /**

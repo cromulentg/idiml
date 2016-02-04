@@ -7,15 +7,15 @@
     "furnaceBuilder": {
       "jsonClass": "XValLogisticRegressionBuilder",
       "maxIterations": 10,
-      "regParams": [
+      "regParam": [
         0.001,
         0.01,
         0.1
       ],
-      "tolerances": [
+      "tolerance": [
         1.0E-4
       ],
-      "elasticNetParams": [
+      "elasticNetParam": [
         0.9,
         1.0
       ],

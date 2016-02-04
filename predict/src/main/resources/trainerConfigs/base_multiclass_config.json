@@ -7,8 +7,8 @@
     "furnaceBuilder": {
       "jsonClass": "MultiClassLRFurnaceBuilder",
       "maxIterations": 100,
-      "regParam": 0.01,
-      "tolerance": 1.0E-4
+      "regParam": [0.01],
+      "tolerance": [1.0E-4]
     }
   },
   "pipelineConfig": {
