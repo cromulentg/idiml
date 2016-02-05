@@ -3,6 +3,7 @@ package com.idibon.ml.feature.indexer
 import com.idibon.ml.alloy.IntentAlloy
 import com.idibon.ml.feature.Feature
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
+import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg.Vectors
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
@@ -18,7 +19,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
   var transform: IndexTransformer = null
 
   before {
-    transform = new IndexTransformer()
+    transform = new IndexTransformer(0)
   }
 
   describe("Indexer") {
@@ -70,7 +71,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
 
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
     }
@@ -185,7 +186,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
       transform2.numDimensions shouldBe 5
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
@@ -206,7 +207,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.save(intentAlloy.writer)
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), null)
+      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
       transform2.freeze()
       transform2.numDimensions shouldBe 5
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
@@ -256,6 +257,20 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.apply(fiveTokens)
       val expected = List((0, "token-colorless"), (3, "token-sleep"), (4, "token-furiously"))
       transform.getHumanReadableFeature(Set[Int](0, 3, 4)) shouldBe expected
+    }
+  }
+
+  describe("with minimum observations = 2") {
+    it ("should require at least 2 observations before adding to vocabulary") {
+      val index = new IndexTransformer(2)
+      val initial = index(Seq(Word("foo"), Word("bar"), Word("hello"), Word("world")))
+      initial shouldBe Vectors.zeros(0)
+      val repeated = index(Seq(Word("bar"), Word("foobar"), Word("foobar"),
+        Word("world"), Word("foobar")))
+      repeated.toArray shouldBe Array(1.0, 2.0, 1.0)
+      index.getHumanReadableFeature(Set(0, 1, 2)) should contain theSameElementsAs Seq(
+        0 -> "bow-bar", 1 -> "bow-foobar", 2 -> "bow-world")
+      index.observations shouldBe Map(Word("foo") -> 1, Word("hello") -> 1)
     }
   }
 }

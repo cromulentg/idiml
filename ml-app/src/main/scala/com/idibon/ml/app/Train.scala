@@ -36,10 +36,14 @@ object Train extends Tool with StrictLogging {
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
     easterEgg.map(egg => new Thread(egg).start)
     // get the config file else the default one
-    val configFilePath = if (cli.getOptionValue('c', "").isEmpty()) {
-      getClass.getClassLoader.getResource("trainerConfigs/base_kbinary_xval_config.json").getPath()
-    } else cli.getOptionValue('c')
-    val trainingJobJValue = parse(Source.fromFile(configFilePath).reader())
+    val configFileStream = if (cli.getOptionValue('c', "").isEmpty()) {
+      new java.io.InputStreamReader(getClass.getClassLoader
+        .getResourceAsStream("trainerConfigs/base_kbinary_xval_config.json"))
+    } else {
+      new java.io.FileReader(cli.getOptionValue('c'))
+    }
+    val trainingJobJValue = parse(configFileStream)
+    configFileStream.close
     logger.info(s"Reading in Config ${writePretty(trainingJobJValue)}")
     val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
     try {

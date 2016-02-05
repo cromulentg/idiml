@@ -22,16 +22,24 @@ import org.json4s._
     *
     *   @author Michelle Casbon <michelle@idibon.com>
     *   @author Stefan Krawczyk <stefan@idibon.com>
+    *
+    * @param minimumObservations the minimum number of times a feature must be
+    *   observed before including it in the vocabulary
     * @param frozen whether the index size is frozen and can be added to.
-    * @param frozenSize the frozen size - needed incase the index is pruned once frozen.
+    * @param frozenSize the frozen size - needed incase the index is pruned
+    *   once frozen.
     */
-  class IndexTransformer(private var frozen: Boolean = false,
-                         private var frozenSize: Int = 0) extends FeatureTransformer
+  class IndexTransformer(minimumObservations: Int,
+    private var frozen: Boolean = false,
+    private var frozenSize: Int = 0) extends FeatureTransformer
       with Archivable[IndexTransformer, IndexTransformLoader]
       with TerminableTransformer
       with StrictLogging {
 
+    logger.trace(s"event=new;minimumObservations=$minimumObservations,frozen=$frozen,frozenSize=$frozenSize")
+
     private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
+    private[indexer] val observations = scala.collection.mutable.Map[Feature[_], Int]()
 
     def getFeatureIndex = featureIndex
 
@@ -62,36 +70,51 @@ import org.json4s._
       } finally {
         fos.close()
       }
-      // No config to return
-      None
-    }
 
-    /** This function performs a lookup on the provided feature. It returns the unique index associated with the
-      * feature. If the feature has not been seen before, it is added to the map and assigned a new index.
-      *
-      * @param feature
-      * @return unique index
-      */
-    private[indexer] def lookupOrAddToFeatureIndex(feature: Feature[_]): Int = {
-      // only add to index if not frozen
-      if (!frozen && !featureIndex.contains(feature)) {
-        featureIndex += (feature -> featureIndex.size)
-      }
-      // return -1 as it's OOV or previously pruned if not in the index.
-      featureIndex.getOrElse(feature, -1)
+      Some(JObject(List(JField("minimumObservations", JInt(minimumObservations)))))
     }
 
     /**
-      * This function maps all features to unique indexes. It returns the size of the feature vocabulary.
+      * This function maps all features to unique indexes, or to a reserved
+      * out-of-vocabulary value.
       *
-      * @param features
-      * @return the size of the feature vocabulary
+      * It returns the size of the feature vocabulary and the associated index for
+      * each input feature.
+      *
+      * @param features a list of features to transform
+      * @return the current vocabulary size and the index of each feature
       */
-    private[indexer] def createFeatureIndex(features: Seq[Feature[_]]): Int = {
+    private[indexer] def mapFeaturesToIndices(features: Seq[Feature[_]]): (Int, Seq[Int]) = {
 
-      features.foreach(t => lookupOrAddToFeatureIndex(t))
-
-      numDimensions
+      if (frozen) {
+        (numDimensions, features.map(f => featureIndex.getOrElse(f, -1)))
+      } else {
+        // perform all possibly-mutative operations inside a critical section
+        featureIndex.synchronized {
+          /* NB: if a feature transitions from "too few observations" to
+           * "just enough observations" within this loop, we may return
+           * different indices for the same feature in the sequence. this
+           * should be fine, since observation thresholding is a priming-time
+           * operation, anyway */
+          val indices = features.map(f => {
+            if (!featureIndex.contains(f)) {
+              val observed = observations.get(f).getOrElse(0) + 1
+              if (observed >= minimumObservations) {
+                /* the feature has appeared enough times to add to the vocabulary.
+                 * look deep within its soul and assign it a name based on the order
+                 * in which it joined */
+                featureIndex += (f -> featureIndex.size)
+                // no need to remember how many times it's been observed now
+                observations.remove(f)
+              } else {
+                observations += (f -> observed)
+              }
+            }
+            featureIndex.getOrElse(f, -1)
+          })
+          (numDimensions, indices)
+        }
+      }
     }
 
     /**
@@ -112,9 +135,9 @@ import org.json4s._
       */
     private[indexer] def getFeatureVector(features: Seq[Feature[_]]): Vector = {
       // Create our indexes and find out how large in theory the return vector should be
-      val vocabSize = createFeatureIndex(features)
+      val (vocabSize, indices) = mapFeaturesToIndices(features)
       // Map features to indexes & sort since they need to be in ascending order
-      val indexValues = features.map(lookupOrAddToFeatureIndex(_)).sorted.toArray
+      val indexValues = indices.sorted.toArray
       // Preallocate the arrays needed using their maximum possible size.
       val newIndexes = Array.fill[Int](indexValues.length)(0)
       val newValues = Array.fill[Double](indexValues.length)(0.0)
@@ -152,9 +175,12 @@ import org.json4s._
     override def numDimensions: Int = if(frozen) frozenSize else featureIndex.size
 
     override def prune(transform: (Int) => Boolean): Unit = {
-      featureIndex.map(x => {
-        if (transform(x._2)) featureIndex.remove(x._1)
-      })
+      featureIndex.synchronized {
+        featureIndex.map(x => {
+          if (transform(x._2)) featureIndex.remove(x._1)
+        })
+        observations.clear
+      }
     }
 
     override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
@@ -180,8 +206,12 @@ import org.json4s._
 
     /** Loads the IndexTransformer from an Alloy */
     def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): IndexTransformer = {
+      val observations = config.map(_ \ "minimumObservations")
+        .map(_.asInstanceOf[JInt].num.intValue)
+        .getOrElse(0)
+
       reader match {
-        case None => new IndexTransformer()
+        case None => new IndexTransformer(observations)
         case Some(reader) => {
           val fis = new FeatureInputStream(
             reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
@@ -194,7 +224,7 @@ import org.json4s._
           // Retrieve the number of elements in the featureIndex map
           val size = Codec.VLuint.read(fis)
 
-          val transformer = new IndexTransformer(frozen, frozenSize)
+          val transformer = new IndexTransformer(observations, frozen, frozenSize)
 
           1 to size foreach { _ =>
             val feature = fis.readFeature
