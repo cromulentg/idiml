@@ -81,7 +81,10 @@
       },
       {
         "class": "com.idibon.ml.feature.indexer.IndexTransformer",
-        "name": "convertToIndex"
+        "name": "convertToIndex",
+        "config":{
+          "minimumObservations":2
+        }
       },
       {
         "class": "com.idibon.ml.feature.bagofwords.BagOfWordsTransformer",
