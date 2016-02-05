@@ -5,7 +5,7 @@ import java.io.{IOException, DataInputStream, DataOutputStream}
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
-import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
+import com.idibon.ml.feature.{Feature, FeaturePipelineLoader, FeaturePipeline}
 import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
@@ -57,18 +57,24 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
         options.significantFeatureThreshold)
       labels.map({ case (labelIndex, indices) => {
         // get the human-readable form for each feature index
-        val human = featurePipeline.getHumanReadableFeature(indices.map(_._1))
-        (labelIndex, indices.map({ case (idx, w) => (human(idx), w) }))
+        val human = featurePipeline
+          .getFeaturesBySortedIndices(indices.toIterator.map(_._1))
+
+        val feats = indices.zip(human)
+          .filter({ case (_, feat) => feat.isDefined })
+          .map({ case ((_, weight), feat) => feat.get -> weight })
+
+        (labelIndex, feats)
       }}).toMap
     } else {
-      Map[Int, Seq[(String, Float)]]()
+      Map[Int, Seq[(Feature[_], Float)]]()
     }
 
     // generate a classification result for each result
     results.zipWithIndex.map({ case (probability, labelIndex) => {
       Classification(intToLabel(labelIndex), probability.toFloat,
         1, PredictResultFlag.NO_FLAGS,
-        significantFeatures.get(labelIndex).getOrElse(Seq[(String, Float)]())
+        significantFeatures.get(labelIndex).getOrElse(Seq[(Feature[_], Float)]())
       )
     }}).sortWith(_.probability > _.probability)
   }

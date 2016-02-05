@@ -5,7 +5,7 @@ import java.io._
 import com.idibon.ml.alloy.{IntentAlloy, JarAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.{Document, PredictOptionsBuilder}
@@ -125,7 +125,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       result.label shouldBe "blabel"
       result.probability shouldBe (0.7413506f +- 0.0001f)
       result.matchCount shouldBe 1
-      result.significantFeatures shouldBe List(("token- ", 0.7946197f))
+      result.significantFeatures shouldBe List((Token(" ", Tag.Whitespace, 9, 1), 0.7946197f))
     }
   }
 

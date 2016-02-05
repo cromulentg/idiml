@@ -31,32 +31,27 @@ class FeaturePipelineBuilderSpec extends FunSpec with Matchers {
   }
 }
 
-private[this] class TransformA extends FeatureTransformer with TerminableTransformer {
+private[this] class NullTerminator extends TerminableTransformer {
+  def numDimensions = Some(1)
+  def prune(transform: (Int) => Boolean): Unit = ???
+  def getFeatureByIndex(indexes: Int): Option[Feature[_]] = ???
+  def freeze(): Unit = {}
+}
+
+private[this] class TransformA extends NullTerminator with FeatureTransformer {
   def apply(input: JObject): Vector = {
     Vectors.dense((input \ "A").asInstanceOf[JDouble].num)
   }
-  override def numDimensions: Int = 1
-  override def prune(transform: (Int) => Boolean): Unit = ???
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
-  override def freeze(): Unit = {}
 }
 
-private[this] class TransformB extends FeatureTransformer with TerminableTransformer {
+private[this] class TransformB extends NullTerminator with FeatureTransformer {
   def apply(input: JObject): Vector = {
     Vectors.dense((input \ "B").asInstanceOf[JDouble].num)
   }
-  override def numDimensions: Int = 1
-  override def prune(transform: (Int) => Boolean): Unit = ???
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
-  override def freeze(): Unit = {}
 }
 
-private[this] class TransformC extends FeatureTransformer with TerminableTransformer {
+private[this] class TransformC extends NullTerminator with FeatureTransformer {
   def apply(input: Vector): Vector = {
     Vectors.dense(input.toArray.map(_ + 1.0))
   }
-  override def numDimensions: Int = 1
-  override def prune(transform: (Int) => Boolean): Unit = ???
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
-  override def freeze(): Unit = {}
 }

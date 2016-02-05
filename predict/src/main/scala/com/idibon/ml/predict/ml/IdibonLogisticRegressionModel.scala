@@ -7,7 +7,7 @@ import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict._
-import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
+import com.idibon.ml.feature.{Feature, FeaturePipelineLoader, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -40,10 +40,15 @@ case class IdibonLogisticRegressionModel(label: String,
     val significantFeatures = if (options.includeSignificantFeatures) {
       val indices = lrm.getSignificantFeatures(features,
         options.significantFeatureThreshold)
-      val human = featurePipeline.getHumanReadableFeature(indices.map(_._1))
-      indices.map({ case (index, weight) => (human(index), weight) })
+
+      val human = featurePipeline
+        .getFeaturesBySortedIndices(indices.toIterator.map(_._1))
+
+      indices.zip(human)
+        .filter({ case (_, feat) => feat.isDefined })
+        .map({ case ((_, weight), feat) => feat.get -> weight})
     } else {
-      Seq[(String, Float)]()
+      Seq[(Feature[_], Float)]()
     }
 
     // FIXME: return number of matched features in matchCount, not 1

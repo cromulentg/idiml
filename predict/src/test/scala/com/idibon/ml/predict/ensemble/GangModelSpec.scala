@@ -7,7 +7,8 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature._
 import com.idibon.ml.predict.ml.{IdibonMultiClassLRModel, MLModel}
-import com.idibon.ml.predict.rules.DocumentRules
+import com.idibon.ml.predict.rules.{RuleFeature, DocumentRules}
+import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.predict._
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
@@ -151,7 +152,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       // since we whitelist/blacklist - we drop all the other model results, hence match count of 1.
       actual.map(_.matchCount) shouldBe List(1, 1)
       actual.map(_.probability) shouldEqual List(1.0f, 0.0f)
-      actual.map(_.significantFeatures) shouldEqual List(List(("/str[ij]ng/",1.0)), List(("/str[ij]ng/",0.0)))
+      actual.map(_.significantFeatures) shouldEqual List(
+        List((RuleFeature("/str[ij]ng/"),1.0)), List((RuleFeature("/str[ij]ng/"),0.0)))
     }
     it("should return significant features correctly from all models") {
       val docRules1 = new DocumentRules("blabel", List(("/str[ij]ng/", 0.6f), ("is", 0.6f)))
@@ -166,11 +168,16 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.map(_.label) shouldBe List("blabel", "alabel")
       actual.map(_.matchCount) shouldBe List(3, 3)
       actual.map(_.probability) shouldEqual List(0.4666667f, 0.43333337f)
-      /* feature order is not guaranteed to be consistent, so put all
-       * returned features in lexicographic order by label for comparison */
-      val sortedFeatures = actual.map(_.significantFeatures.sortWith(_._1 < _._1))
-      sortedFeatures shouldEqual List(List(("/str[ij]ng/",0.6f), ("is",0.6f)),
-        List(("/str[ij]ng/",0.3f), ("is",0.8f), ("monkey", 0.6f)))
+      actual match {
+        case primary :: secondary :: Nil => {
+          primary.significantFeatures should contain theSameElementsAs List(
+            (RuleFeature("/str[ij]ng/"),0.6f), (RuleFeature("is"),0.6f))
+          secondary.significantFeatures should contain theSameElementsAs List(
+            (RuleFeature("/str[ij]ng/"),0.3f), (RuleFeature("is"),0.8f),
+            (Word("monkey"), 0.6f))
+        }
+        case _ => throw new RuntimeException("Expected 2-item list")
+      }
     }
   }
 }
@@ -187,7 +194,7 @@ case class FakeMCModel(labels: List[String])
       options: PredictOptions): Seq[Classification] = {
     labels.map(label => label match {
       case "alabel" if options.includeSignificantFeatures => {
-        Classification(label, 0.2f, 1, 0, Seq("monkey" -> 0.6f))
+        Classification(label, 0.2f, 1, 0, Seq(Word("monkey") -> 0.6f))
       }
       case _ => {
         Classification(label, 0.2f, 1, 0, Seq())
@@ -229,13 +236,16 @@ private [this] class MetadataNumberExtractor extends FeatureTransformer with Ter
   }
   var pruned = false
 
-  override def freeze(): Unit = {}
+  def freeze(): Unit = {}
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
-    List(0 -> "meta-number1", 1 -> "meta-number2", 2 -> "meta-number3")
+  def getFeatureByIndex(index: Int) = index match {
+    case 0 => Some(StringFeature("meta-number1"))
+    case 1 => Some(StringFeature("meta-number2"))
+    case 2 => Some(StringFeature("meta-number3"))
+    case _ => None
   }
 
-  override def numDimensions: Int = 3
+  def numDimensions = Some(3)
 
-  override def prune(transform: (Int) => Boolean): Unit = { pruned = true }
+  def prune(transform: (Int) => Boolean): Unit = { pruned = true }
 }

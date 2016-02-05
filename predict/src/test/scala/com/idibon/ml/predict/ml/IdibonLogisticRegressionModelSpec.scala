@@ -4,7 +4,7 @@ import java.io._
 
 import com.idibon.ml.alloy.{JarAlloy, IntentAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.predict._
@@ -123,7 +123,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         new PredictOptionsBuilder().showSignificantFeatures(0.35f).build())
       result.head.probability shouldBe 0.16617252f
       result.head.matchCount shouldBe 1
-      result.head.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
+      result.head.significantFeatures shouldBe List((Token("Everybody", Tag.Word, 0, 9), 0.35824257f))
     }
   }
 

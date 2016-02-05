@@ -87,7 +87,7 @@ import org.json4s._
     private[indexer] def mapFeaturesToIndices(features: Seq[Feature[_]]): (Int, Seq[Int]) = {
 
       if (frozen) {
-        (numDimensions, features.map(f => featureIndex.getOrElse(f, -1)))
+        (numDimensions.get, features.map(f => featureIndex.getOrElse(f, -1)))
       } else {
         // perform all possibly-mutative operations inside a critical section
         featureIndex.synchronized {
@@ -112,7 +112,7 @@ import org.json4s._
             }
             featureIndex.getOrElse(f, -1)
           })
-          (numDimensions, indices)
+          (numDimensions.get, indices)
         }
       }
     }
@@ -166,36 +166,29 @@ import org.json4s._
     def apply(features: Seq[Feature[_]]*): Vector = {
       val allFeatures = features.flatten
       if (allFeatures.length < 1)
-        Vectors.zeros(numDimensions).toSparse
+        Vectors.zeros(numDimensions.get).toSparse
       else
         getFeatureVector(allFeatures)
     }
 
-    override def numDimensions: Int = if(frozen) frozenSize else featureIndex.size
+    def numDimensions = if (frozen) Some(frozenSize) else Some(featureIndex.size)
 
-    override def prune(transform: (Int) => Boolean): Unit = {
-      featureIndex.synchronized {
-        featureIndex.map(x => {
-          if (transform(x._2)) featureIndex.remove(x._1)
-        })
-        observations.clear
-      }
-    }
-
-    override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
-      /* TODO: look at using more memory with a index -> feature map instead of iterating over everything. */
-      // iterate over all features in index
+    def prune(transform: (Int) => Boolean): Unit = {
       featureIndex.map(x => {
-        // if we find an index match
-        if (indexes.contains(x._2)) Some(x._2, x._1.toString())
-        else None
-      }).filter(_.isDefined).map(_.get).toList
+        if (transform(x._2)) featureIndex.remove(x._1)
+      })
     }
 
-    override def freeze(): Unit = {
+    /* FIXME: keep a map of index => feature available */
+    def getFeatureByIndex(i: Int) = featureIndex.find(_._2 == i).map(_._1)
+
+    def freeze(): Unit = {
       if (!frozen) {
-        frozenSize = featureIndex.size
-        frozen = true
+        featureIndex.synchronized {
+          frozenSize = featureIndex.size
+          observations.clear
+          frozen = true
+        }
       }
     }
   }
