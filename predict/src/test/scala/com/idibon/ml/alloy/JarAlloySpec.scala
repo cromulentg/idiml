@@ -65,7 +65,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       val jarFile = new File(tempFilename)
       jarFile.exists() shouldBe true
       // get alloy back & predict on it.
-      val resurrectedAlloy = JarAlloy.load(new EmbeddedEngine, tempFilename)
+      val resurrectedAlloy = JarAlloy.load[Classification](new EmbeddedEngine, tempFilename)
       val options = new PredictOptionsBuilder().build()
       val documentObject: JsonAST.JObject = JObject(List(("content", JString("content IS awesome"))))
       val result1 = alloy.predict(documentObject, options)

@@ -1,12 +1,14 @@
 package com.idibon.ml.app
 
+import com.typesafe.scalalogging.StrictLogging
+
 import scala.io.Source
 import scala.collection.JavaConverters._
 import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, render, parse}
-import com.idibon.ml.alloy.JarAlloy
+import com.idibon.ml.alloy.{ValidationExamplesBuilder, ValidationExampleBuilder, JarAlloy}
 import com.idibon.ml.predict._
 
 /** Command-line batch prediction tool
@@ -15,7 +17,7 @@ import com.idibon.ml.predict._
   * Idibon JSON documents, predicts all of them and writes the
   * results to an output file
   */
-object Predict extends Tool {
+object Predict extends Tool with StrictLogging {
 
   private [this] def parseCommandLine(argv: Array[String]) = {
     val options = (new org.apache.commons.cli.Options)
@@ -32,10 +34,13 @@ object Predict extends Tool {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-
-    val model = JarAlloy.load(engine, cli.getOptionValue('a'))
+    // if we want to validate on load.
+    val validationExamplesBuilder = new ValidationExamplesBuilder[Classification](new ClassificationBuilder())
+    val model = JarAlloy.load[Classification](engine,
+      cli.getOptionValue('a'),
+      Some(validationExamplesBuilder))
       .asInstanceOf[JarAlloy[Classification]]
-
+    logger.info(s"Loaded Alloy and Models validated - ${model.validate()}")
     /* results will be written to the output file by a consumer thread;
      * after the last document is predicted, the main thread will post
      * a sentinel value of None to cause the result output thread to

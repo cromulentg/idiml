@@ -3,6 +3,7 @@ package com.idibon.ml.alloy
 import java.io._
 import java.util.jar._
 
+import com.idibon.ml.feature.{Builder, Buildable, FeatureInputStream, FeatureOutputStream}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST._
 import org.json4s.native.JsonMethods.{parse, render, compact}
@@ -11,7 +12,7 @@ import org.json4s.JsonDSL._
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Archivable, ArchiveLoader}
-import com.idibon.ml.predict.{PredictModel, PredictResult}
+import com.idibon.ml.predict._
 
 // required for java object conversions
 import scala.collection.JavaConverters._
@@ -32,12 +33,40 @@ import scala.collection.mutable
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
-class JarAlloy[T <: PredictResult](models: Map[String, PredictModel[T]], uuids: Map[String, String])
-    extends BaseAlloy[T](models.values.toList.asJava, uuids.asJava) with StrictLogging {
+class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[String, PredictModel[T]],
+                                                                 uuids: Map[String, String],
+                                                                 validationExamples: Map[String, ValidationExamples[T]] = Map[String, ValidationExamples[T]]())
+  extends BaseAlloy[T](models.values.toList.asJava, uuids.asJava, validationExamples.asJava)
+      with StrictLogging {
 
+  /**
+    * This method validates the results at training vs now.
+    *
+    * FIXME: ValidationExamples are not Parameterized like this alloy is.
+    *
+    * @return True whether it agrees, False Otherwise
+    */
+  override def validate(): Boolean = {
+    val options = PredictOptions.DEFAULT
+    val errors = validationExamples.flatMap{case(modelName, examples) => {
+      val model = models(modelName)
+      examples.examples.map(example => {
+        (model.predict(example.document, options), example.predictions)
+      }).filter(x => !x._1.equals(x._2)).map{
+        // FIXME: create a nicer string format
+        case (newPrediction, oldPrediction) => {
+          s"Failed to match prediction for new:\n${newPrediction}\nvs old:\n${oldPrediction}\n"
+        }
+      }
+    }}.foldLeft(""){case (accum, msg) => accum + msg}
+    if (errors.isEmpty) return true
+    logger.error(errors)
+    throw new ValidationError(errors)
+  }
 
   /**
     * Saves the Alloy as a Jar file to the specified path.
+    *
     * @param path
     */
   override def save(path: String): Unit = {
@@ -62,6 +91,8 @@ class JarAlloy[T <: PredictResult](models: Map[String, PredictModel[T]], uuids: 
       baseWriter,
       this.models.map({ case (label, m) => (label, JString(m.getClass.getName))}).toList,
       JarAlloy.MODEL_CLASS)
+    // save validation data
+    saveValidationResults(baseWriter)
     // save models
     saveMapOfData(
       baseWriter,
@@ -88,6 +119,7 @@ class JarAlloy[T <: PredictResult](models: Map[String, PredictModel[T]], uuids: 
   /**
     * Helper method to take a map represented as a List of JFields and save
     * it to a particular resource at the position in the writer.
+    *
     * @param writer
     * @param mapOfData
     * @param resourceName
@@ -96,6 +128,23 @@ class JarAlloy[T <: PredictResult](models: Map[String, PredictModel[T]], uuids: 
     val metaOutputStream = writer.resource(resourceName)
     Codec.String.write(metaOutputStream, compact(render(JObject(mapOfData))))
     metaOutputStream.close()
+  }
+
+  /**
+    * Helper method to save Validation example results.
+    *
+    * @param writer
+    */
+  def saveValidationResults(writer: JarWriter): Unit = {
+    val validationWriter = writer.within(JarAlloy.VALIDATION_LOCATION)
+    val safeguard = validationWriter.resource(JarAlloy.VALIDATION_LOCATION_SAFEGUARD)
+    safeguard.writeBoolean(validationExamples.isEmpty)
+    safeguard.close()
+    validationExamples.foreach { case (modelName, examples) => {
+      val validationOutputStream = new FeatureOutputStream(validationWriter.resource(modelName))
+      examples.save(validationOutputStream)
+      validationOutputStream.close()
+    }}
   }
 
   /**
@@ -131,6 +180,10 @@ object JarAlloy extends StrictLogging {
 
   val MODEL_META: String = "model-meta.json"
 
+  val VALIDATION_LOCATION: String = "validationExamples"
+
+  val VALIDATION_LOCATION_SAFEGUARD: String = "number"
+
   /**
     * Static method to load an alloy from a Jar file.
     *
@@ -138,7 +191,9 @@ object JarAlloy extends StrictLogging {
     * @param path path to jar file
     * @return
     */
-  def load[T <: PredictResult](engine: Engine, path: String): JarAlloy[T] = {
+  def load[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
+                                                             path: String,
+                                                             validationBuilder: Option[ValidationExamplesBuilder[T]] = None): JarAlloy[T] = {
     implicit val formats = org.json4s.DefaultFormats
     val jarFile: File = new File(path)
     val jar: JarFile = new JarFile(jarFile)
@@ -170,9 +225,15 @@ object JarAlloy extends StrictLogging {
       labelToUUID.put(label, labelToUUIDMap.getOrElse(label, ""))
     }
     // instantiate other objects
+    val examples = validationBuilder match {
+      case Some(validationBuilder) => // load validation data
+        loadValidationResults[T](baseReader, labelModels.keys.toList, validationBuilder)
+      case None => Map[String, ValidationExamples[T]]()
+    }
+
     jar.close()
     // return fresh instance
-    return new JarAlloy(labelModels.toMap, labelToUUID.toMap)
+    return new JarAlloy(labelModels.toMap, labelToUUID.toMap, examples)
   }
 
   /**
@@ -189,6 +250,31 @@ object JarAlloy extends StrictLogging {
     val rawJSON = Codec.String.read(metaInputStream)
     metaInputStream.close()
     return parse(rawJSON).asInstanceOf[JObject]
+  }
+
+  /**
+    * Helper method to load validation examples
+    *
+    * @param baseReader
+    * @param modelNames
+    * @param builder
+    * @tparam T
+    * @return
+    */
+  def loadValidationResults[T <: PredictResult with Buildable[T, Builder[T]]](baseReader: JarReader,
+                                                                              modelNames: List[String],
+                                                                              builder: ValidationExamplesBuilder[T]): Map[String, ValidationExamples[T]] = {
+    val validationReader = baseReader.within(JarAlloy.VALIDATION_LOCATION)
+    val safeguard = validationReader.resource(JarAlloy.VALIDATION_LOCATION_SAFEGUARD)
+    val hasNoValidationExamples = safeguard.readBoolean()
+    safeguard.close()
+    if (hasNoValidationExamples) return Map()
+    modelNames.map(modelName => {
+      val validationInputStream = new FeatureInputStream(validationReader.resource(modelName))
+      val examples = builder.build(validationInputStream)
+      validationInputStream.close()
+      (modelName, examples)
+    }).toMap
   }
 }
 
@@ -280,6 +366,7 @@ private class IdibonJarDataOutputStream(baos: ByteArrayOutputStream,
                                         je: JarEntry) extends DataOutputStream(baos) {
   /**
     * Override the close method to actually write to the JAR file.
+    *
     * @throws IOException
     */
   override def close(): Unit = {
