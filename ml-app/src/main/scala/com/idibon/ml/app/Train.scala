@@ -24,7 +24,7 @@ object Train extends Tool with StrictLogging {
       .addOption("o", "output", true, "Output alloy file")
       .addOption("r", "rules", true, "Input file with rules data")
       .addOption("w", "wiggle-wiggle", false, "Wiggle Wiggle")
-      .addOption("c", "config", false, "JSON Config file for creating a trainer.")
+      .addOption("c", "config", true, "JSON Config file for creating a trainer.")
 
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
   }
@@ -44,7 +44,7 @@ object Train extends Tool with StrictLogging {
     }
     val trainingJobJValue = parse(configFileStream)
     configFileStream.close
-    logger.info(s"Reading in Config ${writePretty(trainingJobJValue)}")
+    logger.info(s"Reading in Config ${writePretty(trainingJobJValue)} from ${cli.getOptionValue('c')}")
     val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
     try {
       val startTime = System.currentTimeMillis()
