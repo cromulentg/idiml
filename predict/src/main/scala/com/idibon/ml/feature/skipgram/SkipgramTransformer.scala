@@ -74,8 +74,8 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
 
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(List(
-      JField("min", JInt(this.k)),
-      JField("max", JInt(this.n)))))
+      JField("k", JInt(this.k)),
+      JField("n", JInt(this.n)))))
   }
 }
 
