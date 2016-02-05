@@ -31,16 +31,22 @@ class KClassDataFrameGenerator extends DataFrameBase {
       // Run the pipeline to generate the feature vector -- so we will be sharing a reference to this.
       // CAVEAT: we might need to create an explicit FeatureVector for each label in the future.
       val featureVector = pipeline(document)
-      // create list of (label, points)
-      annotations.arr.map({ jsonValue => {
-        // for each annotation, we assume it was provided so we can make a training point out of it.
-        val JString(label) = jsonValue \ "label" \ "name"
-        val JBool(isPositive) = jsonValue \ "isPositive"
-        // Assign a number that MLlib understands
-        val labelNumeric = if (isPositive) 1.0 else 0.0
-        // Create labeled points
-        (label, LabeledPoint(labelNumeric, featureVector))
-      }})
+      if (featureVector.numActives < 1) {
+        logger.info(s"No feature vector created for document ${document}")
+        List() // we will skip it
+      } else {
+        // create list of (label, points)
+        annotations.arr.map({ jsonValue => {
+          // for each annotation, we assume it was provided so we can make a training point out of it.
+          val JString(label) = jsonValue \ "label" \ "name"
+          val JBool(isPositive) = jsonValue \ "isPositive"
+          // Assign a number that MLlib understands
+          val labelNumeric = if (isPositive) 1.0 else 0.0
+          // Create labeled points
+          (label, LabeledPoint(labelNumeric, featureVector))
+        }
+        })
+      }
       // need to covert toList for groupBy to work...
     }).toList
       // group by label
