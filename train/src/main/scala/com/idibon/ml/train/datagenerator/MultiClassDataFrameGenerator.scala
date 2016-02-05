@@ -61,24 +61,30 @@ class MultiClassDataFrameGenerator extends DataFrameBase with StrictLogging {
     val trainingData = docs().flatMap(document => {
       // Run the pipeline to generate the feature vector
       val featureVector = pipeline(document)
-      // get annotations
-      val annotations = (document \ "annotations").extract[JArray]
-      // for each annotation create a labelled point
-      annotations.arr.map({ jsonValue => {
-        // for each annotation, we assume it was provided so we can make a training point out of it.
-        val JString(label) = jsonValue \ "label" \ "name"
-        val JBool(isPositive) = jsonValue \ "isPositive"
-        // If we haven't seen this label before, instantiate a list
-        if (!labelToIntMap.contains(label)) {
-          labelToIntMap.put(label, numClasses)
-          numClasses += 1
+      if (featureVector.numActives < 1) {
+        logger.info(s"No feature vector created for document ${document}")
+        List() // we will skip it
+      } else {
+        // get annotations
+        val annotations = (document \ "annotations").extract[JArray]
+        // for each annotation create a labelled point
+        annotations.arr.map({ jsonValue => {
+          // for each annotation, we assume it was provided so we can make a training point out of it.
+          val JString(label) = jsonValue \ "label" \ "name"
+          val JBool(isPositive) = jsonValue \ "isPositive"
+          // If we haven't seen this label before, instantiate a list
+          if (!labelToIntMap.contains(label)) {
+            labelToIntMap.put(label, numClasses)
+            numClasses += 1
+          }
+          val labelNumber = labelToIntMap.get(label).get
+          (isPositive, LabeledPoint(labelNumber, featureVector))
         }
-        val labelNumber = labelToIntMap.get(label).get
-        (isPositive, LabeledPoint(labelNumber, featureVector))
-      }})// discard negative polarity annotations (can I do that in the above step?)
-        .filter({case (isPositive, lbPt) => isPositive})
-        // map it to just points
-        .map({case (_, lbPt) => lbPt})
+        }) // discard negative polarity annotations (can I do that in the above step?)
+          .filter({ case (isPositive, lbPt) => isPositive })
+          // map it to just points
+          .map({ case (_, lbPt) => lbPt })
+      }
     }).toList
     // TODO: think admittedly a very big hack....
     val label_to_num = labelToIntMap.map({ case (label, num) => (label, List(LabeledPoint(num, Vectors.zeros(0))))}).toMap

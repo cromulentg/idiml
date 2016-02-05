@@ -164,10 +164,8 @@ import org.json4s._
     }
 
     def apply(features: Seq[Feature[_]]): Vector = {
-      /* TODO: @Gary: via what method do we return number of OOV items. I was thinking here, but
-         that would require a lot of rejiggering -- else whoever calls apply could figure OOV out.*/
       if (features.length < 1)
-        Vectors.zeros(0)
+        Vectors.zeros(numDimensions).toSparse
       else
         getFeatureVector(features)
     }
