@@ -77,6 +77,15 @@ class IdibonSparkMLLIBLRWrapperSpec extends FunSpec
       result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.5, 0.5, 0.5)))
       result(2) shouldBe (2, Vectors.zeros(10))
     }
+
+    it("ignores feature counts when determining significance") {
+      val result = multinomialmodel.getSignificantDimensions(
+        Vectors.sparse(10, Array(0, 3, 5), Array(100.0, 100.0, 2.0)), 0.50f)
+      result.size shouldBe 3
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.5, 0.5, 0.5)))
+      result(2) shouldBe (2, Vectors.zeros(10))
+    }
   }
 
   describe("gets features used tests") {

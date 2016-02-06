@@ -46,5 +46,11 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         Vectors.sparse(10, Array(0, 3, 5), Array(1.0, 1.0, 1.0)), 0.53f)
       result.toArray shouldBe Array(0.574442516811659, 0, 0, 0.549833997312478, 0, 0, 0, 0, 0, 0)
     }
+
+    it("ignores feature counts when determining significance") {
+      val result = model.getSignificantDimensions(
+        Vectors.sparse(10, Array(0), Array(200.0)), 0.56f)
+      result shouldBe Vectors.sparse(10, Array(0), Array(0.574442516811659))
+    }
   }
 }
