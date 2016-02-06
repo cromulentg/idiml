@@ -15,8 +15,8 @@ import org.json4s._
   * @param k the maximum distance between each gram chosen
   * @param n the number of grams in a skip-gram
   */
-
-class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archivable[SkipgramTransformer, SkipgramTransformerLoader] {
+case class SkipgramTransformer(k: Int, n: Int)
+  extends FeatureTransformer with Archivable[SkipgramTransformer, SkipgramTransformerLoader] {
   //a sequence of all permutations of possible skips
   val skipPermutations = getSkipPermutations()
 
