@@ -3,12 +3,10 @@ package com.idibon.ml.train.alloy
 import java.util
 
 import com.idibon.ml.predict.{PredictModel, Classification}
-import com.idibon.ml.predict.ml.MLModel
+import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JObject
-
-import scala.util.{Failure, Try}
 
 /**
   * Trains K models using a global feature pipeline.
@@ -29,12 +27,13 @@ class KClass1FP(builder: KClass1FPBuilder)
     * @return
     */
   override def melt(rawData: () => TraversableOnce[JObject],
-                    dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
+      dataGen: SparkDataGenerator,
+      pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]] = {
+
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(this.engine, config)
-      case _ => return Failure(new IllegalArgumentException("No feature pipeline config passed."))
+      case _ => throw new IllegalArgumentException("No feature pipeline config passed.")
     }
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
@@ -45,7 +44,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     val models = featurizedData match {
       case Some(featureData) => featureData.par.map {
         case (label, data) => {
-          val model = furnace.fit(label, data, primedPipeline)
+          val model = furnace.fit(label, data, None)
           (label, model, model.getFeaturesUsed())
         }
       }.toList.map({ // remove parallelism and gather all features used.
@@ -55,7 +54,7 @@ class KClass1FP(builder: KClass1FPBuilder)
           (label, model)
         }
       })
-      case None => return Failure(new RuntimeException("Failed to create training data."))
+      case None => throw new RuntimeException("Failed to create training data.")
     }
     logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
     // function to pass down so that the feature transforms can prune themselves.
@@ -66,6 +65,6 @@ class KClass1FP(builder: KClass1FPBuilder)
     // prune unused features from global feature pipeline
     primedPipeline.prune(isNotUsed)
     // return MLModels
-    Try(models.toMap)
+    Map("kclass1fp" -> new GangModel(models.toMap, Some(primedPipeline)))
   }
 }

@@ -21,7 +21,8 @@ trait Furnace[T <: PredictResult] {
     * @param pipeline
     * @return
     */
-  def fit(label: String, data: DataFrame, pipeline: FeaturePipeline): PredictModel[T]
+  def fit(label: String, data: DataFrame,
+    pipeline: Option[FeaturePipeline]): PredictModel[T]
 
   /**
     * Function is used for featurizing data.

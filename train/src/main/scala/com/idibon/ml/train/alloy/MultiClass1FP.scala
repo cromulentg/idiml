@@ -12,8 +12,6 @@ import com.idibon.ml.train.furnace.Furnace
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JObject
 
-import scala.util.{Failure, Try}
-
 /**
   * Static class for storing Multi-class constants.
   */
@@ -47,22 +45,22 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]] = {
+                    pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(this.engine, config)
-      case _ => return Failure(new IllegalArgumentException("No feature pipeline config passed."))
+      case _ => throw new IllegalArgumentException("No feature pipeline config passed.")
     }
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
     // create featurized data once since we only have one feature pipeline
     val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline) match {
       case Some(data) => data(MultiClass.MODEL_KEY) // should be only MultiClass.MODEL_KEY
-      case _ => return Failure(new RuntimeException("Failed to create training data."))
+      case _ => throw new RuntimeException("Failed to create training data.")
     }
     val featuresUsed = new util.HashSet[Int](100000)
     // delegate to the furnace for producing MLModel for all labels
-    val model = furnace.fit(MultiClass.MODEL_KEY, featurizedData, primedPipeline)
+    val model = furnace.fit(MultiClass.MODEL_KEY, featurizedData, Some(primedPipeline))
     // add what was used so we can prune it from the global feature pipeline.
     model.getFeaturesUsed().foreachActive((index, _) => featuresUsed.add(index))
 
@@ -75,6 +73,6 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     // prune unused features from global feature pipeline
     primedPipeline.prune(isNotUsed)
     // return MLModel
-    Try(Map(MultiClass.MODEL_KEY -> model))
+    Map(MultiClass.MODEL_KEY -> model)
   }
 }

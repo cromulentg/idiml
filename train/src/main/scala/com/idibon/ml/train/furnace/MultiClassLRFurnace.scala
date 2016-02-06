@@ -34,7 +34,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     * @param pipeline
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline) = {
+  override def fit(label: String, data: DataFrame, pipeline: Option[FeaturePipeline]) = {
     // convert to rdd
     val rddData = data.rdd.map(row => LabeledPoint(row.getDouble(0), row.getAs[Vector](1)))
     val trainer = new LogisticRegressionWithLBFGS()
@@ -49,7 +49,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
 
     // TODO: log some stats?
     val wrapper = IdibonSparkMLLIBLRWrapper.wrap(model)
-    new IdibonMultiClassLRModel(labelToInt, wrapper, Some(pipeline))
+    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline)
   }
 
   /**

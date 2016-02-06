@@ -136,9 +136,9 @@ abstract class BaseTrainer(protected val engine: Engine,
       - creating pipelines,
       - training MLModels
      */
-    val mlModels = {
-      this.melt(docs, dataGen, config.map(c => (c \ "pipelineConfig").extract[JObject]))
-    }
+    val mlModels = Try(
+      melt(docs, dataGen, config.map(c => (c \ "pipelineConfig").extract[JObject])))
+
     mlModels
       // create PredictModels with Rules
       .map(this.mergeRulesWithModels(_, parsedRules))
@@ -156,7 +156,7 @@ abstract class BaseTrainer(protected val engine: Engine,
     */
   def melt(rawData: () => TraversableOnce[JObject],
     dataGen: SparkDataGenerator,
-    pipelineConfig: Option[JObject]): Try[Map[String, PredictModel[Classification]]]
+    pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]]
 
 }
 
