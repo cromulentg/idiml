@@ -22,6 +22,8 @@ object Predict extends Tool {
       .addOption("i", "input", true, "Input file containing documents")
       .addOption("o", "output", true, "Result output CSV file")
       .addOption("a", "alloy", true, "Input alloy")
+      .addOption("f", "no-features", false, "Run without significant features")
+
 
     (new org.apache.commons.cli.BasicParser).parse(options, argv)
   }
@@ -79,8 +81,10 @@ object Predict extends Tool {
         .getLines.toStream.par
         .foreach(line => {
           val document = parse(line).extract[JObject]
-          val result = model.predict(document,
-            (new PredictOptionsBuilder).showSignificantFeatures(0.1f).build)
+          val builder = new PredictOptionsBuilder
+
+          if (!cli.hasOption("f")) builder.showSignificantFeatures(0.1f)
+          val result = model.predict(document, builder.build)
           results.offer(Some((document, result.asScala)))
         })
     } finally {
