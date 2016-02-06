@@ -35,7 +35,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val docRules1 = new DocumentRules("alabel", List(("loves", 0.5f)))
       val docRules2 = new DocumentRules("blabel", List(("is", 0.5f)))
       val mcModel = new IdibonMultiClassLRModel(Map("alabel" -> 0, "blabel" -> 1),
-        new IdibonSparkMLLIBLRWrapper(Vectors.dense(Array(0.5, 0.5, 0.5)), 0.0, 3, 2), fp)
+        new IdibonSparkMLLIBLRWrapper(Vectors.dense(Array(0.5, 0.5, 0.5)), 0.0, 3, 2), Some(fp))
       val gang1 = new GangModel(Map[String, PredictModel[Classification]](
         "0" -> mcModel, "1" -> docRules1, "2" -> docRules2))
       val metadata = gang1.save(alloy.writer())
@@ -44,8 +44,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         ("model-meta", JObject(List(
           ("0",
             JObject(List(("config",
-              JObject(List(("version",JString("0.0.1")),
-                ("feature-meta",JObject(List(
+              JObject(List(("version",JString("0.0.2")),
+                ("featurePipeline",JObject(List(
                   ("version",JString("0.0.1")),
                   ("transforms",
                     JArray(List(JObject(List(("name",JString("metaExtractor")),
@@ -62,7 +62,9 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("2", JObject(List(
             ("config", JObject(List(("label", JString("blabel"))))),
             ("class", JString("com.idibon.ml.predict.rules.DocumentRules"))))
-            )))))))
+          )))),
+        ("featurePipeline", JNothing)
+      )))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       val gang1Pred = gang1.predict(Document.document(doc),
@@ -91,7 +93,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("2",JObject(List(
             ("config", JObject(List(("label",JString("blabel"))))),
             ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
-            )))))))
+          )))),
+        ("featurePipeline", JNothing))))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       gang1 shouldBe gang2
@@ -107,7 +110,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("0", JObject(List(
             ("config", JNothing),
             ("class",JString("com.idibon.ml.predict.ensemble.FakeMCModel")))))
-            ))))))
+        ))),
+        ("featurePipeline", JNothing))))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(new EmbeddedEngine, Some(alloy.reader()), metadata)
       gang1 shouldBe gang2
@@ -187,10 +191,10 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
   * @param labels
   */
 case class FakeMCModel(labels: List[String])
-    extends MLModel[Classification]((doc: JObject) => Vectors.zeros(0))
+    extends PredictModel[Classification]
     with Archivable[FakeMCModel, FakeMCModelLoader] {
 
-  override def predictVector(features: Vector,
+  def predict(document: Document,
       options: PredictOptions): Seq[Classification] = {
     labels.map(label => label match {
       case "alabel" if options.includeSignificantFeatures => {

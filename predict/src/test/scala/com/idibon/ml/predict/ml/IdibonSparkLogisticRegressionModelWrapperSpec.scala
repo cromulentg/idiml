@@ -32,20 +32,19 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   describe("get significant features") {
     it("handles getting no significant features when all features map to zero weight value") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(1, 2, 4), Array(1.0, 1.0, 1.0)), 0.5f)
-      result.isEmpty shouldBe true
+      result.numActives shouldBe 0
     }
     it("handles getting no significant features when values are below the threshold") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(1, 2, 5), Array(1.0, 1.0, 1.0)), 0.90f)
-      result.isEmpty shouldBe true
+      result.numActives shouldBe 0
     }
     it("handles getting significant features when values are above the threshold") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(0, 3, 5), Array(1.0, 1.0, 1.0)), 0.53f)
-      result.isEmpty shouldBe false
-      result shouldBe List((0,0.5744425f), (3,0.549834f))
+      result.toArray shouldBe Array(0.574442516811659, 0, 0, 0.549833997312478, 0, 0, 0, 0, 0, 0)
     }
   }
 }

@@ -49,7 +49,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
 
     // TODO: log some stats?
     val wrapper = IdibonSparkMLLIBLRWrapper.wrap(model)
-    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline)
+    new IdibonMultiClassLRModel(labelToInt, wrapper, Some(pipeline))
   }
 
   /**

@@ -53,7 +53,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     // wrap into one we want
     val wrapper = IdibonSparkLogisticRegressionModelWrapper.wrap(lr)
     // create MLModel for label:
-    new IdibonLogisticRegressionModel(label, wrapper, pipeline)
+    new IdibonLogisticRegressionModel(label, wrapper, Some(pipeline))
   }
 
   /**

@@ -1,9 +1,10 @@
 package com.idibon.ml.predict
 
-import com.idibon.ml.feature.{FeaturePipeline, FeaturePipelineLoader}
+import com.idibon.ml.feature.{FeaturePipeline, FeaturePipelineLoader, Feature}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.alloy.Alloy
 import org.json4s._
+import org.apache.spark.mllib.linalg.SparseVector
 
 /** Mixin trait for models that may optionally include a FeaturePipeline */
 trait CanHazPipeline {
@@ -52,5 +53,17 @@ object CanHazPipeline {
     val meta = (config.get \ KEY).extract[Option[JObject]]
     meta.map(pipeConfig => new FeaturePipelineLoader()
       .load(engine, reader.map(_.within(KEY)), Some(pipeConfig)))
+  }
+
+  /** Combines a list of features with the model weights for each
+    *
+    * Filters out any un-invertible features from the returned list.
+    */
+  def zipFeaturesAndWeights(weights: SparseVector,
+      features: Seq[Option[Feature[_]]]): Seq[(Feature[_], Float)] = {
+
+    features.zipWithIndex
+      .filter({ case (feat, _) => feat.isDefined })
+      .map({ case (feat, index) => (feat.get, weights.values(index).toFloat) })
   }
 }

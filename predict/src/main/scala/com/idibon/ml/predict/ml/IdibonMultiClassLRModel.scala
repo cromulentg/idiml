@@ -22,7 +22,8 @@ import org.json4s._
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
 case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
-  lrm: IdibonSparkMLLIBLRWrapper, featurePipeline: FeaturePipeline)
+  lrm: IdibonSparkMLLIBLRWrapper,
+  override val featurePipeline: Option[FeaturePipeline])
     extends MLModel[Classification](featurePipeline) with StrictLogging
     with Archivable[IdibonMultiClassLRModel, IdibonMultiClassLRModelLoader] {
 
@@ -46,26 +47,19 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
     * @param options  Object of predict options.
     * @return
     */
-  override def predictVector(features: Vector,
-      options: PredictOptions): Seq[Classification] = {
+  override def predictVector(featVec: Vector,
+    invertFeatureFn: (Vector) => Seq[Option[Feature[_]]],
+    options: PredictOptions): Seq[Classification] = {
 
-    val results = lrm.predictProbability(features).toArray
+    val results = lrm.predictProbability(featVec).toArray
 
     // map of label index to significant features for that label
     val significantFeatures = if (options.includeSignificantFeatures) {
-      val labels = lrm.getSignificantFeatures(features,
-        options.significantFeatureThreshold)
-      labels.map({ case (labelIndex, indices) => {
-        // get the human-readable form for each feature index
-        val human = featurePipeline
-          .getFeaturesBySortedIndices(indices.toIterator.map(_._1))
-
-        val feats = indices.zip(human)
-          .filter({ case (_, feat) => feat.isDefined })
-          .map({ case ((_, weight), feat) => feat.get -> weight })
-
-        (labelIndex, feats)
-      }}).toMap
+      lrm.getSignificantDimensions(featVec, options.significantFeatureThreshold)
+        .map({ case (labelIndex, sigDimensions) => {
+          (labelIndex, CanHazPipeline.zipFeaturesAndWeights(sigDimensions,
+            invertFeatureFn(sigDimensions)))
+        }}).toMap
     } else {
       Map[Int, Seq[(Feature[_], Float)]]()
     }
@@ -99,10 +93,9 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
       this.labelToInt, coeffs, this.lrm.intercept, this.lrm.weights, this.lrm.numFeatures)
     coeffs.close()
     //TODO: store other model metadata like training date, etc.
-    val featurePipelineMeta = featurePipeline.save(writer.within("featurePipeline"))
     Some(new JObject(List(
       JField("version", JString(IdibonMultiClassLRModel.FORMAT_VERSION)),
-      JField("feature-meta", featurePipelineMeta.getOrElse(JNothing))
+      savePipelineIfPresent(writer)
     )))
   }
 }
@@ -111,7 +104,7 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
   * Static object that houses static functions and constants.
   */
 object IdibonMultiClassLRModel extends StrictLogging {
-  val FORMAT_VERSION = "0.0.1"
+  val FORMAT_VERSION = "0.0.2"
 
   /**
     * Static method to write our "libsvm" like format to a stream.
@@ -211,13 +204,10 @@ class IdibonMultiClassLRModelLoader
          labelToInt: Map[String, Int],
          numFeatures: Int) = IdibonMultiClassLRModel.readCodecLibSVM(coeffs)
     coeffs.close()
-    val featureMeta = (config.get \ "feature-meta").extract[JObject]
-    val featurePipeline = new FeaturePipelineLoader().load(
-      engine, Some(reader.get.within("featurePipeline")), Some(featureMeta))
-    new IdibonMultiClassLRModel(
-      labelToInt,
+    val pipeline = CanHazPipeline.loadPipelineIfPresent(engine, reader, config)
+    new IdibonMultiClassLRModel(labelToInt,
       new IdibonSparkMLLIBLRWrapper(coefficients, intercept, numFeatures, labelToInt.size),
-      featurePipeline)
+      pipeline)
   }
 }
 
