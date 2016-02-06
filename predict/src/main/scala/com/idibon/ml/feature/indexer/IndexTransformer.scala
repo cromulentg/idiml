@@ -163,11 +163,12 @@ import org.json4s._
       Vectors.sparse(vocabSize, newIndexes.slice(0, lastIndex), newValues.slice(0, lastIndex))
     }
 
-    def apply(features: Seq[Feature[_]]): Vector = {
-      if (features.length < 1)
+    def apply(features: Seq[Feature[_]]*): Vector = {
+      val allFeatures = features.flatten
+      if (allFeatures.length < 1)
         Vectors.zeros(numDimensions).toSparse
       else
-        getFeatureVector(features)
+        getFeatureVector(allFeatures)
     }
 
     override def numDimensions: Int = if(frozen) frozenSize else featureIndex.size

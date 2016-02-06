@@ -15,8 +15,8 @@ import org.json4s._
   * @param k the maximum distance between each gram chosen
   * @param n the number of grams in a skip-gram
   */
-
-class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archivable[SkipgramTransformer, SkipgramTransformerLoader] {
+case class SkipgramTransformer(k: Int, n: Int)
+  extends FeatureTransformer with Archivable[SkipgramTransformer, SkipgramTransformerLoader] {
   //a sequence of all permutations of possible skips
   val skipPermutations = getSkipPermutations()
 
@@ -74,8 +74,8 @@ class SkipgramTransformer(k: Int, n: Int) extends FeatureTransformer with Archiv
 
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(List(
-      JField("min", JInt(this.k)),
-      JField("max", JInt(this.n)))))
+      JField("k", JInt(this.k)),
+      JField("n", JInt(this.n)))))
   }
 }
 

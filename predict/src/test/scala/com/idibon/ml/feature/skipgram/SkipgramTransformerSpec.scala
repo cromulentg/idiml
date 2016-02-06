@@ -1,6 +1,7 @@
 package com.idibon.ml.feature.skipgram
 
 import com.idibon.ml.feature.{StringFeature, ProductFeature}
+import org.json4s.JsonAST.{JInt, JField, JObject}
 import org.scalatest.{Matchers, FunSpec}
 import com.idibon.ml.feature.tokenizer.{Token}
 
@@ -66,6 +67,20 @@ class SkipgramTransformerSpec extends FunSpec with Matchers{
         ProductFeature(List(tokens(1), tokens(3), tokens(4))),
         ProductFeature(List(tokens(2), tokens(3), tokens(4)))
       )
+    }
+  }
+
+  describe("save & load works") {
+    it("saves as expected") {
+      transform2.save(null) shouldBe Some(JObject(List(JField("k", JInt(3)), JField("n", JInt(0)))))
+    }
+    it("loads as expected") {
+      val actual = new SkipgramTransformerLoader().load(null, None, Some(JObject(List(JField("k", JInt(3)), JField("n", JInt(0))))))
+      actual shouldBe new SkipgramTransformer(3, 0)
+    }
+    it("saves and loads as expected") {
+      val config = transform2.save(null)
+      new SkipgramTransformerLoader().load(null, None, config) shouldBe transform2
     }
   }
 }

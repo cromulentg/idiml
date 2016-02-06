@@ -57,6 +57,53 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.apply(fiveTokens) shouldBe expected
     }
 
+    it("should work on a sequence of sequence of Tokens with repeats") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("sleep", Tag.Word, 1, 1), new Token("furiously", Tag.Word, 1, 1),
+        new Token("green", Tag.Word, 1, 1))
+      val expected = Vectors.sparse(5, Seq((0, 2.0), (1, 4.0), (2, 2.0), (3, 4.0), (4, 2.0)))
+      transform.apply(fiveTokens, fiveTokens) shouldBe expected
+    }
+
+    it("should work on a sequence of sequence of Tokens with no repeats") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("furiously", Tag.Word, 1, 1))
+      val fiveTokens2 = Seq[Feature[Token]](
+        new Token("colorlessness", Tag.Word, 0, 1), new Token("greeness", Tag.Word, 1, 1),
+        new Token("ideaz", Tag.Word, 0, 1), new Token("sleeping", Tag.Word, 1, 1),
+        new Token("furious", Tag.Word, 1, 1))
+      val expected = Vectors.sparse(10,
+        Array(0,1,2,3,4,5,6,7,8,9), Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))
+      transform.apply(fiveTokens, fiveTokens2) shouldBe expected
+    }
+
+    it("should work on a sequence of sequence of empty Tokens") {
+      val fiveTokens = Seq[Feature[Token]]()
+      val fiveTokens2 = Seq[Feature[Token]]()
+      val expected = Vectors.zeros(0).toSparse
+      transform.apply(fiveTokens, fiveTokens2) shouldBe expected
+    }
+
+    it("should work on a sequence of sequence of empty Tokens returning correct 0 dimension vector") {
+      val fiveTokens = Seq[Feature[Token]](
+        new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
+        new Token("ideas", Tag.Word, 0, 1), new Token("sleep", Tag.Word, 1, 1),
+        new Token("furiously", Tag.Word, 1, 1))
+      val fiveTokens2 = Seq[Feature[Token]](
+        new Token("colorlessness", Tag.Word, 0, 1), new Token("greeness", Tag.Word, 1, 1),
+        new Token("ideaz", Tag.Word, 0, 1), new Token("sleeping", Tag.Word, 1, 1),
+        new Token("furious", Tag.Word, 1, 1))
+      transform.apply(fiveTokens, fiveTokens2)
+      val no1 = Seq[Feature[Token]]()
+      val no2 = Seq[Feature[Token]]()
+      val expected = Vectors.zeros(0)
+      transform.apply(no1, no2) shouldBe Vectors.zeros(10).toSparse
+    }
+
     it("should save and load a transformer properly") {
       val fiveTokens = Seq[Feature[Token]](
         new Token("colorless", Tag.Word, 0, 0), new Token("green", Tag.Word, 0, 0),
