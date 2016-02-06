@@ -40,6 +40,7 @@ import org.json4s._
 
     private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
     private[indexer] val observations = scala.collection.mutable.Map[Feature[_], Int]()
+    private[indexer] val inverseIndex = scala.collection.mutable.Map[Int, Feature[_]]()
 
     def getFeatureIndex = featureIndex
 
@@ -179,8 +180,18 @@ import org.json4s._
       })
     }
 
-    /* FIXME: keep a map of index => feature available */
-    def getFeatureByIndex(i: Int) = featureIndex.find(_._2 == i).map(_._1)
+    /** Retrieves a feature from its index
+      *
+      * This can be used to implement model debugging features and
+      * significant features. If no feature exists for the provided
+      * index, returns None.
+      */
+    def getFeatureByIndex(i: Int): Option[Feature[_]] = {
+      if (inverseIndex.isEmpty)
+        featureIndex.find(_._2 == i).map(_._1)
+      else
+        inverseIndex.get(i)
+    }
 
     def freeze(): Unit = {
       if (!frozen) {
@@ -222,6 +233,7 @@ import org.json4s._
             val feature = fis.readFeature
             val value = Codec.VLuint.read(fis)
             transformer.featureIndex += (feature -> value)
+            transformer.inverseIndex += (value -> feature)
           }
           transformer
         }
