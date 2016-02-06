@@ -11,12 +11,13 @@ package com.idibon.ml.feature
   * */
 class LiftTransformer extends FeatureTransformer {
 
-  /** Produces a sequence of shapes from a sequence of Tokens.
+  /**
+    * Wraps a single feature into a sequence of features.
+    * Because this is a variadic argument, scala implicitly wraps
+    * this into a sequence, so we can just return that!
     *
-    * @param feature
+    * @param feature A single feature, or multiple individual features
     * @return wraps the passed in feature as a sequence.
     */
-  def apply(feature: Feature[_]): Seq[Feature[_]] = {
-    Seq(feature)
-  }
+  def apply(feature: Feature[_]*): Seq[Feature[_]] = feature
 }
