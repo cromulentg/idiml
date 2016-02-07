@@ -3,6 +3,99 @@ package com.idibon.ml.predict
 import org.scalatest.{Matchers, FunSpec}
 import com.idibon.ml.feature.bagofwords.Word
 
+
+
+/**
+  * Tests the PredictResult trait functions.
+  */
+class PredictResultSpec extends FunSpec with Matchers {
+  val pr1 = new PredictResult {
+    override def probability: Float = 0.25f
+    override def matchCount: Int = 3
+    override def label: String = "monkeys"
+    override def flags: Int = 123
+  }
+
+  describe("isCloseEnough tests"){
+    it("matches on everything") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25f
+        override def matchCount: Int = 3
+        override def label: String = "monkeys"
+        override def flags: Int = 123
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe true
+    }
+    it("matches within tolerance") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25002f
+        override def matchCount: Int = 3
+        override def label: String = "monkeys"
+        override def flags: Int = 123
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe true
+    }
+    it("fails on label") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25f
+        override def matchCount: Int = 3
+        override def label: String = "bananas"
+        override def flags: Int = 123
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe false
+    }
+    it("fails on matchCount") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25f
+        override def matchCount: Int = 234
+        override def label: String = "monkeys"
+        override def flags: Int = 123
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe false
+    }
+    it("fails on flags") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25f
+        override def matchCount: Int = 3
+        override def label: String = "monkeys"
+        override def flags: Int = 12234
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe false
+    }
+    it("fails on isForces") {
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.25f
+        override def matchCount: Int = 3
+        override def label: String = "monkeys"
+        override def flags: Int = 123
+        override def isForced = false
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe false
+    }
+    it("fails on float tolerance"){
+      val prAlpha = new PredictResult {
+        override def probability: Float = 0.252f
+        override def matchCount: Int = 3
+        override def label: String = "monkeys"
+        override def flags: Int = 123
+      }
+      prAlpha.isCloseEnough(pr1) shouldBe false
+    }
+  }
+
+  describe("floatIsCloseEnough tests") {
+    it("works on exact") {
+      PredictResult.floatIsCloseEnough(0.001f, 0.001f) shouldBe true
+    }
+    it("works within tolerance") {
+      PredictResult.floatIsCloseEnough(0.001f, 0.0015f) shouldBe true
+    }
+    it("fails outside of tolerance") {
+      PredictResult.floatIsCloseEnough(0.001f, 0.000f) shouldBe false
+    }
+  }
+}
+
 class ClassificationSpec extends FunSpec with Matchers {
 
   describe("#average") {

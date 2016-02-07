@@ -42,8 +42,7 @@ public class IntentAlloy implements Alloy<Classification> {
 
     }
 
-    @Override public boolean validate() throws ValidationError {
-        return true;
+    @Override public void validate() throws ValidationError {
     }
 
     class IntentReader implements Alloy.Reader {

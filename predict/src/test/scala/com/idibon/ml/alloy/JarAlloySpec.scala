@@ -8,6 +8,7 @@ import com.idibon.ml.predict._
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.rules.DocumentRules
 import com.idibon.ml.common.EmbeddedEngine
+import org.apache.spark.mllib.linalg.Vector
 import scala.collection.mutable
 import org.json4s._
 import org.scalatest._
@@ -86,6 +87,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
   describe("Tests JarWriter & JarReader") {
     /**
       * Helper function to create alloy writer.
+      *
       * @return
       */
     def createAlloyWriter(filename: String): (File, JarOutputStream, Alloy.Writer) = {
@@ -97,6 +99,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     }
     /**
       * Helper function to create alloy reader.
+      *
       * @param file
       * @return
       */
@@ -107,6 +110,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     }
     /**
       * Helper function to write to a resource.
+      *
       * @param writer
       * @param resource
       * @param value
@@ -118,6 +122,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     }
     /**
       * Helper function to read from a resource and return the value.
+      *
       * @param reader
       * @param resource
       * @return
@@ -200,9 +205,67 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     }
   }
 
+  describe("Test validation") {
+    val c1 = new Classification("test1", 0.25f, 2, 2, Seq())
+    val c1a = new Classification("test1", 0.2501f, 2, 2, Seq())
+    val c1b = new Classification("test1", 0.5501f, 2, 2, Seq())
+    val c2 = new Classification("test2", 0.22343f, 2, 2, Seq())
+    val c2a = new Classification("test2", 0.22393f, 2, 2, Seq())
+    val c2b = new Classification("test2", 0.22443f, 2, 2, Seq())
+    val c3 = new Classification("test3", 0.33f, 2, 2, Seq())
+    val c4 = new Classification("test4", 0.523f, 2, 2, Seq())
+    val d1: Document = Document.document(JObject())
+
+    it("validates on exactly equal objects") {
+      val examples1 = new ValidationExamples[Classification](
+        List(new ValidationExample(d1, List(c1, c2))))
+      val examples2 = new ValidationExamples[Classification](
+        List(new ValidationExample(d1, List(c3, c4))))
+      val result = JarAlloy.validate[Classification](
+        Map("m1" -> new DummyPredictModel1(), "m2" -> new DummyPredictModel2()),
+        Map("m1"-> examples1, "m2" -> examples2))
+      result.isEmpty shouldBe true
+    }
+    it("validates on floats within tolerance") {
+      val examples = new ValidationExamples[Classification](
+        List(new ValidationExample(d1, List(c1a, c2a))))
+      val result = JarAlloy.validate[Classification](
+        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
+      result.isEmpty shouldBe true
+    }
+    it("returns non-empty string when tolerance exceeded") {
+      val examples = new ValidationExamples[Classification](
+        List(new ValidationExample(d1, List(c1b, c2b))))
+      val result = JarAlloy.validate[Classification](
+        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
+      result.isEmpty shouldBe false
+    }
+    it("returns non-empty string when anything else doesn't match between examples") {
+      val examples = new ValidationExamples[Classification](
+        List(new ValidationExample(d1, List(c3, c4))))
+      val result = JarAlloy.validate[Classification](
+        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
+      result.isEmpty shouldBe false
+    }
+  }
+
   describe("Test prediction") {
     it("It uses the base class predict method successfully") {
       //TODO: once alloy level predict API is finalized.
     }
   }
+}
+
+private class DummyPredictModel1 extends PredictModel[Classification] {
+  override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
+    Seq(new Classification("test1", 0.25f, 2, 2, Seq()), new Classification("test2", 0.22343f, 2, 2, Seq()))
+  }
+  override def getFeaturesUsed(): Vector = ???
+}
+
+private class DummyPredictModel2 extends PredictModel[Classification] {
+  override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
+    Seq(new Classification("test3", 0.33f, 2, 2, Seq()), new Classification("test4", 0.523f, 2, 2, Seq()))
+  }
+  override def getFeaturesUsed(): Vector = ???
 }

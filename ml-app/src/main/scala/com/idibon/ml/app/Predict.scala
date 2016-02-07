@@ -21,11 +21,11 @@ object Predict extends Tool with StrictLogging {
 
   private [this] def parseCommandLine(argv: Array[String]) = {
     val options = (new org.apache.commons.cli.Options)
-      .addOption("i", "input", true, "Input file containing documents")
-      .addOption("o", "output", true, "Result output CSV file")
-      .addOption("a", "alloy", true, "Input alloy")
-      .addOption("f", "no-features", false, "Run without significant features")
-
+      .addOption("i", "input", true, "Input file containing documents.")
+      .addOption("o", "output", true, "Result output CSV file.")
+      .addOption("a", "alloy", true, "Input alloy.")
+      .addOption("f", "no-features", false, "Run without significant features.")
+      .addOption("v", "no-validation", false, "Whether we should not validate the model.")
 
     (new org.apache.commons.cli.BasicParser).parse(options, argv)
   }
@@ -34,13 +34,17 @@ object Predict extends Tool with StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    // if we want to validate on load.
-    val validationExamplesBuilder = new ValidationExamplesBuilder[Classification](new ClassificationBuilder())
-    val model = JarAlloy.load[Classification](engine,
-      cli.getOptionValue('a'),
-      Some(validationExamplesBuilder))
-      .asInstanceOf[JarAlloy[Classification]]
-    logger.info(s"Loaded Alloy and Models validated - ${model.validate()}")
+    val model = if (!cli.hasOption('v')) {
+      // if we want to validate on load.
+      val validationExamplesBuilder = new ValidationExamplesBuilder[Classification](new ClassificationBuilder())
+      JarAlloy.loadAndValidate[Classification](engine, cli.getOptionValue('a'), validationExamplesBuilder)
+        .asInstanceOf[JarAlloy[Classification]]
+
+    } else {
+      JarAlloy.load[Classification](engine, cli.getOptionValue('a'))
+        .asInstanceOf[JarAlloy[Classification]]
+    }
+    logger.info(s"Loaded Alloy.")
     /* results will be written to the output file by a consumer thread;
      * after the last document is predicted, the main thread will post
      * a sentinel value of None to cause the result output thread to

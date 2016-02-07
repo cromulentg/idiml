@@ -42,26 +42,14 @@ class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[Str
   /**
     * This method validates the results at training vs now.
     *
-    * FIXME: ValidationExamples are not Parameterized like this alloy is.
-    *
-    * @return True whether it agrees, False Otherwise
+    * throws ValidationError if any results are not within our tolerances.
     */
-  override def validate(): Boolean = {
-    val options = PredictOptions.DEFAULT
-    val errors = validationExamples.flatMap{case(modelName, examples) => {
-      val model = models(modelName)
-      examples.examples.map(example => {
-        (model.predict(example.document, options), example.predictions)
-      }).filter(x => !x._1.equals(x._2)).map{
-        // FIXME: create a nicer string format
-        case (newPrediction, oldPrediction) => {
-          s"Failed to match prediction for new:\n${newPrediction}\nvs old:\n${oldPrediction}\n"
-        }
-      }
-    }}.foldLeft(""){case (accum, msg) => accum + msg}
-    if (errors.isEmpty) return true
-    logger.error(errors)
-    throw new ValidationError(errors)
+  override def validate(): Unit = {
+    val errors = JarAlloy.validate[T](models, validationExamples)
+    if (!errors.isEmpty){
+      logger.error(errors)
+      throw new ValidationError(errors)
+    }
   }
 
   /**
@@ -184,19 +172,62 @@ object JarAlloy extends StrictLogging {
 
   val VALIDATION_LOCATION_SAFEGUARD: String = "number"
 
+
+  /**
+    * Static method to load an alloy from a Jar file and validate it against the internally stored
+    * results.
+    *
+    * @param engine the engine that contains the spark context.
+    * @param path place where the Jar files lives.
+    * @param validationBuilder Builder that knows how to reload validation examples.
+    * @tparam T The type of predictResult we expect to create and make
+    * @return an alloy ready for combat.
+    */
+  def loadAndValidate[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
+                                                                        path: String,
+                                                                        validationBuilder: ValidationExamplesBuilder[T]): JarAlloy[T] = {
+    val jarFile: File = new File(path)
+    val jar: JarFile = new JarFile(jarFile)
+    checkVersion(jar)
+    // base reader
+    val baseReader: JarReader = new JarReader("", jar)
+    val (labelModels, labelToUUID) = getModelsAndLabels(engine, baseReader)
+    // instantiate other objects
+    val examples = loadValidationResults[T](baseReader, labelModels.keys.toList, validationBuilder)
+    jar.close()
+    // return fresh instance
+    val alloy =  new JarAlloy(labelModels, labelToUUID, examples)
+    alloy.validate()
+    return alloy
+  }
+
   /**
     * Static method to load an alloy from a Jar file.
     *
-    * @param engine implements com.idibon.ml.common.Engine
-    * @param path path to jar file
-    * @return
+    * @param engine the engine that contains the spark context.
+    * @param path place where the Jar files lives.
+    * @tparam T The type of predictResult we expect to create and make
+    * @return an alloy ready for combat.
     */
   def load[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
-                                                             path: String,
-                                                             validationBuilder: Option[ValidationExamplesBuilder[T]] = None): JarAlloy[T] = {
-    implicit val formats = org.json4s.DefaultFormats
+                                                             path: String): JarAlloy[T] = {
     val jarFile: File = new File(path)
     val jar: JarFile = new JarFile(jarFile)
+    checkVersion(jar)
+    // base reader
+    val baseReader: JarReader = new JarReader("", jar)
+    val (labelModels, labelToUUID) = getModelsAndLabels(engine, baseReader)
+    jar.close()
+    // return fresh instance
+    return new JarAlloy(labelModels, labelToUUID)
+  }
+
+  /**
+    * Checks the version in the Jar is one that we support.
+    * @param jar
+    * @tparam T
+    */
+  def checkVersion[T <: PredictResult with Buildable[T, Builder[T]]](jar: JarFile): Unit = {
     // manifest
     val manifest: Manifest = jar.getManifest()
     // get the version out & check it.
@@ -205,8 +236,19 @@ object JarAlloy extends StrictLogging {
       case "0.0.1" => logger.info(s"Attemping to load version [v. ${version}].")
       case _ => throw new IOException(s"Unable to load, unhandled version ${version}")
     }
-    // base reader
-    val baseReader: JarReader = new JarReader("", jar)
+  }
+
+  /**
+    * Private method to loads the models and labels from the JAR and pass them back.
+    * @param engine
+    * @param baseReader
+    * @tparam T
+    * @return
+    */
+  private def getModelsAndLabels[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
+                                                                                   baseReader: JarReader):
+  (Map[String, PredictModel[T]], Map[String, String]) = {
+    implicit val formats = org.json4s.DefaultFormats
     // get labels, classes and model metadata
     val labelToUUIDMap = readMapOfData(baseReader, LABEL_UUID).extract[Map[String, String]]
     val modelClassesMap = readMapOfData(baseReader, MODEL_CLASS).extract[Map[String, String]]
@@ -214,7 +256,7 @@ object JarAlloy extends StrictLogging {
     // using reflection create that class and call the load method and reify models.
     val labelModels = new mutable.HashMap[String, PredictModel[T]]
     val labelToUUID = new mutable.HashMap[String, String]
-    for((label, modelClass) <- modelClassesMap) {
+    for ((label, modelClass) <- modelClassesMap) {
       // Reify the model.
       val model = ArchiveLoader.reify[PredictModel[T]](
         Class.forName(modelClass), engine, Some(baseReader.within(label)),
@@ -224,16 +266,7 @@ object JarAlloy extends StrictLogging {
       labelModels.put(label, model)
       labelToUUID.put(label, labelToUUIDMap.getOrElse(label, ""))
     }
-    // instantiate other objects
-    val examples = validationBuilder match {
-      case Some(validationBuilder) => // load validation data
-        loadValidationResults[T](baseReader, labelModels.keys.toList, validationBuilder)
-      case None => Map[String, ValidationExamples[T]]()
-    }
-
-    jar.close()
-    // return fresh instance
-    return new JarAlloy(labelModels.toMap, labelToUUID.toMap, examples)
+    (labelModels.toMap, labelToUUID.toMap)
   }
 
   /**
@@ -245,7 +278,6 @@ object JarAlloy extends StrictLogging {
     * @return
     */
   private def readMapOfData(baseReader: JarReader, resourceName: String): JObject = {
-    implicit val formats = org.json4s.DefaultFormats
     val metaInputStream = baseReader.resource(resourceName)
     val rawJSON = Codec.String.read(metaInputStream)
     metaInputStream.close()
@@ -275,6 +307,31 @@ object JarAlloy extends StrictLogging {
       validationInputStream.close()
       (modelName, examples)
     }).toMap
+  }
+
+  /**
+    * Static helper method to validate a set of examples with a model's predictions.
+    * @param models
+    * @param validationExamples
+    * @tparam T
+    * @return
+    */
+  def validate[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[String, PredictModel[T]],
+                                                                 validationExamples: Map[String, ValidationExamples[T]]): String = {
+    val options = PredictOptions.DEFAULT
+    validationExamples.flatMap{case(modelName, examples) => {
+      examples.examples.map(example => {
+        (models(modelName).predict(example.document, options), example.predictions)
+      })// flatten so all predictions are in a single list of (newPrediction, oldPrediction)
+        .map(x => x.zipped).flatten
+        // remove predictions that are good
+        .filter({case (newPrediction, oldPrediction) => !newPrediction.isCloseEnough(oldPrediction)})
+        // create messages for bad predictions
+        .map { case (newPrediction, oldPrediction) => {
+        s"Failed to match prediction for new:\n${newPrediction}\nvs old:\n${oldPrediction}\n"
+        }
+      }
+    }}.mkString("\n")
   }
 }
 

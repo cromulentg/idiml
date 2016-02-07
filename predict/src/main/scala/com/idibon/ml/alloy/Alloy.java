@@ -80,5 +80,5 @@ public interface Alloy<T extends PredictResult> {
      * @return True whether it agrees, False Otherwise
      * @throws ValidationError that will contain details of what went wrong.
      */
-    public boolean validate() throws ValidationError;
+    public void validate() throws ValidationError;
 }

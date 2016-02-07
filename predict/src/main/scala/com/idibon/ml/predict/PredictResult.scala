@@ -19,6 +19,36 @@ trait PredictResult {
 
   /** True if the result is FORCED */
   def isForced = ((flags & (1 << PredictResultFlag.FORCED.id)) != 0)
+
+  /**
+    * Method to use to check whether two prediction results are close enough.
+    *
+    * @param other
+    * @return
+    */
+  def isCloseEnough(other: PredictResult): Boolean = {
+    this.label == other.label &&
+      this.matchCount == other.matchCount &&
+      this.flags == other.flags &&
+      this.isForced == other.isForced &&
+      PredictResult.floatIsCloseEnough(this.probability, other.probability)
+  }
+}
+
+object PredictResult {
+  /** Our tolerance for numerical instability between machines **/
+  val PRECISION = 0.001
+  /**
+    * Method specifically tasked with figuring out whether two float values
+    * are within our tolerances for being "equal".
+    *
+    * @param thisProb
+    * @param otherProb
+    * @return
+    */
+  def floatIsCloseEnough(thisProb: Float, otherProb: Float): Boolean = {
+    (thisProb - otherProb).abs < PRECISION
+  }
 }
 
 /** Flags for special properties affecting the prediction result */
