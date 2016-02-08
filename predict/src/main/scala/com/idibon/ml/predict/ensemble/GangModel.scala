@@ -14,8 +14,7 @@ import org.json4s._
   * per label rule models.
   *
   *
-  * @param multiLabelModel This is the main action piece. Needs to return MultiLabelDocumentResult.
-  * @param models Map of label -> model. Okay to be empty.
+  * @param models Map of label -> model.
   */
 case class GangModel(
   models: Map[String, PredictModel[Classification]],

@@ -1,7 +1,7 @@
 package com.idibon.ml.train.alloy
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{PredictResult, Classification}
+import com.idibon.ml.predict.{Classification}
 import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGeneratorBuilder, KClassDataFrameGeneratorBuilder, SparkDataGeneratorBuilder}
 import com.idibon.ml.train.furnace.{MultiClassLRFurnaceBuilder, XValLogisticRegressionBuilder, FurnaceBuilder}
 import org.json4s.ShortTypeHints

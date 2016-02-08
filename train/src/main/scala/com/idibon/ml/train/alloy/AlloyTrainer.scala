@@ -1,11 +1,9 @@
 package com.idibon.ml.train.alloy
 
-import com.idibon.ml.alloy.{JarAlloy, Alloy}
+import com.idibon.ml.alloy.{ValidationExamples, ValidationExample, JarAlloy, Alloy}
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{Classification}
+import com.idibon.ml.predict._
 import com.idibon.ml.predict.ensemble.GangModel
-import com.typesafe.scalalogging.StrictLogging
-import com.idibon.ml.predict.PredictModel
 import com.idibon.ml.predict.rules.DocumentRules
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.idibon.ml.train.furnace.Furnace
@@ -91,6 +89,11 @@ trait AlloyTrainer {
   }
 }
 
+object BaseTrainer {
+  val DEFAULT_NUMBER_VALIDATION_EXAMPLES = 30
+  val PIPELINE_CONFIG = "pipelineConfig"
+}
+
 /**
   * Base class for trainers that follow a fairly orthodox approach to training.
   *
@@ -100,7 +103,8 @@ trait AlloyTrainer {
   */
 abstract class BaseTrainer(protected val engine: Engine,
                            protected val dataGen: SparkDataGenerator,
-                           protected val furnace: Furnace[Classification])
+                           protected val furnace: Furnace[Classification],
+                           protected val numberOfValidationExamples: Int = BaseTrainer.DEFAULT_NUMBER_VALIDATION_EXAMPLES)
   extends AlloyTrainer {
 
   /** Trains a model and generates an Alloy from it
@@ -137,13 +141,42 @@ abstract class BaseTrainer(protected val engine: Engine,
       - training MLModels
      */
     val mlModels = Try(
-      melt(docs, dataGen, config.map(c => (c \ "pipelineConfig").extract[JObject])))
+      melt(docs, dataGen, config.map(c => (c \ BaseTrainer.PIPELINE_CONFIG).extract[JObject])))
 
     mlModels
       // create PredictModels with Rules
       .map(this.mergeRulesWithModels(_, parsedRules))
+      // get some validation results
+      .map(model => {
+        val validationResults = createValidationSet(docs, model, numberOfValidationExamples)
+        (model, validationResults)
+      })
       // create Alloy
-      .map(gang => new JarAlloy(Map("gang" -> gang), uuidsByLabel))
+      .map { case (gang, validationResults) => {
+        new JarAlloy(Map("gang" -> gang), uuidsByLabel, Map("gang" -> validationResults))
+      }
+    }
+  }
+
+  /**
+    * Creates a validation set of size num.
+ *
+    * @param docs the docs used for training
+    * @param model the model you want to get results for
+    * @param num the number of results to create
+    * @return ValidationExamples which is a list of ValidationExample
+    */
+  def createValidationSet(docs: () => TraversableOnce[JObject],
+                          model: PredictModel[Classification],
+                          num: Int): ValidationExamples[Classification] = {
+    val options = PredictOptions.DEFAULT
+    new ValidationExamples(docs()
+      .toStream // make it a stream
+      .distinct // get distinct items using .equals (this should be lazily evaluated)
+      .take(num) // take what we want
+      .map(x => Document.document(x)) // convert to docs
+      .map(d => (d, model.predict(d, options))) // predict on them
+      .map(x => new ValidationExample(x._1, x._2)).toList)
   }
 
   /**

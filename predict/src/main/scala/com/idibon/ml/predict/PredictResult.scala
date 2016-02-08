@@ -1,6 +1,7 @@
 package com.idibon.ml.predict
 
-import com.idibon.ml.feature.Feature
+import com.idibon.ml.alloy.Codec
+import com.idibon.ml.feature.{FeatureOutputStream, FeatureInputStream, Builder, Buildable, Feature}
 
 /** Basic output result from a predictive model.
   *
@@ -18,6 +19,36 @@ trait PredictResult {
 
   /** True if the result is FORCED */
   def isForced = ((flags & (1 << PredictResultFlag.FORCED.id)) != 0)
+
+  /**
+    * Method to use to check whether two prediction results are close enough.
+    *
+    * @param other
+    * @return
+    */
+  def isCloseEnough(other: PredictResult): Boolean = {
+    this.label == other.label &&
+      this.matchCount == other.matchCount &&
+      this.flags == other.flags &&
+      this.isForced == other.isForced &&
+      PredictResult.floatIsCloseEnough(this.probability, other.probability)
+  }
+}
+
+object PredictResult {
+  /** Our tolerance for numerical instability between machines **/
+  val PRECISION = 0.001
+  /**
+    * Method specifically tasked with figuring out whether two float values
+    * are within our tolerances for being "equal".
+    *
+    * @param thisProb
+    * @param otherProb
+    * @return
+    */
+  def floatIsCloseEnough(thisProb: Float, otherProb: Float): Boolean = {
+    (thisProb - otherProb).abs < PRECISION
+  }
 }
 
 /** Flags for special properties affecting the prediction result */
@@ -51,12 +82,55 @@ trait PredictResultReduction[T <: PredictResult] {
 
 /** Basic PredictResult for document classifications */
 case class Classification(override val label: String,
-  override val probability: Float,
-  override val matchCount: Int,
-  override val flags: Int,
-  override val significantFeatures: Seq[(Feature[_], Float)])
-    extends PredictResult with HasSignificantFeatures
+                          override val probability: Float,
+                          override val matchCount: Int,
+                          override val flags: Int,
+                          override val significantFeatures: Seq[(Feature[_], Float)])
+  extends PredictResult with HasSignificantFeatures with Buildable[Classification, ClassificationBuilder]{
+  /** Stores the data to an output stream so it may be reloaded later.
+    *
+    * @param output - Output stream to write data
+    */
+  override def save(output: FeatureOutputStream): Unit = {
+    Codec.String.write(output, label)
+    output.writeFloat(probability)
+    Codec.VLuint.write(output, matchCount)
+    Codec.VLuint.write(output, flags)
+    Codec.VLuint.write(output, significantFeatures.size)
+    significantFeatures.foreach{case (feat, value) => {
+      feat match {
+        case f: Feature[_] with Buildable[_, _] => {
+          output.writeFeature(f)
+          output.writeFloat(value)
+        }
+        case _ => throw new RuntimeException("Got unsaveable feature.")
+      }
+    }}
+  }
+}
 
+/**
+  * Class for saving classification results to a stream.
+  */
+class ClassificationBuilder extends Builder[Classification] {
+  /** Instantiates and loads an object from an input stream
+    *
+    * @param input - Data stream where object was previously saved
+    */
+  override def build(input: FeatureInputStream): Classification = {
+    val label = Codec.String.read(input)
+    val prob = input.readFloat()
+    val matchCount = Codec.VLuint.read(input)
+    val flags = Codec.VLuint.read(input)
+    val sigFeatSize = Codec.VLuint.read(input)
+    val sigFeats = (0 until sigFeatSize).map(_ => {
+      val feature = input.readFeature
+      val value = input.readFloat()
+      (feature, value)
+    })
+    new Classification(label, prob, matchCount, flags, sigFeats)
+  }
+}
 
 /** Companion class and reduction operation for Classification instances */
 object Classification extends PredictResultReduction[Classification] {

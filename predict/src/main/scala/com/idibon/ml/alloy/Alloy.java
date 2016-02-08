@@ -72,4 +72,13 @@ public interface Alloy<T extends PredictResult> {
      * @throws IOException
      */
     public void save(String path) throws IOException;
+
+    /**
+     * Use this to see if the now instantiated Alloy agrees with results
+     * it took when it was trained!
+     *
+     * @return True whether it agrees, False Otherwise
+     * @throws ValidationError that will contain details of what went wrong.
+     */
+    public void validate() throws ValidationError;
 }

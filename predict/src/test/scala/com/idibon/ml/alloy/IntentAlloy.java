@@ -42,6 +42,9 @@ public class IntentAlloy implements Alloy<Classification> {
 
     }
 
+    @Override public void validate() throws ValidationError {
+    }
+
     class IntentReader implements Alloy.Reader {
         IntentReader(String path, double random) {
             _path = path;
