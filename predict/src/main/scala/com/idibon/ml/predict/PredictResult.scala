@@ -1,5 +1,7 @@
 package com.idibon.ml.predict
 
+import com.idibon.ml.feature.Feature
+
 /** Basic output result from a predictive model.
   *
   * Model predictions may return any number of PredictResult objects
@@ -35,7 +37,7 @@ object PredictResultFlag extends Enumeration {
 /** Optional trait for PredictResult objects that report significant features */
 trait HasSignificantFeatures {
   /** Extracted document features that significantly influence the result */
-  def significantFeatures: Seq[(String, Float)]
+  def significantFeatures: Seq[(Feature[_], Float)]
 }
 
 /** Combines PredictResults for the same label across multiple models into
@@ -52,7 +54,7 @@ case class Classification(override val label: String,
   override val probability: Float,
   override val matchCount: Int,
   override val flags: Int,
-  override val significantFeatures: Seq[(String, Float)])
+  override val significantFeatures: Seq[(Feature[_], Float)])
     extends PredictResult with HasSignificantFeatures
 
 

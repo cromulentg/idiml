@@ -64,10 +64,6 @@ package com.idibon.ml.feature.tokenizer {
       Codec.VLuint.write(output, offset)
       Codec.VLuint.write(output, length)
     }
-
-    override def toString(): String = {
-      s"token-$content"
-    }
   }
 
   class TokenBuilder extends Builder[Token] {

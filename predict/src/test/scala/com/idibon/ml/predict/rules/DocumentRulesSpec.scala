@@ -127,7 +127,8 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "b-label"
       actual.matchCount shouldBe 2
       actual.probability shouldEqual 0.5f
-      actual.significantFeatures should contain theSameElementsAs List(("/str[ij]ng/", 0.5f), ("is", 0.5f))
+      actual.significantFeatures should contain theSameElementsAs List(
+        (RuleFeature("/str[ij]ng/"), 0.5f), (RuleFeature("is"), 0.5f))
     }
 
     it("Should return whitelist significant feature when whitelist overrides") {
@@ -136,7 +137,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "b-label"
       actual.matchCount shouldBe 1
       actual.probability shouldEqual 1.0f
-      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 1.0f))
+      actual.significantFeatures shouldEqual List((RuleFeature("/str[ij]ng/"), 1.0f))
     }
 
     it("Should return whitelist significant feature when blacklist overrides") {
@@ -145,7 +146,7 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       actual.label shouldBe "b-label"
       actual.matchCount shouldBe 2
       actual.probability shouldEqual 0.0f
-      actual.significantFeatures shouldEqual List(("/str[ij]ng/", 0.0f))
+      actual.significantFeatures shouldEqual List((RuleFeature("/str[ij]ng/"), 0.0f))
     }
 
     it("Should return a document prediction result") {

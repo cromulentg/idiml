@@ -4,7 +4,7 @@ import java.io._
 
 import com.idibon.ml.alloy.{JarAlloy, IntentAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.predict._
@@ -55,7 +55,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       // sure it all works
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
       val labelToModel = Map(("alabel" -> model))
       val alloy = new JarAlloy(labelToModel, Map[String, String]())
       tempFilename = "save.jar"
@@ -89,12 +89,12 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
       val config = model.save(alloy.writer())
       implicit val formats = DefaultFormats
       val actualLabel = (config.get \ "label" ).extract[String]
       actualLabel shouldEqual label
-      val featureMeta = (config.get \ "feature-meta").extract[JObject]
+      val featureMeta = (config.get \ "featurePipeline").extract[JObject]
       featureMeta should not be JNothing
       featureMeta should not be JNull
     }
@@ -107,7 +107,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
       val result = model.predict(Document.document(doc), PredictOptions.DEFAULT)
       result.head.probability shouldBe 0.16617252f
       result.head.matchCount shouldBe 1
@@ -118,12 +118,12 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
-        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), fp)
+        new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
       val result = model.predict(Document.document(doc),
         new PredictOptionsBuilder().showSignificantFeatures(0.35f).build())
       result.head.probability shouldBe 0.16617252f
       result.head.matchCount shouldBe 1
-      result.head.significantFeatures shouldBe List(("token-Everybody", 0.35824257f))
+      result.head.significantFeatures shouldBe List((Token("Everybody", Tag.Word, 0, 9), 0.35824257f))
     }
   }
 

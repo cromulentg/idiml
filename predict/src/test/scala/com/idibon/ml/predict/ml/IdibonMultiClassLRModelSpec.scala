@@ -5,7 +5,7 @@ import java.io._
 import com.idibon.ml.alloy.{IntentAlloy, JarAlloy}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.{Document, PredictOptionsBuilder}
@@ -54,7 +54,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       // sure it all works
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
-        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
+        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
       val alloy = new JarAlloy(Map("0" -> model), Map[String, String]())
       tempFilename = "save123.jar"
       alloy.save(tempFilename)
@@ -87,12 +87,12 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val label: String = "alabel"
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
-        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
+        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
       val config = model.save(alloy.writer())
       implicit val formats = DefaultFormats
       val version = (config.get \ "version" ).extract[String]
-      version shouldEqual "0.0.1"
-      val featureMeta = (config.get \ "feature-meta").extract[JObject]
+      version shouldEqual "0.0.2"
+      val featureMeta = (config.get \ "featurePipeline").extract[JObject]
       featureMeta should not be JNothing
       featureMeta should not be JNull
     }
@@ -104,7 +104,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val coefficients = Vectors.sparse(26, Array(0, 1, 2), Array(0.54, 0.83, 0.2)).toDense
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
-        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
+        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
       val result = model.predict(Document.document(doc), new PredictOptionsBuilder().build())
       result.head.label shouldBe "alabel"
       result.head.probability shouldBe (0.60992575f +- 0.0001f)
@@ -119,13 +119,13 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val coefficients = Vectors.sparse(26, Array(0, 1, 2), Array(0.1, -1.23, 0.2)).toDense
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "blabel" -> 0),
-        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), fp)
+        new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
       val result = model.predict(Document.document(doc),
         new PredictOptionsBuilder().showSignificantFeatures(0.75f).build()).head
       result.label shouldBe "blabel"
       result.probability shouldBe (0.7413506f +- 0.0001f)
       result.matchCount shouldBe 1
-      result.significantFeatures shouldBe List(("token- ", 0.7946197f))
+      result.significantFeatures shouldBe List((Token(" ", Tag.Whitespace, 9, 1), 0.7946197f))
     }
   }
 

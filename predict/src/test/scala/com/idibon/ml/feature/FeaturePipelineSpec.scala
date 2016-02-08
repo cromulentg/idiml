@@ -100,12 +100,12 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       val primed = unprimed.prime(List(doc))
       unprimed.isFrozen shouldBe false
       primed.isFrozen shouldBe true
-      unprimed.getTotalDimensions() shouldBe -1
-      primed.getTotalDimensions() shouldBe 2
+      unprimed.totalDimensions shouldBe None
+      primed.totalDimensions shouldBe Some(2)
     }
   }
 
-  describe("get human readable feature tests") {
+  describe("getFeaturesBySortedIndices") {
     val transforms = Map(
       "contentExtractor" -> new DocumentExtractor,
       "metadataVector" -> new MetadataNumberExtractor,
@@ -118,29 +118,56 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     it("fails on unprimed pipelines") {
       intercept[IllegalStateException]{
-        FeaturePipeline.bind(transforms, pipeline).getHumanReadableFeature(List())
+        FeaturePipeline.bind(transforms, pipeline)
+          .getFeaturesBySortedIndices(List())
       }
     }
 
     it("works on empty input") {
-      val unprimed = FeaturePipeline.bind(transforms, pipeline).prime(List())
-      val primed = unprimed.prime(List())
-      primed.getHumanReadableFeature(List()) shouldBe Map[Int,String]()
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      primed.getFeaturesBySortedIndices(List()) shouldBe empty
+    }
+
+    it("raises an exception for unsorted lists") {
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      intercept[IllegalArgumentException] {
+        primed.getFeaturesBySortedIndices(List(1, 0))
+      }
+    }
+
+    it("works for single requests") {
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      primed.getFeatureByIndex(3) shouldBe None
+      primed.getFeatureByIndex(1) shouldBe Some(StringFeature("meta-number2"))
     }
 
     it("works on single output transform") {
-      val unprimed = FeaturePipeline.bind(transforms, List(
+      val primed = FeaturePipeline.bind(transforms, List(
         new PipelineEntry("$output", List("metadataVector")),
         new PipelineEntry("metadataVector", List("$document")),
         new PipelineEntry("metadataVector2", List("$document")))).prime(List())
-      val primed = unprimed.prime(List())
-      primed.getHumanReadableFeature(List(0, 1)) shouldBe Map(0 -> "meta-number")
+      primed.getFeaturesBySortedIndices(List(0, 1)) shouldBe List(
+        Some(StringFeature("meta-number1")), None)
     }
 
     it("works on multiple output transforms") {
-      val unprimed = FeaturePipeline.bind(transforms, pipeline).prime(List())
-      val primed = unprimed.prime(List())
-      primed.getHumanReadableFeature(List(0, 1)) shouldBe Map(0 -> "meta-number", 1 -> "meta-number2")
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      primed.getFeaturesBySortedIndices(List(0, 1)) shouldBe List(
+        Some(StringFeature("meta-number1")), Some(StringFeature("meta-number2")))
+    }
+
+    it("skips over unwanted output stages") {
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      primed.getFeaturesBySortedIndices(List(1)) shouldBe List(
+        Some(StringFeature("meta-number2")))
+    }
+
+    it("can iterate over sparse vectors") {
+      val primed = FeaturePipeline.bind(transforms, pipeline).prime(List())
+      primed.getFeaturesByVector(Vectors.sparse(5, Array(1), Array(0.0))) shouldBe List(
+        Some(StringFeature("meta-number2")))
+      primed.getFeaturesByVector(Vectors.dense(0.0, 0.0)) shouldBe List(
+        Some(StringFeature("meta-number1")), Some(StringFeature("meta-number2")))
     }
   }
 
@@ -495,13 +522,13 @@ private [this] class VectorConcatenator extends FeatureTransformer with Terminab
     length = v.size
     v
   }
-  override def numDimensions: Int = length
+  def numDimensions = Some(length)
 
-  override def prune(transform: (Int) => Boolean): Unit = ???
+  def prune(transform: (Int) => Boolean): Unit = ???
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = List()
+  def getFeatureByIndex(index: Int) = None
 
-  override def freeze(): Unit = { frozen = true }
+  def freeze(): Unit = { frozen = true }
 }
 
 /**
@@ -512,11 +539,12 @@ private [this] class VectorConcatenatorBad extends FeatureTransformer with Termi
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
   }
-  override def numDimensions: Int = -1
 
-  override def prune(transform: (Int) => Boolean): Unit = ???
+  def numDimensions = Some(-1)
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+  def prune(transform: (Int) => Boolean): Unit = ???
+
+  def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
 
   override def freeze(): Unit = { frozen = true }
 }
@@ -538,48 +566,54 @@ private [this] class FeatureVectors extends FeatureTransformer with TerminableTr
     dims = v.size
     v
   }
-  override def numDimensions: Int = dims
+  def numDimensions = Some(dims)
 
-  override def prune(transform: (Int) => Boolean): Unit = ???
+  def prune(transform: (Int) => Boolean): Unit = ???
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+  def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
 
-  override def freeze(): Unit = {}
+  def freeze(): Unit = {}
 }
 
-private [this] class MetadataNumberExtractor extends FeatureTransformer with TerminableTransformer {
+private [this] class MetadataNumberExtractor
+    extends FeatureTransformer with TerminableTransformer {
+
   def apply(document: JObject): Vector = {
     Vectors.dense((document \ "metadata" \ "number").asInstanceOf[JDouble].num)
   }
   var pruned = false
 
-  override def freeze(): Unit = {}
+  def freeze(): Unit = {}
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
-    List(0 -> "meta-number")
+  def getFeatureByIndex(index: Int) = index match {
+    case 0 => Some(StringFeature("meta-number1"))
+    case _ => None
   }
 
-  override def numDimensions: Int = 1
+  def numDimensions = Some(1)
 
-  override def prune(transform: (Int) => Boolean): Unit = { pruned = true }
+  def prune(transform: (Int) => Boolean): Unit = { pruned = true }
 }
 
-private [this] class MetadataNumberExtractor2 extends FeatureTransformer with TerminableTransformer{
+private [this] class MetadataNumberExtractor2
+    extends FeatureTransformer with TerminableTransformer{
+
   def apply(document: JObject): Vector = {
     Vectors.dense((document \ "metadata" \ "number2").asInstanceOf[JDouble].num)
   }
 
   var pruned = false
 
-  override def freeze(): Unit = {}
+  def freeze(): Unit = {}
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = {
-    List(0 -> "meta-number2")
+  def getFeatureByIndex(index: Int) = index match {
+    case 0 => Some(StringFeature("meta-number2"))
+    case _ => None
   }
 
-  override def numDimensions: Int = 1
+  def numDimensions = Some(1)
 
-  override def prune(transform: (Int) => Boolean): Unit = { pruned = true }
+  def prune(transform: (Int) => Boolean): Unit = { pruned = true }
 }
 
 private [this] class TokenConsumer extends FeatureTransformer {
@@ -606,13 +640,13 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
 
   def save(w: Alloy.Writer): Option[JObject] = suppliedConfig
 
-  override def numDimensions: Int = 3
+  def numDimensions = Some(3)
 
-  override def prune(transform: (Int) => Boolean): Unit = ???
+  def prune(transform: (Int) => Boolean): Unit = ???
 
-  override def getHumanReadableFeature(indexes: Set[Int]): List[(Int, String)] = ???
+  def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
 
-  override def freeze(): Unit = {}
+  def freeze(): Unit = {}
 }
 
 private [this] class ArchivableTransformLoader

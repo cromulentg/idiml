@@ -47,7 +47,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     * @param data
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: FeaturePipeline) = {
+  override def fit(label: String, data: DataFrame, pipeline: Option[FeaturePipeline]) = {
     val lr = fitModel(getEstimator(), data)
     logTrainingSummary(label, lr)
     // wrap into one we want

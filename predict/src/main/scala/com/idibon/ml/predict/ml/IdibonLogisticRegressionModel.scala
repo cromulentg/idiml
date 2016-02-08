@@ -7,7 +7,7 @@ import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict._
-import com.idibon.ml.feature.{FeaturePipelineLoader, FeaturePipeline}
+import com.idibon.ml.feature.{Feature, FeaturePipelineLoader, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -20,7 +20,7 @@ import org.json4s._
   */
 case class IdibonLogisticRegressionModel(label: String,
   lrm: IdibonSparkLogisticRegressionModelWrapper,
-  featurePipeline: FeaturePipeline)
+  override val featurePipeline: Option[FeaturePipeline])
     extends MLModel[Classification](featurePipeline) with StrictLogging
     with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
 
@@ -30,20 +30,22 @@ case class IdibonLogisticRegressionModel(label: String,
     * @param options Object of predict options.
     * @return a single PredictResult for the label classified by this model
     */
-  override def predictVector(features: Vector,
-      options: PredictOptions): Seq[Classification] = {
+  override def predictVector(featureVec: Vector,
+    invertFeatureFn: (Vector) => Seq[Option[Feature[_]]],
+    options: PredictOptions): Seq[Classification] = {
 
     /* get the result of 1, the positive class we're interested in.
      * 0 will be 1.0 minus this value. */
-    val probability = lrm.predictProbability(features)(1).toFloat
+    val probability = lrm.predictProbability(featureVec)(1).toFloat
 
     val significantFeatures = if (options.includeSignificantFeatures) {
-      val indices = lrm.getSignificantFeatures(features,
+      val sigDimensions = lrm.getSignificantDimensions(featureVec,
         options.significantFeatureThreshold)
-      val human = featurePipeline.getHumanReadableFeature(indices.map(_._1))
-      indices.map({ case (index, weight) => (human(index), weight) })
+
+      CanHazPipeline.zipFeaturesAndWeights(sigDimensions,
+        invertFeatureFn(sigDimensions))
     } else {
-      Seq[(String, Float)]()
+      Seq[(Feature[_], Float)]()
     }
 
     // FIXME: return number of matched features in matchCount, not 1
@@ -83,18 +85,17 @@ case class IdibonLogisticRegressionModel(label: String,
       coeffs, this.lrm.intercept, this.lrm.coefficients, this.label)
     coeffs.close()
     //TODO: store other model metadata like training date, etc.
-    val featurePipelineMeta = featurePipeline.save(writer.within("featurePipeline"))
     Some(new JObject(List(
       JField("label", JString(this.label)),
       JField("version", JString(IdibonLogisticRegressionModel.FORMAT_VERSION)),
-      JField("feature-meta", featurePipelineMeta.getOrElse(JNothing))
+      savePipelineIfPresent(writer)
     )))
   }
 }
 
 object IdibonLogisticRegressionModel extends StrictLogging {
 
-  val FORMAT_VERSION = "0.0.1"
+  val FORMAT_VERSION = "0.0.2"
 
   /**
     * Static method to write our "libsvm" like format to a stream.
@@ -180,13 +181,10 @@ class IdibonLogisticRegressionModelLoader
     coefficients: Vector,
     uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(coeffs)
     coeffs.close()
-    val featureMeta = (config.get \ "feature-meta").extract[JObject]
-    val featurePipeline = new FeaturePipelineLoader().load(
-      engine, Some(reader.get.within("featurePipeline")), Some(featureMeta))
+    val pipeline = CanHazPipeline.loadPipelineIfPresent(engine, reader, config)
 
-    new IdibonLogisticRegressionModel(
-      label,
+    new IdibonLogisticRegressionModel(label,
       new IdibonSparkLogisticRegressionModelWrapper(uid, coefficients, intercept),
-      featurePipeline)
+      pipeline)
   }
 }

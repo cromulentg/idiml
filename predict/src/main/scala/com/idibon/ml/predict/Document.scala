@@ -1,5 +1,6 @@
 package com.idibon.ml.predict
 
+import com.idibon.ml.feature.Feature
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -9,16 +10,14 @@ import org.json4s._
   * This enables models to choose the best representation of the content for
   * the operations
   *
-  * @param json - The original document JSON object
-  * @param featureVector - the document transformed by a feature pipeline
-  * @param featureTable - a mapping of 1-hot feature encodings (dimensions in
-  *    featureVector) to human-readable representations
+  * @param json the original document JSON object
+  * @param transformed the document transformed by a feature pipeline, and
+  *   a function that inverts the mapping for an aribtrary vector
   */
 case class Document(json: JObject,
-  featureVector: Option[Vector],
-  featureTable: Option[Map[Int, String]])
+  transformed: Option[(Vector, (Vector) => Seq[Option[Feature[_]]])])
 
 object Document {
   /** Builder method for documents with only JSON representations */
-  def document(doc: JObject) = new Document(doc, None, None)
+  def document(doc: JObject) = new Document(doc, None)
 }

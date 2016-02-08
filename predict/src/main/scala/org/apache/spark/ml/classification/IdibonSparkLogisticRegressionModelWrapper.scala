@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
 class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
                                                 override val coefficients: Vector,
                                                 override val intercept: Double)
-  extends LogisticRegressionModel(uid, coefficients, intercept) with StrictLogging {
+    extends LogisticRegressionModel(uid, coefficients, intercept) with StrictLogging {
 
   /**
     * Makes this method Public for us to access.
@@ -62,19 +62,38 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
     * @param threshold
     * @return
     */
-  def getSignificantFeatures(features: Vector, threshold: Float): List[(Int, Float)] = {
-    val sigFeatures = new ListBuffer[(Int, Float)]
-    features.foreachActive((index, value) => {
+  def getSignificantDimensions(features: Vector, threshold: Float): SparseVector = {
+    /* pre-allocate the storage for the returned sparse vector; it is
+     * guaranteed to have no more active dimensions than the feature vector */
+    val indices = new Array[Int](features.numActives)
+    val probs = new Array[Double](features.numActives)
+    var count = 0
+
+    /* compute the probability of each feature individually; pre-allocate a 1-
+     * entry sparse vector to avoid repeated allocations. we don't care about
+     * how many times each feature appears in the feature vector, only the
+     * feature's absolute weight. */
+    val tempVector = Vectors.sparse(features.size, Array(0), Array(1.0)).toSparse
+
+    features.foreachActive((index, _) => {
       val weight = coefficients(index)
-      if (weight > 0.0 || weight < 0.0) {
-        // just predict the probabilty on one feature (this takes into account the intercept)
-        val prob = super.predictProbability(Vectors.sparse(features.size, Array(index), Array(value)))(1)
+      if (weight != 0.0 && !weight.isNaN) {
+        tempVector.indices(0) = index
+        // only look at the positive class (1)
+        val prob = super.predictProbability(tempVector)(1)
         if (prob >= threshold) {
-          sigFeatures += ((index, prob.toFloat))
+          indices(count) = index
+          probs(count) = prob
+          count += 1
         }
       }
     })
-    sigFeatures.result()
+
+    if (count != 0) {
+      Vectors.sparse(features.size, indices.take(count), probs.take(count)).toSparse
+    } else {
+      Vectors.zeros(features.size).toSparse
+    }
   }
 }
 

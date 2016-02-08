@@ -2,6 +2,7 @@ package com.idibon.ml.predict.ensemble
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
+import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict._
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
@@ -16,8 +17,10 @@ import org.json4s._
   * @param multiLabelModel This is the main action piece. Needs to return MultiLabelDocumentResult.
   * @param models Map of label -> model. Okay to be empty.
   */
-case class GangModel(models: Map[String, PredictModel[Classification]])
-    extends PredictModel[Classification]
+case class GangModel(
+  models: Map[String, PredictModel[Classification]],
+  override val featurePipeline: Option[FeaturePipeline] = None)
+    extends PredictModel[Classification] with CanHazPipeline
     with Archivable[GangModel, GangModelLoader] {
 
   /** Used to reduce multiple Classifications for a label into a final result */
@@ -41,7 +44,12 @@ case class GangModel(models: Map[String, PredictModel[Classification]])
     * @param options  Object of predict options.
     * @return
     */
-  def predict(document: Document, options: PredictOptions): Seq[Classification] = {
+  def predict(input: Document, options: PredictOptions): Seq[Classification] = {
+    /* if a feature pipeline exists for this gang model, apply it to the
+     * document and pass the results and the inversion function to the
+     * subordinate models */
+    val document = applyPipelineIfPresent(input)
+
     /* classify against all of the models, concatenate all of the results,
      * then group all of the partial results for each label together and
      * pass them to the reducer to compute the final result. return the
@@ -85,7 +93,8 @@ case class GangModel(models: Map[String, PredictModel[Classification]])
     // create JSON config to return
     val gangMetadata = JObject(List(
       JField("labels", labels),
-      JField("model-meta", JObject(modelMetadata))
+      JField("model-meta", JObject(modelMetadata)),
+      savePipelineIfPresent(writer)
     ))
     Some(gangMetadata)
   }
@@ -103,10 +112,15 @@ class GangModelLoader extends ArchiveLoader[GangModel] {
     *               call to { @link com.idibon.ml.feature.Archivable#save}
     * @return this object
     */
-  override def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): GangModel = {
+  override def load(engine: Engine, reader: Option[Reader],
+      config: Option[JObject]): GangModel = {
+
     implicit val formats = org.json4s.DefaultFormats
     val labels = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
+
+    val pipeline = CanHazPipeline.loadPipelineIfPresent(engine, reader, config)
+
     val models = labels.map(name => {
       // get model type
       val modelType =
@@ -117,6 +131,6 @@ class GangModelLoader extends ArchiveLoader[GangModel] {
         .reify[PredictModel[Classification]](modelType, engine, Some(reader.get.within(name)), indivMeta)
         .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Classification]]))
     }).toMap
-    new GangModel(models)
+    new GangModel(models, pipeline)
   }
 }

@@ -48,34 +48,43 @@ class IdibonSparkMLLIBLRWrapperSpec extends FunSpec
 
   describe("get significant features") {
     it("handles getting no significant features when all features map to zero weight value") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(1, 2, 4), Array(1.0, 1.0, 1.0)), 0.55f)
       result.size shouldBe 2
-      result(0) shouldBe (0, List())
-      result(1) shouldBe (1, List())
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.zeros(10))
     }
     it("handles getting no significant features when values are below the threshold") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(1, 2, 5), Array(1.0, 1.0, 1.0)), 0.90f)
       result.size shouldBe 2
-      result(0) shouldBe (0, List())
-      result(1) shouldBe (1, List())
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.zeros(10))
     }
     it("handles getting significant features when values are above the threshold") {
-      val result = model.getSignificantFeatures(
+      val result = model.getSignificantDimensions(
         Vectors.sparse(10, Array(0, 3, 5), Array(1.0, 1.0, 1.0)), 0.53f)
       result.size shouldBe 2
-      result(0) shouldBe (0, List())
-      result(1) shouldBe (1, List((0, 0.6456563f), (3, 0.6899745f)))
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3), Array(0.6456563062257954, 0.6899744811276125)))
     }
 
     it("handles n-ary case of getting significant features") {
-      val result = multinomialmodel.getSignificantFeatures(
+      val result = multinomialmodel.getSignificantDimensions(
         Vectors.sparse(10, Array(0, 3, 5), Array(1.0, 1.0, 1.0)), 0.50f)
       result.size shouldBe 3
-      result(0) shouldBe (0, List())
-      result(1) shouldBe (1, List((0, 0.5), (3, 0.5), (5, 0.5)))
-      result(2) shouldBe (2, List())
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.5, 0.5, 0.5)))
+      result(2) shouldBe (2, Vectors.zeros(10))
+    }
+
+    it("ignores feature counts when determining significance") {
+      val result = multinomialmodel.getSignificantDimensions(
+        Vectors.sparse(10, Array(0, 3, 5), Array(100.0, 100.0, 2.0)), 0.50f)
+      result.size shouldBe 3
+      result(0) shouldBe (0, Vectors.zeros(10))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.5, 0.5, 0.5)))
+      result(2) shouldBe (2, Vectors.zeros(10))
     }
   }
 

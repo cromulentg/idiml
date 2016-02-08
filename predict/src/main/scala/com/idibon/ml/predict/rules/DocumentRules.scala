@@ -117,7 +117,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
           (ruleWeightMap.getOrElse(x._1, -1.0) == 1.0 && whiteOrBlackRule) ||
           (ruleWeightMap.getOrElse(x._1, -1.0) == 0.0 && whiteOrBlackRule)))
         // get weights out
-        .map(x => (x._1 -> this.ruleWeightMap.getOrElse(x._1, -1.0f))).toList
+        .map(x => (RuleFeature(x._1) -> this.ruleWeightMap.getOrElse(x._1, -1.0f))).toList
     } else {
       List()
     }

@@ -101,17 +101,32 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
     * @param threshold
     * @return
     */
-  def getSignificantFeatures(features: Vector, threshold: Float): List[(Int, List[(Int, Float)])] = {
-    val sigFeatures = (0 until numClasses).map(i => (i, new ListBuffer[(Int, Float)]())).toMap
-    features.foreachActive((index, value) => {
-      val prob = this.predictProbability(Vectors.sparse(features.size, Array(index), Array(value)))
-      prob.foreachActive((labelIndex, probability) => {
-        if (probability >= threshold){
-          sigFeatures(labelIndex) += ((index, probability.toFloat))
+  def getSignificantDimensions(features: Vector, threshold: Float):
+      Seq[(Int, SparseVector)] = {
+
+    // pre-allocate some storage for the returned sparse vectors for each class
+    val indices = (0 until numClasses).map(_ => new Array[Int](features.numActives)).toArray
+    val probs = (0 until numClasses).map(_ => new Array[Double](features.numActives)).toArray
+    val counts = new Array[Int](numClasses)
+    val tempVector = Vectors.sparse(features.size, Array(0), Array(1.0)).toSparse
+
+    features.foreachActive((dimension, value) => {
+      tempVector.indices(0) = dimension
+      val classProbabilities = predictProbability(tempVector)
+      classProbabilities.foreachActive((classIndex, probability) => {
+        if (probability >= threshold) {
+          val count = counts(classIndex)
+          indices(classIndex)(count) = dimension
+          probs(classIndex)(count) = probability
+          counts(classIndex) = count + 1
         }
       })
     })
-    sigFeatures.map(x => (x._1, x._2.toList)).toList
+
+    counts.zipWithIndex.map({ case (actives, classIndex) => {
+      (classIndex, Vectors.sparse(features.size, indices(classIndex).take(actives),
+        probs(classIndex).take(actives)).toSparse)
+    }})
   }
 
   /**
