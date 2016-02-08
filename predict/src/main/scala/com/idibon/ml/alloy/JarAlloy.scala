@@ -34,7 +34,7 @@ import scala.collection.mutable
   * @author "Stefan Krawczyk <stefan@idibon.com>"
   */
 class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[String, PredictModel[T]],
-                                                                 uuids: Map[String, String],
+                                                                 uuids: Map[String, Label],
                                                                  validationExamples: Map[String, ValidationExamples[T]] = Map[String, ValidationExamples[T]]())
   extends BaseAlloy[T](models.values.toList.asJava, uuids.asJava, validationExamples.asJava)
       with StrictLogging {
@@ -70,9 +70,8 @@ class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[Str
     // create base writer that will be used to write concurrently to.
     val baseWriter = new JarWriter("", jos)
     // save labels map
-    saveMapOfData(
+    saveUUIDsToLabel(
       baseWriter,
-      this.uuids.map({ case (label, u) => (label, JString(u))}).toList,
       JarAlloy.LABEL_UUID)
     // save class types of models
     saveMapOfData(
@@ -115,6 +114,20 @@ class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[Str
   def saveMapOfData(writer: JarWriter, mapOfData: List[JField], resourceName: String): Unit = {
     val metaOutputStream = writer.resource(resourceName)
     Codec.String.write(metaOutputStream, compact(render(JObject(mapOfData))))
+    metaOutputStream.close()
+  }
+
+  /**
+    * Helper method to take a map represented as a List of JFields and save
+    * it to a particular resource at the position in the writer.
+    *
+    * @param writer
+    * @param resourceName
+    */
+  def saveUUIDsToLabel(writer: JarWriter, resourceName: String): Unit = {
+    val metaOutputStream = new FeatureOutputStream(writer.resource(resourceName))
+    Codec.VLuint.write(metaOutputStream, uuids.size)
+    uuids.foreach({ case (uuid, label) => label.save(metaOutputStream) })
     metaOutputStream.close()
   }
 
@@ -191,12 +204,13 @@ object JarAlloy extends StrictLogging {
     checkVersion(jar)
     // base reader
     val baseReader: JarReader = new JarReader("", jar)
-    val (labelModels, labelToUUID) = getModelsAndLabels(engine, baseReader)
+    val uuidToLabel = readUUIDsToLabel(baseReader, LABEL_UUID)
+    val labelModels = getModels(engine, baseReader)
     // instantiate other objects
     val examples = loadValidationResults[T](baseReader, labelModels.keys.toList, validationBuilder)
     jar.close()
     // return fresh instance
-    val alloy =  new JarAlloy(labelModels, labelToUUID, examples)
+    val alloy =  new JarAlloy(labelModels, uuidToLabel, examples)
     alloy.validate()
     return alloy
   }
@@ -216,10 +230,12 @@ object JarAlloy extends StrictLogging {
     checkVersion(jar)
     // base reader
     val baseReader: JarReader = new JarReader("", jar)
-    val (labelModels, labelToUUID) = getModelsAndLabels(engine, baseReader)
+    // get labels, classes and model metadata
+    val uuidToLabel = readUUIDsToLabel(baseReader, LABEL_UUID)
+    val labelModels = getModels(engine, baseReader)
     jar.close()
     // return fresh instance
-    return new JarAlloy(labelModels, labelToUUID)
+    return new JarAlloy(labelModels, uuidToLabel)
   }
 
   /**
@@ -245,17 +261,14 @@ object JarAlloy extends StrictLogging {
     * @tparam T
     * @return
     */
-  private def getModelsAndLabels[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
-                                                                                   baseReader: JarReader):
-  (Map[String, PredictModel[T]], Map[String, String]) = {
+  private def getModels[T <: PredictResult with Buildable[T, Builder[T]]](engine: Engine,
+                                                                          baseReader: JarReader):
+  Map[String, PredictModel[T]] = {
     implicit val formats = org.json4s.DefaultFormats
-    // get labels, classes and model metadata
-    val labelToUUIDMap = readMapOfData(baseReader, LABEL_UUID).extract[Map[String, String]]
     val modelClassesMap = readMapOfData(baseReader, MODEL_CLASS).extract[Map[String, String]]
     val modelMetadata = readMapOfData(baseReader, MODEL_META)
     // using reflection create that class and call the load method and reify models.
     val labelModels = new mutable.HashMap[String, PredictModel[T]]
-    val labelToUUID = new mutable.HashMap[String, String]
     for ((label, modelClass) <- modelClassesMap) {
       // Reify the model.
       val model = ArchiveLoader.reify[PredictModel[T]](
@@ -264,9 +277,8 @@ object JarAlloy extends StrictLogging {
         Some((modelMetadata \ label).extract[JObject])).get
       // have to create these maps this way because we're dealing with Java in the end.
       labelModels.put(label, model)
-      labelToUUID.put(label, labelToUUIDMap.getOrElse(label, ""))
     }
-    (labelModels.toMap, labelToUUID.toMap)
+    labelModels.toMap
   }
 
   /**
@@ -282,6 +294,25 @@ object JarAlloy extends StrictLogging {
     val rawJSON = Codec.String.read(metaInputStream)
     metaInputStream.close()
     return parse(rawJSON).asInstanceOf[JObject]
+  }
+
+  /**
+    * Helper method to read in a UUIDs to Label mapping.
+    *
+    * @param baseReader
+    * @param resourceName
+    * @return
+    */
+  private def readUUIDsToLabel(baseReader: JarReader, resourceName: String): Map[String, Label] = {
+    val metaInputStream = new FeatureInputStream(baseReader.resource(resourceName))
+    val builder = new LabelBuilder()
+    val size = Codec.VLuint.read(metaInputStream)
+    val labels = (0 until size).map(_ => {
+      val label = builder.build(metaInputStream)
+      (label.uuid.toString, label)
+    })
+    metaInputStream.close()
+    return labels.toMap
   }
 
   /**

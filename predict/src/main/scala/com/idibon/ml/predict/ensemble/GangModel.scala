@@ -39,7 +39,7 @@ case class GangModel(
     *
     * The model needs to handle "featurization" here.
     *
-    * @param document the JObject to pull from.
+    * @param input the Document to pull from.
     * @param options  Object of predict options.
     * @return
     */

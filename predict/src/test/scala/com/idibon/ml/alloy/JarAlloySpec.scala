@@ -59,7 +59,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       val docRules2 = new DocumentRules("alabel", List(("is", 0.5f)))
       val random = new Random().nextLong()
       val labelToModel = Map("gang" -> new GangModel(Map("0" -> docRules1, "1" -> docRules2)))
-      val alloy = new JarAlloy(labelToModel, Map[String, String]())
+      val alloy = new JarAlloy(labelToModel, Map[String, Label]())
       tempFilename = s"test_${random}.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit

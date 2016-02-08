@@ -8,7 +8,7 @@ import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.predict.{Document, PredictOptionsBuilder}
+import com.idibon.ml.predict.{Label, Document, PredictOptionsBuilder}
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s.JsonDSL._
@@ -55,7 +55,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
-      val alloy = new JarAlloy(Map("0" -> model), Map[String, String]())
+      val alloy = new JarAlloy(Map("0" -> model), Map[String, Label]())
       tempFilename = "save123.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
