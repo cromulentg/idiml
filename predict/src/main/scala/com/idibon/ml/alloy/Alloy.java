@@ -1,5 +1,6 @@
 package com.idibon.ml.alloy;
 
+import com.idibon.ml.predict.Label;
 import com.idibon.ml.predict.PredictOptions;
 import com.idibon.ml.predict.PredictResult;
 import org.json4s.JsonAST;
@@ -81,4 +82,11 @@ public interface Alloy<T extends PredictResult> {
      * @throws ValidationError that will contain details of what went wrong.
      */
     public void validate() throws ValidationError;
+
+    /**
+     * Translates a UUID of a label into a human readable string.
+     * @param uuid the UUID for a label.
+     * @return human readable label object.
+     */
+    public Label translateUUID(String uuid);
 }

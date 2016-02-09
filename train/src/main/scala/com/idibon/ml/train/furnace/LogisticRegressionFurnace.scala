@@ -2,7 +2,7 @@ package com.idibon.ml.train.furnace
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
-import com.idibon.ml.predict.Classification
+import com.idibon.ml.predict.{PredictModel, Classification}
 import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel}
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
@@ -229,5 +229,44 @@ class HoldOutSetLogisticRegressionFurnace(builder: HoldOutSetLogisticRegressionF
       // 80% of the data will be used for training and the remaining 20% for validation.
       .setTrainRatio(trainingSplit)
     trainValidationSplit
+  }
+}
+
+/**
+  * Creates individual furnaces per label.
+  *
+  * @param builder
+  */
+class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
+  extends Furnace[Classification] with StrictLogging {
+  val engine: Engine = builder.engine
+  val labelFurnaces: Map[String, Furnace[Classification]] = builder.builtFurnaces
+  /**
+    * Function fits a model to data in the dataframe.
+    *
+    * @param label
+    * @param data
+    * @param pipeline
+    * @return
+    */
+  override def fit(label: String,
+                   data: DataFrame,
+                   pipeline: Option[FeaturePipeline]): PredictModel[Classification] = {
+    labelFurnaces(label).fit(label, data, pipeline)
+  }
+
+  /**
+    * Function is used for featurizing data.
+    *
+    * @param rawData
+    * @param dataGen
+    * @param featurePipeline
+    * @return
+    */
+  override def featurizeData(rawData: () => TraversableOnce[JObject],
+                             dataGen: SparkDataGenerator,
+                             featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]] = {
+    // produces data frames
+    dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
   }
 }

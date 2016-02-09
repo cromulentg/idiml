@@ -67,7 +67,14 @@ object Predict extends Tool with StrictLogging {
               if (labels.isEmpty) {
                 labels = Some(prediction.map(_.label).sortWith(_ < _))
                 output.printRecord((Seq("Name", "Content") ++
-                  labels.get.map(l => List(l, s"features[$l]")).flatten).asJava)
+                  labels.get.flatMap(l => {
+                    // guard against case in dev where we don't have UUIDs
+                    val humanLabel = model.translateUUID(l) match {
+                      case label: Label => label.name
+                      case _ => l
+                    }
+                    List(humanLabel, s"features[$humanLabel]")
+                  })).asJava)
               }
               // output the prediction result and original content in JSON
               val labelResults = prediction.sortWith(_.label < _.label).map(r => {

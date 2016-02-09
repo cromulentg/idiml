@@ -2,10 +2,7 @@ package com.idibon.ml.alloy;
 
 import com.idibon.ml.feature.Buildable;
 import com.idibon.ml.feature.Builder;
-import com.idibon.ml.predict.Document;
-import com.idibon.ml.predict.PredictModel;
-import com.idibon.ml.predict.PredictOptions;
-import com.idibon.ml.predict.PredictResult;
+import com.idibon.ml.predict.*;
 import org.json4s.JsonAST;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +24,14 @@ public abstract class BaseAlloy<T extends PredictResult & Buildable<T, Builder<T
 
     private final List<PredictModel<T>> _models;
 
-    private final Map<String, String> _labelToUUID;
+    private final Map<String, Label> _uuidToLabel;
 
     private final Map<String, ValidationExamples<T>> _validationExamples;
 
-    public BaseAlloy(List<PredictModel<T>> models, Map<String, String> labelToUUID,
+    public BaseAlloy(List<PredictModel<T>> models, Map<String, Label> uuidToLabel,
         Map<String, ValidationExamples<T>> validationExamples) {
         _models = Collections.unmodifiableList(models);
-        _labelToUUID = Collections.unmodifiableMap(labelToUUID);
+        _uuidToLabel = Collections.unmodifiableMap(uuidToLabel);
         _validationExamples = validationExamples;
     }
 
@@ -45,5 +42,9 @@ public abstract class BaseAlloy<T extends PredictResult & Buildable<T, Builder<T
         return _models.stream()
             .flatMap(m -> seqAsJavaList(m.predict(document, options)).stream())
             .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override public Label translateUUID(String uuid) {
+        return _uuidToLabel.get(uuid);
     }
 }

@@ -26,7 +26,8 @@ case class IdibonLogisticRegressionModel(label: String,
 
   /** The method used to predict from a vector of features.
     *
-    * @param features Vector of features to use for prediction.
+    * @param featureVec Vector of features to use for prediction.
+    * @param invertFeatureFn function to map vector dimensions to features
     * @param options Object of predict options.
     * @return a single PredictResult for the label classified by this model
     */

@@ -1,0 +1,11 @@
+{
+  "uuid_to_label": {
+    "albanian": "albanian",
+    "russian": "russian",
+    "greek": "greek",
+    "french": "french",
+    "hungarian": "hungarian",
+    "english": "english"
+  },
+  "rules": []
+}

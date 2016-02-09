@@ -57,7 +57,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
       val labelToModel = Map(("alabel" -> model))
-      val alloy = new JarAlloy(labelToModel, Map[String, String]())
+      val alloy = new JarAlloy(labelToModel, Map[String, Label]())
       tempFilename = "save.jar"
       alloy.save(tempFilename)
       // let's make sure to delete the file on exit
