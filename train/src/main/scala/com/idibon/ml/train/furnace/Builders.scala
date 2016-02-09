@@ -269,6 +269,6 @@ case class PerLabelFurnaceBuilder(private[furnace] var labelFurances: Map[String
   override def build(engine: Engine): Furnace[Classification] = {
     this.engine = engine
     builtFurnaces = labelFurances.map({case (l, f) => (l, f.build(engine))})
-    new PerLabelFurance(this)
+    new PerLabelFurnace(this)
   }
 }

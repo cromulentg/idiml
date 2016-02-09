@@ -237,10 +237,10 @@ class HoldOutSetLogisticRegressionFurnace(builder: HoldOutSetLogisticRegressionF
   *
   * @param builder
   */
-class PerLabelFurance(builder: PerLabelFurnaceBuilder)
+class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
   extends Furnace[Classification] with StrictLogging {
   val engine: Engine = builder.engine
-  val labelFurances: Map[String, Furnace[Classification]] = builder.builtFurnaces
+  val labelFurnaces: Map[String, Furnace[Classification]] = builder.builtFurnaces
   /**
     * Function fits a model to data in the dataframe.
     *
@@ -252,7 +252,7 @@ class PerLabelFurance(builder: PerLabelFurnaceBuilder)
   override def fit(label: String,
                    data: DataFrame,
                    pipeline: Option[FeaturePipeline]): PredictModel[Classification] = {
-    labelFurances(label).fit(label, data, pipeline)
+    labelFurnaces(label).fit(label, data, pipeline)
   }
 
   /**
