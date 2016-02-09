@@ -3,6 +3,7 @@ package com.idibon.ml.alloy;
 import java.io.*;
 import java.util.List;
 
+import com.idibon.ml.predict.Label;
 import com.idibon.ml.predict.PredictOptions;
 import com.idibon.ml.predict.Classification;
 import org.json4s.JsonAST;
@@ -43,6 +44,10 @@ public class IntentAlloy implements Alloy<Classification> {
     }
 
     @Override public void validate() throws ValidationError {
+    }
+
+    @Override public Label translateUUID(String uuid) {
+        return null;
     }
 
     class IntentReader implements Alloy.Reader {

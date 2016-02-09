@@ -43,4 +43,8 @@ public abstract class BaseAlloy<T extends PredictResult & Buildable<T, Builder<T
             .flatMap(m -> seqAsJavaList(m.predict(document, options)).stream())
             .collect(java.util.stream.Collectors.toList());
     }
+
+    @Override public Label translateUUID(String uuid) {
+        return _uuidToLabel.get(uuid);
+    }
 }
