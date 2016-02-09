@@ -68,7 +68,11 @@ object Predict extends Tool with StrictLogging {
                 labels = Some(prediction.map(_.label).sortWith(_ < _))
                 output.printRecord((Seq("Name", "Content") ++
                   labels.get.flatMap(l => {
-                    val humanLabel = model.translateUUID(l).name
+                    // guard against case in dev where we don't have UUIDs
+                    val humanLabel = model.translateUUID(l) match {
+                      case label: Label => label.name
+                      case _ => l
+                    }
                     List(humanLabel, s"features[$humanLabel]")
                   })).asJava)
               }
