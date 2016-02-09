@@ -38,7 +38,7 @@ object Train extends Tool with StrictLogging {
     // get the config file else the default one
     val configFileStream = if (cli.getOptionValue('c', "").isEmpty()) {
       new java.io.InputStreamReader(getClass.getClassLoader
-        .getResourceAsStream("trainerConfigs/base_kbinary_per_k_xval_config.json"))
+        .getResourceAsStream("trainerConfigs/base_kbinary_xval_config.json"))
     } else {
       new java.io.FileReader(cli.getOptionValue('c'))
     }

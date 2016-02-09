@@ -1,0 +1,10 @@
+{
+  "uuid_to_label": {
+    "Neutral0": "Neutral0",
+    "Positive3": "Positive3",
+    "Positive1": "Positive1",
+    "Negative1": "Negative1",
+    "Negative3": "Negative3"
+  },
+  "rules": []
+}
