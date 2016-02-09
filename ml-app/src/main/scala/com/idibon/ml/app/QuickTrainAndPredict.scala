@@ -1,11 +1,8 @@
 package com.idibon.ml.app
 
-import com.idibon.ml.app.Train._
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
-import com.idibon.ml.train.alloy.{AlloyFactory, MultiClass1FP}
-import com.idibon.ml.train.datagenerator.{SparkDataGeneratorFactory, MultiClassDataFrameGenerator}
-import com.idibon.ml.train.furnace.{FurnaceFactory}
+import com.idibon.ml.train.alloy.{AlloyFactory}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -51,19 +48,15 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val trainingJobJValue = parse(Source.fromFile(configFilePath).reader())
     logger.info(s"Reading in Config ${writePretty(trainingJobJValue)}")
     val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
+    val line = Source.fromFile(cli.getOptionValue('r'))
+      .getLines().foldLeft(new StringBuilder())((bld, jsn) => bld.append(jsn)).mkString
     val model = trainer.trainAlloy(
       () => { // training data
       Source.fromFile(cli.getOptionValue('i'))
         .getLines.map(line => parse(line).extract[JObject])
       },
-      () => { // rule data
-        if (cli.hasOption('r')) {
-          Source.fromFile(cli.getOptionValue('r'))
-            .getLines.map(line => parse(line).extract[JObject])
-        } else {
-          List()
-        }
-      },
+        parse(line).extract[JObject]
+      ,
       Some(trainingJobJValue.extract[JObject])
     )
     val elapsed = System.currentTimeMillis - startTime

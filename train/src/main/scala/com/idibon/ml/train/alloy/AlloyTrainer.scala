@@ -1,5 +1,7 @@
 package com.idibon.ml.train.alloy
 
+import java.util.UUID
+
 import com.idibon.ml.alloy.{ValidationExamples, ValidationExample, JarAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict._
@@ -43,7 +45,7 @@ trait AlloyTrainer {
     * @return an Alloy with the trained model
     */
   def trainAlloy(docs: () => TraversableOnce[JObject],
-                 labelAndRules: () => TraversableOnce[JObject],
+                 labelAndRules: JObject,
                  config: Option[JObject]): Try[Alloy[Classification]]
 
   /**
@@ -79,7 +81,15 @@ trait AlloyTrainer {
   def uuidToLabelGenerator(labelInfo: JObject): Map[String, Label] = {
     implicit val formats = org.json4s.DefaultFormats
     labelInfo.extract[Map[String, String]]
-      .map{ case (uuid, label) => (uuid, new Label(uuid, label))}
+      .map{ case (uuid, label) => {
+        val l = try {
+          new Label(uuid, label)
+        } catch {
+          // this case will happen in dev settings
+          case e: IllegalArgumentException => new Label(UUID.randomUUID(), label)
+        }
+        (uuid, l)
+      }}
   }
 
   /**
@@ -140,12 +150,11 @@ abstract class BaseTrainer(protected val engine: Engine,
     * @return an Alloy with the trained model
     */
   override def trainAlloy(docs: () => TraversableOnce[JObject],
-                          labeldAndRules: () => TraversableOnce[JObject],
+                          labeldAndRules: JObject,
                           config: Option[JObject]): Try[Alloy[Classification]] = {
     implicit val formats = org.json4s.DefaultFormats
-    val labelAndRulesConfig = labeldAndRules().toIterator.next() // should only be one item.
-    val rules = (labelAndRulesConfig \ "rules").extract[JArray]
-    val uuidTolabel = (labelAndRulesConfig \ "uuid_to_label").extract[JObject]
+    val rules = (labeldAndRules \ "rules").extract[JArray]
+    val uuidTolabel = (labeldAndRules \ "uuid_to_label").extract[JObject]
     // Create uuidsByLabel TODO: Figure out how this should be passed in.
     val uuidsByLabel = uuidToLabelGenerator(uuidTolabel)
     // Parse Rules

@@ -31,7 +31,6 @@ object Train extends Tool with StrictLogging {
 
   def run(engine: com.idibon.ml.common.Engine, argv: Array[String]) {
     implicit val formats = org.json4s.DefaultFormats
-
     val cli = parseCommandLine(argv)
     if (!cli.hasOption('r')) throw new IllegalArgumentException("Error: Labels and rules configuration not found.")
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
@@ -39,7 +38,7 @@ object Train extends Tool with StrictLogging {
     // get the config file else the default one
     val configFileStream = if (cli.getOptionValue('c', "").isEmpty()) {
       new java.io.InputStreamReader(getClass.getClassLoader
-        .getResourceAsStream("trainerConfigs/base_kbinary_xval_config.json"))
+        .getResourceAsStream("trainerConfigs/base_kbinary_per_k_xval_config.json"))
     } else {
       new java.io.FileReader(cli.getOptionValue('c'))
     }
@@ -48,6 +47,8 @@ object Train extends Tool with StrictLogging {
     logger.info(s"Reading in Config ${writePretty(trainingJobJValue)} from ${cli.getOptionValue('c')}")
     val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
     try {
+      val line = Source.fromFile(cli.getOptionValue('r'))
+        .getLines().foldLeft(new StringBuilder())((bld, jsn) => bld.append(jsn)).mkString
       val startTime = System.currentTimeMillis()
       trainer.trainAlloy(
         () => {
@@ -55,11 +56,8 @@ object Train extends Tool with StrictLogging {
           Source.fromFile(cli.getOptionValue('i'))
             .getLines.map(line => parse(line).extract[JObject])
         },
-        () => {
-          // rule data
-          Source.fromFile(cli.getOptionValue('r'))
-            .getLines.map(line => parse(line).extract[JObject])
-        },
+          parse(line).extract[JObject]
+        ,
         Some(trainingJobJValue.extract[JObject])
       ).map(alloy => alloy.save(cli.getOptionValue('o')))
         .map(x => {
