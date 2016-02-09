@@ -22,7 +22,7 @@ object Train extends Tool with StrictLogging {
     val options = (new org.apache.commons.cli.Options)
       .addOption("i", "input", true, "Input file with training data")
       .addOption("o", "output", true, "Output alloy file")
-      .addOption("r", "rules", true, "Input file with rules data")
+      .addOption("r", "label-rules", true, "Input file with label and rules data. Required.")
       .addOption("w", "wiggle-wiggle", false, "Wiggle Wiggle")
       .addOption("c", "config", true, "JSON Config file for creating a trainer.")
 
@@ -33,6 +33,7 @@ object Train extends Tool with StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
+    if (!cli.hasOption('r')) throw new IllegalArgumentException("Error: Labels and rules configuration not found.")
     val easterEgg = if (cli.hasOption('w')) Some(new WiggleWiggle()) else None
     easterEgg.map(egg => new Thread(egg).start)
     // get the config file else the default one
@@ -56,12 +57,8 @@ object Train extends Tool with StrictLogging {
         },
         () => {
           // rule data
-          if (cli.hasOption('r')) {
-            Source.fromFile(cli.getOptionValue('r'))
-              .getLines.map(line => parse(line).extract[JObject])
-          } else {
-            List()
-          }
+          Source.fromFile(cli.getOptionValue('r'))
+            .getLines.map(line => parse(line).extract[JObject])
         },
         Some(trainingJobJValue.extract[JObject])
       ).map(alloy => alloy.save(cli.getOptionValue('o')))
