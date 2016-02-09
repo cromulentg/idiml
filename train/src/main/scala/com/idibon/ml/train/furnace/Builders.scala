@@ -29,7 +29,8 @@ object BuilderDefaults {
     classOf[MultiClassLRFurnaceBuilder],
     classOf[SimpleLogisticRegressionBuilder],
     classOf[XValLogisticRegressionBuilder],
-    classOf[HoldOutSetLogisticRegressionFurnaceBuilder])
+    classOf[HoldOutSetLogisticRegressionFurnaceBuilder],
+    classOf[PerLabelFurnaceBuilder])
   /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
        The only requirement is that has a 'jsonClass' field with one of the names of the classes
        below.*/
@@ -153,9 +154,9 @@ trait HasTrainingDevSplit { self =>
   * @param elasticNetParam
   */
 case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
-                                           private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                           private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS.slice(0,1),
                                            private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
-                                           private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS)
+                                           private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS.slice(0, 1))
   extends FurnaceBuilder[Classification]
     with HasStochasticOptimizer
     with HasRegularization
@@ -252,5 +253,22 @@ case class HoldOutSetLogisticRegressionFurnaceBuilder(private[furnace] var maxIt
   override def build(engine: Engine): HoldOutSetLogisticRegressionFurnace = {
     this.engine = engine
     new HoldOutSetLogisticRegressionFurnace(this)
+  }
+}
+
+case class PerLabelFurnaceBuilder(private[furnace] var labelFurances: Map[String, FurnaceBuilder[Classification]] = Map())
+  extends FurnaceBuilder[Classification] {
+  private[furnace] var builtFurnaces: Map[String, Furnace[Classification]] = Map()
+  /**
+    * Each builder needs to have a one of these that takes an engine and
+    * returns a furnace
+    *
+    * @param engine
+    * @return
+    */
+  override def build(engine: Engine): Furnace[Classification] = {
+    this.engine = engine
+    builtFurnaces = labelFurances.map({case (l, f) => (l, f.build(engine))})
+    new PerLabelFurance(this)
   }
 }
