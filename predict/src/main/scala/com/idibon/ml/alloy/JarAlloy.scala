@@ -8,6 +8,7 @@ import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST._
 import org.json4s.native.JsonMethods.{parse, render, compact}
 import com.idibon.ml.common.Engine
+import org.json4s.native.Serialization.{writePretty}
 import org.json4s.JsonDSL._
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
@@ -32,10 +33,19 @@ import scala.collection.mutable
   * https://docs.oracle.com/javase/8/docs/api/java/util/jar/package-summary.html - code
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>"
+  *
+  * @param models Map of models we delegate to
+  * @param uuids the mapping of label UUID to human readable form
+  * @param validationExamples Optional map of examples with predictions to store in the model
+  *                           for validation.
+  * @param jsonConfig Optional JSONObject of configuration in JSON form. i.e. the Config that trained
+  *                   this alloy.
+  * @tparam T The type of result we want to return.
   */
 class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[String, PredictModel[T]],
                                                                  uuids: Map[String, Label],
-                                                                 validationExamples: Map[String, ValidationExamples[T]] = Map[String, ValidationExamples[T]]())
+                                                                 validationExamples: Map[String, ValidationExamples[T]] = Map[String, ValidationExamples[T]](),
+                                                                 jsonConfig: Option[JObject] = None)
   extends BaseAlloy[T](models.values.toList.asJava, uuids.asJava, validationExamples.asJava)
       with StrictLogging {
 
@@ -69,6 +79,8 @@ class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[Str
     val jos = new JarOutputStream(new FileOutputStream(file), manifest)
     // create base writer that will be used to write concurrently to.
     val baseWriter = new JarWriter("", jos)
+    // save configuration if it exists
+    saveTrainingConfig(baseWriter)
     // save labels map
     saveUUIDsToLabel(
       baseWriter,
@@ -90,6 +102,23 @@ class JarAlloy[T <: PredictResult with Buildable[T, Builder[T]]](models: Map[Str
       JarAlloy.MODEL_META)
     // TODO: save more schtuff about this task
     jos.close()
+  }
+
+  /**
+    * Helpr to save training configuration if it was passed in.
+    *
+    * @param baseWriter
+    */
+  def saveTrainingConfig(baseWriter: JarWriter): Unit = {
+    implicit val formats = org.json4s.DefaultFormats
+    jsonConfig match {
+      case Some(jconfig) => {
+        val out = baseWriter.resource(JarAlloy.TRAINING_CONFIG)
+        Codec.String.write(out, writePretty(jconfig))
+        out.close()
+      }
+      case _ => {}
+    }
   }
 
   /**
@@ -184,6 +213,8 @@ object JarAlloy extends StrictLogging {
   val VALIDATION_LOCATION: String = "validationExamples"
 
   val VALIDATION_LOCATION_SAFEGUARD: String = "number"
+
+  val TRAINING_CONFIG: String = "training-config.json"
 
 
   /**

@@ -167,7 +167,7 @@ abstract class BaseTrainer(protected val engine: Engine,
       })
       // create Alloy
       .map { case (gang, validationResults) => {
-        new JarAlloy(Map("gang" -> gang), uuidsByLabel, Map("gang" -> validationResults))
+        new JarAlloy(Map("gang" -> gang), uuidsByLabel, Map("gang" -> validationResults), config)
       }
     }
   }
