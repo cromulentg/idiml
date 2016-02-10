@@ -29,12 +29,8 @@ class FeatureOutputStream(out: OutputStream, maxCacheSize: Int = 128)
 
   private[this] val _classNameCache = HashMap[String, Int]()
 
-  /** Writes a Feature to the OutputStream.
-    *
-    * @param f - Feature to write
-    */
-  def writeFeature(f: Feature[_] with Buildable[_, _]) {
-    val className = f.getClass.getName
+  def writeBuildable(b: Buildable[_, _]) {
+    val className = b.getClass.getName
     _classNameCache.get(className) match {
       case Some(index) => {
         writeByte(index - 128)
@@ -52,7 +48,15 @@ class FeatureOutputStream(out: OutputStream, maxCacheSize: Int = 128)
         _classNameCache += (className -> index)
       }
     }
-    f.save(this)
+    b.save(this)
+  }
+
+  /** Writes a Feature to the OutputStream.
+    *
+    * @param f - Feature to write
+    */
+  def writeFeature(f: Feature[_] with Buildable[_, _]) {
+    writeBuildable(f)
   }
 }
 
@@ -62,13 +66,9 @@ class FeatureOutputStream(out: OutputStream, maxCacheSize: Int = 128)
   */
 class FeatureInputStream(in: InputStream) extends DataInputStream(in) {
 
-  private[this] val _classNameCache = HashMap[Int, Builder[Feature[_]]]()
+  private[this] val _classNameCache = HashMap[Int, Builder[Buildable[_, _]]]()
 
-  /** Reads a Feature from the InputStream
-    *
-    * @return - the loaded feature
-    */
-  def readFeature: Feature[_] = {
+  def readBuildable: Buildable[_, _] = {
     val builder = readByte match {
       case cached if cached < 0 => _classNameCache(128 + cached)
       case uncached => {
@@ -76,11 +76,19 @@ class FeatureInputStream(in: InputStream) extends DataInputStream(in) {
           Class.forName(Codec.String.read(this)))
 
         _classNameCache += (uncached.toInt ->
-          args.last.newInstance.asInstanceOf[Builder[Feature[_]]])
+          args.last.newInstance.asInstanceOf[Builder[Buildable[_, _]]])
 
         _classNameCache(uncached)
       }
     }
     builder.build(this)
+  }
+
+  /** Reads a Feature from the InputStream
+    *
+    * @return - the loaded feature
+    */
+  def readFeature: Feature[_] = {
+    this.readBuildable.asInstanceOf[Feature[_]]
   }
 }
