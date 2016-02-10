@@ -16,10 +16,10 @@
         1.0E-4
       ],
       "elasticNetParam": [
-        0.9,
-        1.0
+        0.0,
+        0.1
       ],
-      "numFolds": 10
+      "numFolds": 8
     }
   },
   "pipelineConfig": {
