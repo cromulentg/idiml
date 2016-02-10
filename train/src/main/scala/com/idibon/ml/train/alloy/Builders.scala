@@ -17,7 +17,8 @@ object BuilderDefaults {
   // create a single JSON config that gets split into the respective builders.
   implicit val formats = Serialization.formats(ShortTypeHints(classHints ++
     com.idibon.ml.train.datagenerator.BuilderDefaults.classHints ++
-    com.idibon.ml.train.furnace.BuilderDefaults.classHints
+    com.idibon.ml.train.furnace.BuilderDefaults.classHints ++
+    com.idibon.ml.train.datagenerator.scales.BuilderDefaults.classHints
   ))
 }
 
