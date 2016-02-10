@@ -85,5 +85,6 @@ case class DummyModel(training: Option[Seq[TrainingSummary]] = None) extends Pre
   val reifiedType = classOf[DummyModel]
   override def predict(document: Document, options: PredictOptions): Seq[Classification] = ???
   override def getFeaturesUsed(): Vector = ???
+  override def getEvaluationMetric(): Double = ???
   override def getTrainingSummary(): Option[Seq[TrainingSummary]] = training
 }

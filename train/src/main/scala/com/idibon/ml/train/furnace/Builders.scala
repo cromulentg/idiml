@@ -27,8 +27,8 @@ object BuilderDefaults {
 
   val classHints = List(
     classOf[MultiClassLRFurnaceBuilder],
-    classOf[SimpleLogisticRegressionBuilder],
-    classOf[XValLogisticRegressionBuilder],
+    classOf[SimpleLogisticRegressionFurnaceBuilder],
+    classOf[XValLogisticRegressionFurnaceBuilder],
     classOf[HoldOutSetLogisticRegressionFurnaceBuilder],
     classOf[PerLabelFurnaceBuilder])
   /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
@@ -153,7 +153,7 @@ trait HasTrainingDevSplit { self =>
   * @param tolerance
   * @param elasticNetParam
   */
-case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
+case class SimpleLogisticRegressionFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
                                            private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS.slice(0,1),
                                            private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
                                            private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS.slice(0, 1))
@@ -169,9 +169,9 @@ case class SimpleLogisticRegressionBuilder(private[furnace] var maxIterations: I
     * @param engine
     * @return
     */
-  override def build(engine: Engine): SimpleLogisticRegression = {
+  override def build(engine: Engine): SimpleLogisticRegressionFurnace = {
     this.engine = engine
-    new SimpleLogisticRegression(this)
+    new SimpleLogisticRegressionFurnace(this)
   }
 }
 
@@ -211,7 +211,7 @@ case class MultiClassLRFurnaceBuilder(private[furnace] var maxIterations: Int = 
   * @param elasticNetParam
   * @param numFolds
   */
-case class XValLogisticRegressionBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
+case class XValLogisticRegressionFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
                                          private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
                                          private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
                                          private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
@@ -223,9 +223,9 @@ case class XValLogisticRegressionBuilder(private[furnace] var maxIterations: Int
     with HasXValidation {
 
 
-  override def build(engine: Engine): XValLogisticRegression = {
+  override def build(engine: Engine): XValLogisticRegressionFurnace = {
     this.engine = engine
-    new XValLogisticRegression(this)
+    new XValLogisticRegressionFurnace(this)
   }
 }
 
@@ -256,7 +256,7 @@ case class HoldOutSetLogisticRegressionFurnaceBuilder(private[furnace] var maxIt
   }
 }
 
-case class PerLabelFurnaceBuilder(private[furnace] var labelFurances: Map[String, FurnaceBuilder[Classification]] = Map())
+case class PerLabelFurnaceBuilder(private[furnace] var labelFurnaces: Map[String, FurnaceBuilder[Classification]] = Map())
   extends FurnaceBuilder[Classification] {
   private[furnace] var builtFurnaces: Map[String, Furnace[Classification]] = Map()
   /**
@@ -268,7 +268,7 @@ case class PerLabelFurnaceBuilder(private[furnace] var labelFurances: Map[String
     */
   override def build(engine: Engine): Furnace[Classification] = {
     this.engine = engine
-    builtFurnaces = labelFurances.map({case (l, f) => (l, f.build(engine))})
+    builtFurnaces = labelFurnaces.map({case (l, f) => (l, f.build(engine))})
     new PerLabelFurnace(this)
   }
 }

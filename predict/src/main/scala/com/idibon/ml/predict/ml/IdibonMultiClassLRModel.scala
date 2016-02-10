@@ -43,9 +43,17 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
   }
 
   /**
+    * This method returns the metric that best represents model quality after training
+    *
+    * @return Double (e.g. AreaUnderROC)
+    */
+  def getEvaluationMetric(): Double = ???
+
+  /**
     * The method used to predict from a vector of features.
     *
     * @param featVec Vector of features to use for prediction.
+    * @param invertFeatureFn
     * @param options  Object of predict options.
     * @return
     */

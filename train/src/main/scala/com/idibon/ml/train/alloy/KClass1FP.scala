@@ -46,13 +46,13 @@ class KClass1FP(builder: KClass1FPBuilder)
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
     // create featurized data once since we only have one feature pipeline
-    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline)
+    val featurizedData = furnace.featurizeData(rawData, dataGen, List(primedPipeline))
     val featuresUsed = new util.HashSet[Int](100000)
     // delegate to the furnace for producing MLModels for each label
-    val models = featurizedData match {
+    val models = featurizedData.head match {
       case Some(featureData) => featureData.par.map {
         case (label, data) => {
-          val model = furnace.fit(label, data, None)
+          val model = furnace.fit(label, List(data), None)
           (label, model, model.getFeaturesUsed())
         }
       }.toList.map({ // remove parallelism and gather all features used.

@@ -51,11 +51,11 @@ class SimpleLogisticRegressionSpec extends FunSpec
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val simple = new SimpleLogisticRegressionBuilder().build(engine)
+      val simple = new SimpleLogisticRegressionFurnaceBuilder().build(engine)
       val features = simple.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
@@ -123,11 +123,11 @@ class XValLogisticRegressionSpec extends FunSpec
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val xval = new XValLogisticRegressionBuilder().build(engine)
+      val xval = new XValLogisticRegressionFurnaceBuilder().build(engine)
       val features = xval.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
@@ -150,11 +150,11 @@ class XValLogisticRegressionSpec extends FunSpec
   }
 
   describe("fit tests") {
-    //TODO: Once we stabalize on parameter ingestion.
+    //TODO: Once we stabilize on parameter ingestion.
   }
 
   describe("get estimator") {
-    //TODO: once we stabalize on parameter ingestion.
+    //TODO: once we stabilize on parameter ingestion.
   }
 }
 
@@ -199,7 +199,7 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
       val features = xval.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()

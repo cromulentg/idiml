@@ -198,6 +198,8 @@ class LengthClassificationModel extends PredictModel[Classification] {
 
   def getFeaturesUsed: org.apache.spark.mllib.linalg.Vector = ???
 
+  override def getEvaluationMetric(): Double = ???
+
   override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
     Some(Seq(new TrainingSummary("testing123",
       Seq[Metric with Buildable[_, _]](
@@ -228,6 +230,8 @@ case class DummyClassificationModel(label: String, confidence: Float, feature: W
 
   def getFeaturesUsed: org.apache.spark.mllib.linalg.Vector = ???
 
+  override def getEvaluationMetric(): Double = ???
+
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
     Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq(feature -> 1.0f)))
   }
@@ -255,6 +259,8 @@ case class FailsValidationModel(label: String, confidence: Float)
   }
 
   def getFeaturesUsed: org.apache.spark.mllib.linalg.Vector = ???
+
+  override def getEvaluationMetric(): Double = ???
 
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
     Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq()))

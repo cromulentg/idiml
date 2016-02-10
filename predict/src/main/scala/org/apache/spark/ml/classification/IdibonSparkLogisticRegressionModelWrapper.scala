@@ -95,6 +95,23 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
       Vectors.zeros(features.size).toSparse
     }
   }
+
+  /**
+    * Returns a summary of training metrics and only makes sense post-training
+    *
+    *
+    * @return summary of metrics post-training
+    */
+  def getSummary: BinaryLogisticRegressionSummary = {
+    /*
+    * TODO: Handle the pre-training scenario
+    * TODO: Figure out whether this still works on a cluster. Since we're running things locally for now, the summary
+    *       should be available, but perhaps not in a distributed environment (there's an unclear note in the Spark
+    *       documentation referencing availability only to the driver).
+    */
+
+    this.summary.asInstanceOf[BinaryLogisticRegressionSummary]
+  }
 }
 
 object IdibonSparkLogisticRegressionModelWrapper {
