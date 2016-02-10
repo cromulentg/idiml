@@ -1,6 +1,7 @@
 package com.idibon.ml.app
 
 import com.typesafe.scalalogging.StrictLogging
+import java.io.File
 
 import scala.io.Source
 import scala.collection.JavaConverters._
@@ -8,7 +9,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, render, parse}
-import com.idibon.ml.alloy.{ValidationExamplesBuilder, ValidationExampleBuilder, JarAlloy}
+import com.idibon.ml.alloy.JarAlloy2
 import com.idibon.ml.predict._
 
 /** Command-line batch prediction tool
@@ -34,16 +35,9 @@ object Predict extends Tool with StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    val model = if (!cli.hasOption('v')) {
-      // if we want to validate on load.
-      val validationExamplesBuilder = new ValidationExamplesBuilder[Classification](new ClassificationBuilder())
-      JarAlloy.loadAndValidate[Classification](engine, cli.getOptionValue('a'), validationExamplesBuilder)
-        .asInstanceOf[JarAlloy[Classification]]
+    val model = JarAlloy2.load[Classification](engine,
+      new File(cli.getOptionValue('a')), !cli.hasOption('v'))
 
-    } else {
-      JarAlloy.load[Classification](engine, cli.getOptionValue('a'))
-        .asInstanceOf[JarAlloy[Classification]]
-    }
     logger.info(s"Loaded Alloy.")
     /* results will be written to the output file by a consumer thread;
      * after the last document is predicted, the main thread will post

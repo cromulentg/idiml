@@ -50,7 +50,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
     val line = Source.fromFile(cli.getOptionValue('r'))
       .getLines().foldLeft(new StringBuilder())((bld, jsn) => bld.append(jsn)).mkString
-    val model = trainer.trainAlloy(
+    val model = trainer.trainAlloy("quickTrain",
       () => { // training data
       Source.fromFile(cli.getOptionValue('i'))
         .getLines.map(line => parse(line).extract[JObject])
@@ -63,10 +63,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     logger.info(s"Training completed in $elapsed ms")
 
     val doc = new JObject(List("content" -> new JString("this is some content")))
-    model.foreach(
-      alloy => {
-        val result = alloy.predict(doc, new PredictOptionsBuilder().showSignificantFeatures(0.01f).build()).asScala
-      }
-    )
+    val result = model.predict(doc,
+      new PredictOptionsBuilder().showSignificantFeatures(0.01f).build()).asScala
   }
 }

@@ -1,9 +1,10 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.train.alloy.AlloyFactory
+import com.idibon.ml.alloy.JarAlloy2
 
+import java.io.File
 import scala.io.Source
-import scala.util.Failure
 import org.json4s._
 import org.json4s.native.Serialization.writePretty
 
@@ -42,33 +43,29 @@ object Train extends Tool with StrictLogging {
     } else {
       new java.io.FileReader(cli.getOptionValue('c'))
     }
-    val trainingJobJValue = parse(configFileStream)
+    val trainingJob = parse(configFileStream).extract[JObject]
     configFileStream.close
-    logger.info(s"Reading in Config ${writePretty(trainingJobJValue)} from ${cli.getOptionValue('c')}")
-    val trainer = AlloyFactory.getTrainer(engine, (trainingJobJValue \ "trainerConfig").extract[JObject])
+    logger.info(s"Reading in Config ${writePretty(trainingJob)} from ${cli.getOptionValue('c')}")
+    val trainer = AlloyFactory.getTrainer(engine, (trainingJob \ "trainerConfig").extract[JObject])
+
+    val rulesFile = Source.fromFile(cli.getOptionValue('r'))
+    val labelsAndRules = try parse(rulesFile.mkString).extract[JObject] finally rulesFile.close
+
+    def readDocumentsFn() = {
+      Source.fromFile(cli.getOptionValue('i'))
+        .getLines.map(line => parse(line).extract[JObject])
+    }
+
     try {
-      val line = Source.fromFile(cli.getOptionValue('r'))
-        .getLines().foldLeft(new StringBuilder())((bld, jsn) => bld.append(jsn)).mkString
       val startTime = System.currentTimeMillis()
-      trainer.trainAlloy(
-        () => {
-          // training data
-          Source.fromFile(cli.getOptionValue('i'))
-            .getLines.map(line => parse(line).extract[JObject])
-        },
-          parse(line).extract[JObject]
-        ,
-        Some(trainingJobJValue.extract[JObject])
-      ).map(alloy => alloy.save(cli.getOptionValue('o')))
-        .map(x => {
-          val elapsed = System.currentTimeMillis - startTime
-          logger.info(s"Training completed in $elapsed ms")
-        })
-        .recoverWith({ case (error) => {
-          logger.error("Unable to train model", error)
-          Failure(error)
-        }
-        })
+      val alloy = trainer.trainAlloy("FIXME: include name",
+        readDocumentsFn, labelsAndRules, Some(trainingJob))
+
+      JarAlloy2.save(alloy, new File(cli.getOptionValue('o')))
+      val elapsed = System.currentTimeMillis - startTime
+      logger.info(s"Training completed in $elapsed ms")
+    } catch {
+      case e: Throwable => logger.error("Unable to train model", e)
     } finally {
       easterEgg.map(_.terminate)
     }
