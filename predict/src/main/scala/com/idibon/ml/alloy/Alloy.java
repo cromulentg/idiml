@@ -72,16 +72,7 @@ public interface Alloy<T extends PredictResult> {
      * @param path
      * @throws IOException
      */
-    public void save(String path) throws IOException;
-
-    /**
-     * Use this to see if the now instantiated Alloy agrees with results
-     * it took when it was trained!
-     *
-     * @return True whether it agrees, False Otherwise
-     * @throws ValidationError that will contain details of what went wrong.
-     */
-    public void validate() throws ValidationError;
+    public void save(Alloy.Writer writer) throws IOException;
 
     /**
      * Translates a UUID of a label into a human readable string.

@@ -9,7 +9,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods.{compact, render, parse}
-import com.idibon.ml.alloy.JarAlloy2
+import com.idibon.ml.alloy.JarAlloy
 import com.idibon.ml.predict._
 
 /** Command-line batch prediction tool
@@ -35,7 +35,7 @@ object Predict extends Tool with StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    val model = JarAlloy2.load[Classification](engine,
+    val model = JarAlloy.load[Classification](engine,
       new File(cli.getOptionValue('a')), !cli.hasOption('v'))
 
     logger.info(s"Loaded Alloy.")

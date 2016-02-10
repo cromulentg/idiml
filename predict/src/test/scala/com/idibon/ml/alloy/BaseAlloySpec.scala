@@ -21,7 +21,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
         """{"name":"garbage","specVersion":"-1","idimlVersion":"0","createdAt":"2016-01-01T00:00:00Z","properties":{}}""")
       val garbage = new MemoryAlloyReader(Map("manifest.json" -> manifestJson.toByteArray))
       intercept[UnsupportedOperationException] {
-        BaseAlloy2.load[Classification](new EmbeddedEngine, garbage)
+        BaseAlloy.load[Classification](new EmbeddedEngine, garbage)
       }
     }
 
@@ -34,7 +34,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
       Codec.String.write(modelsJson, "[]")
       val garbage = new MemoryAlloyReader(Map("manifest.json" -> manifestJson.toByteArray,
         "labels.dat" -> labelFoo, "models.json" -> modelsJson.toByteArray))
-      val alloy = BaseAlloy2.load[Classification](new EmbeddedEngine, garbage)
+      val alloy = BaseAlloy.load[Classification](new EmbeddedEngine, garbage)
       alloy.name shouldBe "garbage"
       alloy.labels shouldBe List(new Label("00000000-0000-0007-0000-00000000000f", "foo"))
     }
@@ -42,13 +42,13 @@ class BaseAlloySpec extends FunSpec with Matchers {
 
   describe(".translateUUID") {
     it("should return null on an invalid label") {
-      val alloy = new BaseAlloy2("garbage",
+      val alloy = new BaseAlloy("garbage",
         List(new Label("00000000-0000-0000-0000-000000000000", "foo")), Map())
       alloy.translateUUID("0") shouldBe null
     }
 
     it("should return label objects if the UUID exists") {
-      val alloy = new BaseAlloy2("garbage",
+      val alloy = new BaseAlloy("garbage",
         List(new Label("00000000-0000-0000-0000-000000000000", "foo")), Map())
       alloy.translateUUID("00000000-0000-0000-0000-000000000000") shouldBe alloy.labels.head
     }
@@ -56,7 +56,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
 
   describe(".validate") {
     it("saves validatable models") {
-      val alloy = new BaseAlloy2("garbage",
+      val alloy = new BaseAlloy("garbage",
         List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
         Map("model for foo" -> new LengthClassificationModel))
           with HasValidationData {
@@ -67,12 +67,12 @@ class BaseAlloySpec extends FunSpec with Matchers {
       alloy.save(new MemoryAlloyWriter(archive))
       archive.get("validation.dat") should not be None
       val reader = new MemoryAlloyReader(archive.toMap)
-      val reload = BaseAlloy2.load[Classification](new EmbeddedEngine, reader)
+      val reload = BaseAlloy.load[Classification](new EmbeddedEngine, reader)
       HasValidationData.validate(reader, reload)
     }
 
     it("raises a ValidationError if validation fails") {
-      val alloy = new BaseAlloy2("garbage",
+      val alloy = new BaseAlloy("garbage",
         List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
         Map("model for foo" -> new FailsValidationModel("00000000-0000-0000-0000-000000000000", 0.75f)))
           with HasValidationData {
@@ -82,7 +82,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
       val reader = new MemoryAlloyReader(archive.toMap)
-      val reload = BaseAlloy2.load[Classification](new EmbeddedEngine, reader)
+      val reload = BaseAlloy.load[Classification](new EmbeddedEngine, reader)
 
       intercept[ValidationError] {
         HasValidationData.validate(reader, reload)
@@ -94,18 +94,18 @@ class BaseAlloySpec extends FunSpec with Matchers {
     it("creates a useful manifest") {
       val start = new java.util.Date
       Thread.sleep(1000)
-      val alloy = new BaseAlloy2("garbage", List(), Map())
+      val alloy = new BaseAlloy("garbage", List(), Map())
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
-      val manifest = BaseAlloy2.loadManifest(new MemoryAlloyReader(archive.toMap))
-      manifest.specVersion shouldBe BaseAlloy2.CURRENT_SPEC.VERSION
+      val manifest = BaseAlloy.loadManifest(new MemoryAlloyReader(archive.toMap))
+      manifest.specVersion shouldBe BaseAlloy.CURRENT_SPEC.VERSION
       manifest.name shouldBe "garbage"
       manifest.createdAt should be > start
       manifest.properties("os.name") shouldBe System.getProperty("os.name")
     }
 
     it("saves loadable artifacts") {
-      val alloy = new BaseAlloy2("garbage",
+      val alloy = new BaseAlloy("garbage",
         List(new Label("00000000-0000-0000-0000-000000000000", "foo"),
           new Label("00000000-0000-0000-0000-000000000001", "bar")),
         Map("model for foo" -> new DummyClassificationModel("00000000-0000-0000-0000-000000000000", 0.75f, Word("hello")),
@@ -113,7 +113,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
 
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
-      val reload = BaseAlloy2.load[Classification](new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
+      val reload = BaseAlloy.load[Classification](new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
       reload shouldBe alloy
 
       reload.predict("content" -> "foo", PredictOptions.DEFAULT) should contain theSameElementsAs Seq(
@@ -122,7 +122,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
     }
 
     it("saves training configuration data if present") {
-      val alloy = new BaseAlloy2("garbage", List[Label](),
+      val alloy = new BaseAlloy("garbage", List[Label](),
           Map[String, PredictModel[Classification]]()) with HasTrainingConfig {
         def trainingConfig = ("key" -> "value") ~ ("key2" -> "value2")
       }

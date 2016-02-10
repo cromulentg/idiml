@@ -4,7 +4,7 @@ import java.io._
 
 import scala.collection.mutable.HashMap
 import com.idibon.ml.common.EmbeddedEngine
-import com.idibon.ml.alloy.{BaseAlloy2, MemoryAlloyReader, MemoryAlloyWriter}
+import com.idibon.ml.alloy.{BaseAlloy, MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
@@ -57,11 +57,11 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
-      val alloy = new BaseAlloy2("alloy", List(), Map("0" -> model))
+      val alloy = new BaseAlloy("alloy", List(), Map("0" -> model))
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
 
-      val resurrectedAlloy = BaseAlloy2.load(new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
+      val resurrectedAlloy = BaseAlloy.load(new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
       val result1 = alloy.predict(doc, PredictOptions.DEFAULT)
       val result2 = resurrectedAlloy.predict(doc, PredictOptions.DEFAULT)
       result1 shouldBe result2

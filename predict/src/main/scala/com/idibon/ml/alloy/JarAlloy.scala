@@ -6,7 +6,7 @@ import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictResult
 import com.idibon.ml.feature.{Buildable, Builder}
 
-object JarAlloy2 {
+object JarAlloy {
 
   /** Loads a BaseAlloy stored in a JAR, optionally validating the models */
   def load[T <: PredictResult with Buildable[T, Builder[T]]](
@@ -14,7 +14,7 @@ object JarAlloy2 {
     val jar = new JarFile(file)
     try {
       val reader = new JarAlloyReader(jar)
-      val alloy = BaseAlloy2.load[T](engine, reader)
+      val alloy = BaseAlloy.load[T](engine, reader)
       if (validate) HasValidationData.validate(reader, alloy)
       alloy
     } finally {
@@ -24,7 +24,7 @@ object JarAlloy2 {
 
   /** Saves a BaseAlloy to a JAR */
   def save[T <: PredictResult with Buildable[T, Builder[T]]](
-      alloy: BaseAlloy2[T], file: File) = {
+      alloy: Alloy[T], file: File) = {
     val jos = new JarOutputStream(new FileOutputStream(file))
     try {
       val writer = new JarAlloyWriter(jos)

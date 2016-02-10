@@ -17,7 +17,7 @@ import com.typesafe.scalalogging.StrictLogging
   * @param labels all labels assigned by any model in the Alloy
   * @param models top-level models
   */
-case class BaseAlloy2[T <: PredictResult with Buildable[T, Builder[T]]](
+case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
   name: String, labels: Seq[Label], models: Map[String, PredictModel[T]])
     extends Alloy[T] with StrictLogging {
 
@@ -29,10 +29,6 @@ case class BaseAlloy2[T <: PredictResult with Buildable[T, Builder[T]]](
     * @param uuid
     */
   def translateUUID(uuid: String) = _uuidToLabel.get(uuid).getOrElse(null)
-
-  def validate { }
-
-  def save(path: String) { }
 
   /** Processes a document using all top-level predictive models
     *
@@ -49,7 +45,7 @@ case class BaseAlloy2[T <: PredictResult with Buildable[T, Builder[T]]](
     * @param writer alloy writer
     */
   def save(writer: Alloy.Writer) {
-    val spec = BaseAlloy2.saveManifest(writer, this)
+    val spec = BaseAlloy.saveManifest(writer, this)
     logger.info(s"save $name, version ${spec.VERSION}")
     spec.saveModels(writer, this.models)
     spec.saveLabels(writer, this.labels)
@@ -57,7 +53,7 @@ case class BaseAlloy2[T <: PredictResult with Buildable[T, Builder[T]]](
     // save off all of the optional data possibly included by the furnace
     if (this.isInstanceOf[HasValidationData]) {
       HasValidationData.save(writer,
-        this.asInstanceOf[BaseAlloy2[T] with HasValidationData])
+        this.asInstanceOf[BaseAlloy[T] with HasValidationData])
     }
 
     if (this.isInstanceOf[HasTrainingConfig]) {
@@ -68,7 +64,7 @@ case class BaseAlloy2[T <: PredictResult with Buildable[T, Builder[T]]](
 }
 
 /** Generic loader for BaseAlloy derived alloys */
-object BaseAlloy2 extends StrictLogging {
+object BaseAlloy extends StrictLogging {
 
   private[alloy] val CURRENT_SPEC: BaseAlloySpecVersion = BaseAlloy_1
   private[this] val MANIFEST_JSON = "manifest.json"
@@ -79,7 +75,7 @@ object BaseAlloy2 extends StrictLogging {
     * @param reader Alloy reader
     */
   def load[T <: PredictResult with Buildable[T, Builder[T]]](
-      engine: Engine, reader: Alloy.Reader): BaseAlloy2[T] = {
+      engine: Engine, reader: Alloy.Reader): BaseAlloy[T] = {
     implicit val formats = org.json4s.DefaultFormats
 
     val man = loadManifest(reader)
@@ -90,7 +86,7 @@ object BaseAlloy2 extends StrictLogging {
     }
 
     logger.info(s"Load ${man.name}, version ${man.specVersion}, ${man.createdAt}")
-    new BaseAlloy2(man.name, spec.loadLabels(reader),
+    new BaseAlloy(man.name, spec.loadLabels(reader),
       spec.loadModels[T](engine, reader))
   }
 
@@ -117,7 +113,7 @@ object BaseAlloy2 extends StrictLogging {
     * @return the layout spec implementation for the saved alloy
     */
   def saveManifest(writer: Alloy.Writer,
-      alloy: BaseAlloy2[_]): BaseAlloySpecVersion = {
+      alloy: BaseAlloy[_]): BaseAlloySpecVersion = {
 
     val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"))

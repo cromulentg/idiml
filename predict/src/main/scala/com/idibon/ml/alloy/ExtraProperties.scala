@@ -29,7 +29,7 @@ object HasValidationData {
     * @throw ValidationException if the predicted results are invalid
     */
   def validate[T <: PredictResult with Buildable[T, Builder[T]]](
-      reader: Alloy.Reader, alloy: BaseAlloy2[T]) {
+      reader: Alloy.Reader, alloy: BaseAlloy[T]) {
     val resource = new FeatureInputStream(reader.resource(VALIDATION_RESOURCE))
     if (resource == null) return;
 
@@ -65,7 +65,7 @@ object HasValidationData {
     * @param alloy the alloy (with validation data) being saved
     */
   def save[T <: PredictResult with Buildable[T, Builder[T]]](
-      writer: Alloy.Writer, alloy: BaseAlloy2[T] with HasValidationData) {
+      writer: Alloy.Writer, alloy: BaseAlloy[T] with HasValidationData) {
 
     val resource = new FeatureOutputStream(writer.resource(VALIDATION_RESOURCE))
     val modelNames = alloy.models.map(_._1)

@@ -46,7 +46,7 @@ trait AlloyTrainer {
     * @return an Alloy with the trained model
     */
   def trainAlloy(name: String, docs: () => TraversableOnce[JObject],
-    labelAndRules: JObject, config: Option[JObject]): BaseAlloy2[Classification]
+    labelAndRules: JObject, config: Option[JObject]): Alloy[Classification]
 
   /**
     * Creates a map of label to rules from some JSON data.
@@ -146,7 +146,7 @@ abstract class BaseTrainer(protected val engine: Engine,
   override def trainAlloy(name: String,
       docs: () => TraversableOnce[JObject],
       labeldAndRules: JObject,
-      config: Option[JObject]): BaseAlloy2[Classification] = {
+      config: Option[JObject]): Alloy[Classification] = {
     implicit val formats = org.json4s.DefaultFormats
     val rules = (labeldAndRules \ "rules").extract[JArray]
     val uuidTolabel = (labeldAndRules \ "uuid_to_label").extract[JObject]
@@ -166,13 +166,13 @@ abstract class BaseTrainer(protected val engine: Engine,
 
     // if a config JSON was provided, return an alloy with it
     config.map(configJson => {
-      new BaseAlloy2(name, labels, Map("gang" -> gang))
+      new BaseAlloy(name, labels, Map("gang" -> gang))
           with HasValidationData with HasTrainingConfig {
         def validationExamples = validationResults
         def trainingConfig = configJson
       }
     }).getOrElse({
-      new BaseAlloy2(name, labels, Map("gang" -> gang))
+      new BaseAlloy(name, labels, Map("gang" -> gang))
           with HasValidationData {
         def validationExamples = validationResults
       }

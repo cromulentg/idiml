@@ -1,7 +1,7 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.train.alloy.AlloyFactory
-import com.idibon.ml.alloy.JarAlloy2
+import com.idibon.ml.alloy.JarAlloy
 
 import java.io.File
 import scala.io.Source
@@ -61,7 +61,7 @@ object Train extends Tool with StrictLogging {
       val alloy = trainer.trainAlloy("FIXME: include name",
         readDocumentsFn, labelsAndRules, Some(trainingJob))
 
-      JarAlloy2.save(alloy, new File(cli.getOptionValue('o')))
+      JarAlloy.save(alloy, new File(cli.getOptionValue('o')))
       val elapsed = System.currentTimeMillis - startTime
       logger.info(s"Training completed in $elapsed ms")
     } catch {
