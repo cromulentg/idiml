@@ -43,10 +43,10 @@ class Word2VecSpec extends FunSpec with Matchers {
 
     describe("apply") {
       val transform = loadModel
+      val zeroVector = Vectors.sparse(100, Array.empty[Int], Array.empty[Double])
 
       it("should return an empty sparse vector of size 100 on empty input") {
-        val expected = Vectors.sparse(100, Array.empty[Int], Array.empty[Double])
-        transform(Seq[String]()) shouldBe expected
+        transform(Seq[String]()) shouldBe zeroVector
       }
 
       it("should return a vector of non-zero floats with a single word input") {
@@ -65,12 +65,9 @@ class Word2VecSpec extends FunSpec with Matchers {
           elem should (be > -1.0 and be < 1.0 and not be 0)
       }
 
-      it("should raise an exception on out-of-vocabulary input") {
-        val oneWordSeq = Seq[String]("batman")
-        val thrown = intercept[IllegalStateException] {
-          transform(oneWordSeq).toArray
-        }
-        assert(thrown.getMessage === "batman not in vocabulary")
+      it("should return an empty sparse vector on out-of-vocabulary input") {
+        val OOVSeq = Seq[String]("batman")
+        transform(OOVSeq) shouldBe zeroVector
       }
     }
   }

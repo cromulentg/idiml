@@ -42,7 +42,11 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     } else {
       val sum = Vectors.zeros(vectorSize)
       words.foreach { word =>
-        IdibonBLAS.axpy(1.0, model.transform(word), sum)
+        try {
+          IdibonBLAS.axpy(1.0, model.transform(word), sum)
+        } catch {
+          case _: IllegalStateException => Vectors.sparse(vectorSize, Array.empty[Int], Array.empty[Double])
+        }
       }
       IdibonBLAS.scal(1.0 / words.size, sum)
       sum
