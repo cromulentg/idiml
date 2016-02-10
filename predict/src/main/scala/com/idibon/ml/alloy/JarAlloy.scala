@@ -36,7 +36,7 @@ object JarAlloy {
 }
 
 /** Reads alloy data from a JAR file */
-class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
+case class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
 
   def within(namespace: String): Alloy.Reader = new SubReader(namespace + "/")
 
@@ -57,7 +57,7 @@ class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
 }
 
 /** Writes alloy data to a JAR file */
-class JarAlloyWriter(jarStream: JarOutputStream) extends Alloy.Writer {
+case class JarAlloyWriter(jarStream: JarOutputStream) extends Alloy.Writer {
 
   def within(namespace: String): Alloy.Writer = new SubWriter(namespace + "/")
 
