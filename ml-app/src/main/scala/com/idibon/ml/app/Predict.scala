@@ -47,36 +47,36 @@ object Predict extends Tool with StrictLogging {
     val output = new org.apache.commons.csv.CSVPrinter(
       new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8"),
       org.apache.commons.csv.CSVFormat.RFC4180)
+    val includeFeatures = !cli.hasOption('f')
+
+    val labels = model.getLabels.asScala.sortWith(_.name < _.name)
+    val labelCols = if (includeFeatures) {
+      labels.flatMap(l => List(l.name, s"features[${l.name}]"))
+    } else {
+      labels.map(_.name)
+    }
+
+    output.printRecord((Seq("Name", "Content") ++ labelCols).asJava)
 
     val resultsThread = new Thread(new Runnable() {
       override def run {
-        var labels: Option[Seq[String]] = None
-
         Stream.continually(results.take)
           .takeWhile(_.isDefined)
           .foreach(_ match {
             case Some((document, prediction)) => {
-              /* initialize the CSV header structure and label output order
-               * on the first valid row, after the labels are known */
-              if (labels.isEmpty) {
-                labels = Some(prediction.map(_.label).sortWith(_ < _))
-                output.printRecord((Seq("Name", "Content") ++
-                  labels.get.flatMap(l => {
-                    // guard against case in dev where we don't have UUIDs
-                    val humanLabel = model.translateUUID(l) match {
-                      case label: Label => label.name
-                      case _ => l
-                    }
-                    List(humanLabel, s"features[$humanLabel]")
-                  })).asJava)
+              val predictionByLabel = prediction.map(p => (p.label, p)).toMap
+              val sortedPredictions = labels.map(l => predictionByLabel.get(l.uuid.toString))
+              val outputCols = if (includeFeatures) {
+                sortedPredictions.map(_.map(p => {
+                  List(p.probability, p.significantFeatures.map(_._1))
+                }).getOrElse(List(0.0f, List()))).reduce(_ ++ _)
+              } else {
+                sortedPredictions.map(_.map(_.probability).getOrElse(0.0f))
               }
-              // output the prediction result and original content in JSON
-              val labelResults = prediction.sortWith(_.label < _.label).map(r => {
-                List(r.probability, r.significantFeatures.map(_._1))
-              }).reduce(_ ++ _)
+
               val row = (Seq(
                 (document \ "name").extract[Option[String]].getOrElse(""),
-                (document \ "content").extract[String]) ++ labelResults).asJava
+                (document \ "content").extract[String]) ++ outputCols).asJava
 
               output.printRecord(row)
             }
@@ -93,7 +93,7 @@ object Predict extends Tool with StrictLogging {
           val document = parse(line).extract[JObject]
           val builder = new PredictOptionsBuilder
 
-          if (!cli.hasOption("f")) builder.showSignificantFeatures(0.1f)
+          if (includeFeatures) builder.showSignificantFeatures(0.1f)
           val result = model.predict(document, builder.build)
           results.offer(Some((document, result.asScala)))
         })

@@ -59,6 +59,9 @@ public interface Alloy<T extends PredictResult> {
         DataOutputStream resource(String resourceName) throws IOException;
     }
 
+    /** Returns the full list of labels known by the Alloy */
+    public List<Label> getLabels();
+
     /**
      * Predict a document. Types here are subject to CHANGE!
      * @param document

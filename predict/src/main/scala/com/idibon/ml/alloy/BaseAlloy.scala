@@ -40,6 +40,9 @@ case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
     models.flatMap({ case (_, m) => m.predict(doc, options)}).toList.asJava
   }
 
+  /** Returns all of the labels in the Alloy */
+  def getLabels = labels.toList.asJava
+
   /** Saves the alloy to a persistent device
     *
     * @param writer alloy writer
