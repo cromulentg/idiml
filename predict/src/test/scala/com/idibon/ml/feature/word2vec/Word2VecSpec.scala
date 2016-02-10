@@ -1,6 +1,8 @@
 package com.idibon.ml.feature.word2vec
 
-import com.idibon.ml.alloy.IntentAlloy
+import scala.collection.mutable.HashMap
+
+import com.idibon.ml.alloy.{MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg._
 import org.json4s._
@@ -11,13 +13,14 @@ class Word2VecSpec extends FunSpec with Matchers {
 
   describe("Word2Vec") {
 
-    val intentAlloy = new IntentAlloy()
+    val archive = HashMap[String, Array[Byte]]()
     val path = "src/test/resources/fixtures/model"
     val config = JObject(JField("path",JString(path)))
 
     def loadModel(): Word2VecTransformer = {
       val loader = new Word2VecTransformerLoader()
-      val transform = loader.load(new EmbeddedEngine, Some(intentAlloy.reader), Some(config))
+      val transform = loader.load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), Some(config))
       transform
     }
 
@@ -31,7 +34,7 @@ class Word2VecSpec extends FunSpec with Matchers {
 
       it("should save a Word2VecTransformer"){
         val transform = loadModel
-        val json = transform.save(intentAlloy.writer)
+        val json = transform.save(new MemoryAlloyWriter(archive))
         implicit val formats = DefaultFormats
         val outputPath = (json.get \ "path").extract[String]
         outputPath shouldBe path

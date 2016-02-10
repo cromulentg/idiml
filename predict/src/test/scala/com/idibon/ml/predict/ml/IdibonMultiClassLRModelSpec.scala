@@ -2,13 +2,15 @@ package com.idibon.ml.predict.ml
 
 import java.io._
 
-import com.idibon.ml.alloy.{IntentAlloy, JarAlloy}
+import scala.collection.mutable.HashMap
+import com.idibon.ml.common.EmbeddedEngine
+import com.idibon.ml.alloy.{BaseAlloy, MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.predict.{Label, Document, PredictOptionsBuilder}
+import com.idibon.ml.predict.{Label, Document, PredictOptions, PredictOptionsBuilder}
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s.JsonDSL._
@@ -55,17 +57,13 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
-      val alloy = new JarAlloy(Map("0" -> model), Map[String, Label]())
-      tempFilename = "save123.jar"
-      alloy.save(tempFilename)
-      // let's make sure to delete the file on exit
-      val jarFile = new File(tempFilename)
-      jarFile.exists() shouldBe true
-      // get alloy back & predict on it.
-      val resurrectedAlloy = JarAlloy.load(null, tempFilename)
-      val options = new PredictOptionsBuilder().build()
-      val result1 = alloy.predict(doc, options)
-      val result2 = resurrectedAlloy.predict(doc, options)
+      val alloy = new BaseAlloy("alloy", List(), Map("0" -> model))
+      val archive = HashMap[String, Array[Byte]]()
+      alloy.save(new MemoryAlloyWriter(archive))
+
+      val resurrectedAlloy = BaseAlloy.load(new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
+      val result1 = alloy.predict(doc, PredictOptions.DEFAULT)
+      val result2 = resurrectedAlloy.predict(doc, PredictOptions.DEFAULT)
       result1 shouldBe result2
     }
   }
@@ -81,14 +79,14 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   describe("Saves as intended") {
     it("returns config as expected") {
-      val alloy = new IntentAlloy()
+      val archive = HashMap[String, Array[Byte]]()
       val intercept = -1.123
       val coefficients = fp(doc).toDense
       val label: String = "alabel"
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
-      val config = model.save(alloy.writer())
+      val config = model.save(new MemoryAlloyWriter(archive))
       implicit val formats = DefaultFormats
       val version = (config.get \ "version" ).extract[String]
       version shouldEqual "0.0.2"
@@ -105,7 +103,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonMultiClassLRModel(
         Map("alabel" -> 1, "!alabel" -> 0),
         new IdibonSparkMLLIBLRWrapper(coefficients, intercept, coefficients.size, 2), Some(fp))
-      val result = model.predict(Document.document(doc), new PredictOptionsBuilder().build())
+      val result = model.predict(Document.document(doc), PredictOptions.DEFAULT)
       result.head.label shouldBe "alabel"
       result.head.probability shouldBe (0.60992575f +- 0.0001f)
       result.head.matchCount shouldBe 1

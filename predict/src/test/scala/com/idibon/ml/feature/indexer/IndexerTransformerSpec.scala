@@ -1,6 +1,8 @@
 package com.idibon.ml.feature.indexer
 
-import com.idibon.ml.alloy.IntentAlloy
+import scala.collection.mutable.HashMap
+
+import com.idibon.ml.alloy.{MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.feature.Feature
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import com.idibon.ml.feature.bagofwords.Word
@@ -114,11 +116,12 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.freeze()
 
       // Save the results
-      val intentAlloy = new IntentAlloy()
-      transform.save(intentAlloy.writer)
+      val archive = HashMap[String, Array[Byte]]()
+      transform.save(new MemoryAlloyWriter(archive))
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
+      val transform2 = (new IndexTransformLoader).load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
 
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
     }
@@ -229,11 +232,12 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.numDimensions shouldBe Some(5)
       transform.prune(predicate2)
       // Save the results
-      val intentAlloy = new IntentAlloy()
-      transform.save(intentAlloy.writer)
+      val archive = HashMap[String, Array[Byte]]()
+      transform.save(new MemoryAlloyWriter(archive))
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
+      val transform2 = (new IndexTransformLoader).load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.numDimensions shouldBe Some(5)
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
@@ -250,11 +254,12 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.numDimensions shouldBe Some(5)
       transform.prune(predicate2)
       // Save the results
-      val intentAlloy = new IntentAlloy()
-      transform.save(intentAlloy.writer)
+      val archive = HashMap[String, Array[Byte]]()
+      transform.save(new MemoryAlloyWriter(archive))
 
       // Load the results
-      val transform2 = (new IndexTransformLoader).load(new EmbeddedEngine, Some(intentAlloy.reader), None)
+      val transform2 = (new IndexTransformLoader).load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.freeze()
       transform2.numDimensions shouldBe Some(5)
       transform.getFeatureIndex shouldBe transform2.getFeatureIndex

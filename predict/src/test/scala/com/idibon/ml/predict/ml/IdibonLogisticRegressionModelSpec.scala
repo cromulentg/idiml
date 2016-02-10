@@ -1,8 +1,10 @@
 package com.idibon.ml.predict.ml
 
 import java.io._
+import scala.collection.mutable.HashMap
 
-import com.idibon.ml.alloy.{JarAlloy, IntentAlloy}
+import com.idibon.ml.common.EmbeddedEngine
+import com.idibon.ml.alloy.{BaseAlloy, MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
@@ -56,18 +58,15 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
-      val labelToModel = Map(("alabel" -> model))
-      val alloy = new JarAlloy(labelToModel, Map[String, Label]())
-      tempFilename = "save.jar"
-      alloy.save(tempFilename)
-      // let's make sure to delete the file on exit
-      val jarFile = new File(tempFilename)
-      jarFile.exists() shouldBe true
+
+      val archive = HashMap[String, Array[Byte]]()
+      val alloy = new BaseAlloy("alloy", List(), Map("alabel" -> model))
+      alloy.save(new MemoryAlloyWriter(archive))
+
       // get alloy back & predict on it.
-      val resurrectedAlloy = JarAlloy.load(null, tempFilename)
-      val options = new PredictOptionsBuilder().build()
-      val result1 = alloy.predict(doc, options)
-      val result2 = resurrectedAlloy.predict(doc, options)
+      val resurrectedAlloy = BaseAlloy.load(new EmbeddedEngine, new MemoryAlloyReader(archive.toMap))
+      val result1 = alloy.predict(doc, PredictOptions.DEFAULT)
+      val result2 = resurrectedAlloy.predict(doc, PredictOptions.DEFAULT)
       result1 shouldBe result2
     }
   }
@@ -83,14 +82,14 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   describe("Saves as intended") {
     it("returns config as expected") {
-      val alloy = new IntentAlloy()
+      val archive = HashMap[String, Array[Byte]]()
       val intercept = -1.123
       val coefficients = fp(doc)
       val label: String = "alabel"
       val model = new IdibonLogisticRegressionModel(
         label,
         new IdibonSparkLogisticRegressionModelWrapper(label, coefficients, intercept), Some(fp))
-      val config = model.save(alloy.writer())
+      val config = model.save(new MemoryAlloyWriter(archive))
       implicit val formats = DefaultFormats
       val actualLabel = (config.get \ "label" ).extract[String]
       actualLabel shouldEqual label

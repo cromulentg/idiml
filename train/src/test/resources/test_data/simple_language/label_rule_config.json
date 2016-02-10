@@ -1,11 +1,1 @@
-{
-  "uuid_to_label": {
-    "albanian": "albanian",
-    "russian": "russian",
-    "greek": "greek",
-    "french": "french",
-    "hungarian": "hungarian",
-    "english": "english"
-  },
-  "rules": []
-}
+{"uuid_to_label":{"00000000-0000-0000-0000-000000000000":"russian","00000000-0000-0000-0000-000000000001":"albanian","00000000-0000-0000-0000-000000000002":"english","00000000-0000-0000-0000-000000000003":"hungarian","00000000-0000-0000-0000-000000000004":"greek","00000000-0000-0000-0000-000000000005":"french"},"rules":[]}

@@ -1,8 +1,9 @@
 package com.idibon.ml.predict.rules
 
 import java.util.regex.Pattern
+import scala.collection.mutable.HashMap
 
-import com.idibon.ml.alloy.IntentAlloy
+import com.idibon.ml.alloy.{MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.predict._
 import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg.SparseVector
@@ -70,27 +71,27 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe("save and load") {
     it("should save an empty map and load it") {
-      val alloy = new IntentAlloy()
+      val archive = HashMap[String, Array[Byte]]()
       val docRules = new DocumentRules("b-label", List())
-      val jsonConfig = docRules.save(alloy.writer())
+      val jsonConfig = docRules.save(new MemoryAlloyWriter(archive))
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, Some(alloy.reader()), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
-      //TODO: remove file
     }
 
     it("should save a valid map") {
-      val alloy = new IntentAlloy()
+      val archive = HashMap[String, Array[Byte]]()
       val docRules = new DocumentRules("b-label", List(("/str[ij]ng/", 0.3f), ("is", 0.10f)))
-      val jsonConfig = docRules.save(alloy.writer())
+      val jsonConfig = docRules.save(new MemoryAlloyWriter(archive))
       jsonConfig shouldBe Some(JObject(List(("label", JString("b-label")))))
       //bogus stuff that should be overwritten
-      val docRulesLoad = (new DocumentRulesLoader).load(new EmbeddedEngine, Some(alloy.reader()), jsonConfig)
+      val docRulesLoad = (new DocumentRulesLoader).load(
+        new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), jsonConfig)
       docRulesLoad.rules shouldBe docRules.rules
       docRulesLoad.label shouldBe docRules.label
-      //TODO: remove file
     }
   }
 
