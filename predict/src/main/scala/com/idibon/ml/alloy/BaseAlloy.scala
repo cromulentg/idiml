@@ -193,12 +193,14 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
 
   val MODEL_CONFIG = "models.json"
   val LABEL_CONFIG = "labels.dat"
+  val MODEL_DIRECTORY = "models"
 
   def saveModels[T <: PredictResult with Buildable[T, Builder[T]]](
       writer: Alloy.Writer, models: Map[String, PredictModel[T]]) {
+    val modelWriter = writer.within(MODEL_DIRECTORY)
     val modelEntries = models.map({ case (name, model) => {
       ArchivedModelEntry_1(name, model.getClass.getName,
-        Archivable.save(model, writer.within(name)))
+        Archivable.save(model, modelWriter.within(name)))
     }})
 
     val modelJson = JArray(modelEntries.map(e => {
@@ -235,13 +237,14 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
       engine: Engine, reader: Alloy.Reader): Map[String, PredictModel[T]] = {
     implicit val formats = org.json4s.DefaultFormats
 
+    val modelReader = reader.within(MODEL_DIRECTORY)
     // load the list of models, then reify each
     readJsonResource(MODEL_CONFIG, reader)
       .extract[Seq[ArchivedModelEntry_1]]
       .map(e => {
         val klass = Class.forName(e.`class`)
         val reified = ArchiveLoader.reify[PredictModel[T]](
-          klass, engine, Some(reader.within(e.name)), e.config)
+          klass, engine, Some(modelReader.within(e.name)), e.config)
           .getOrElse(klass.newInstance.asInstanceOf[PredictModel[T]])
 
         e.name -> reified
