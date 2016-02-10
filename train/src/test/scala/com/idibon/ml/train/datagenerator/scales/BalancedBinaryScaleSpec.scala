@@ -53,5 +53,13 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
       actual.filter(l => l.label == 0.0).count() shouldBe 10
       actual.filter(l => l.label == 1.0).count() shouldBe 7
     }
+
+    it("should not do anything to a dataset with wrong number of `classes`") {
+      val gen = new BalancedBinaryScaleBuilder(seed = 1L).build()
+      val negatives = (0 until 10).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
+      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives))
+      actual.count() shouldBe 10
+      actual.filter(l => l.label == 0.0).count() shouldBe 10
+    }
   }
 }

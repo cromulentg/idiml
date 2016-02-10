@@ -66,7 +66,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val gen = new MultiClassDataFrameGenerator()
+      val gen = new MultiClassDataFrameGeneratorBuilder().build()
       val baseTraining = gen.createPerLabelLPs(primedPipeline, () => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
@@ -75,7 +75,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
     }
 
     it("should convert labeled point lists to RDDs correctly") {
-      val gen = new MultiClassDataFrameGenerator()
+      val gen = new MultiClassDataFrameGeneratorBuilder().build()
       // very conversion into RDD
       val training = gen.createPerLabelRDDs(engine, expectedTrainingData)
       training.size shouldBe 3
@@ -99,7 +99,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
 
-      val dataFrameMap = new MultiClassDataFrameGenerator().getLabeledPointData(engine, primedPipeline, () => {
+      val dataFrameMap = new MultiClassDataFrameGeneratorBuilder().build().getLabeledPointData(engine, primedPipeline, () => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
       })

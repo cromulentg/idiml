@@ -22,8 +22,9 @@ import scala.collection.mutable
   *   MutliClass.MODEL_KEY -> dataframe where each label has an index starting from 0.
   *
   */
-class MultiClassDataFrameGenerator extends DataFrameBase with StrictLogging {
-
+class MultiClassDataFrameGenerator(builder: MultiClassDataFrameGeneratorBuilder)
+  extends DataFrameBase with StrictLogging {
+  val scale = builder.scale.build()
   /**
     * Creates a map of label -> RDD of labeled points.
     *

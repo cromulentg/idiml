@@ -6,6 +6,7 @@ import java.security.SecureRandom
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
+import com.idibon.ml.train.datagenerator.scales.DataSetScale
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
@@ -22,7 +23,7 @@ import scala.util.{Success, Try}
   * they can be easily converted by the consumers of this.
   *
   */
-trait SparkDataGenerator{
+trait SparkDataGenerator {
   /**
     *
     * @param engine
@@ -81,6 +82,7 @@ trait SparkDataGenerator{
   *
   */
 abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
+  val scale: DataSetScale
 
   /** Produces a DataFrame of LabeledPoints for each distinct label name.
     *
@@ -139,7 +141,7 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
     *
     * @param trainerTemp the base directory where to save these files.
     * @param sqlContext the sql context to use to create data frames
-    * @param perLabelRDDs the map of label -> RDD[LabeledPoints] to convert.
+    * @param perLabelRDDs the map of label -> RDD to convert to dataframe & persist.
     * @return map of label -> file (location of parquet file)
     */
   def createPerLabelDFs(trainerTemp: File,
@@ -183,8 +185,11 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
     val perLabelRDDs = mutable.HashMap[String, RDD[LabeledPoint]]()
     val logLine = perLabelLPs.map {
       case (label, lp) => {
-        perLabelRDDs(label) = engine.sparkContext.parallelize(lp)
-        val splits = lp.groupBy(x => x.label).map(x => s"Polarity: ${x._1}, Size: ${x._2.size}").toList
+        perLabelRDDs(label) = this.scale.balance(label, engine.sparkContext.parallelize(lp))
+        val splits = perLabelRDDs(label)
+          .groupBy(x => x.label)
+          .map(x => s"Polarity: ${x._1}, Size: ${x._2.size}")
+          .collect().toList
         // create some data for logging.
         (label, lp.size, splits)
       }

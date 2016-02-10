@@ -1,5 +1,6 @@
 package com.idibon.ml.train.datagenerator
 
+import com.idibon.ml.train.datagenerator.scales._
 import org.json4s.ShortTypeHints
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization.{writePretty}
@@ -31,10 +32,15 @@ trait SparkDataGeneratorBuilder {
   }
 }
 
-case class MultiClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
-  override def build(): MultiClassDataFrameGenerator = new MultiClassDataFrameGenerator()
+case class MultiClassDataFrameGeneratorBuilder(var scale: DataSetScaleBuilder = new NoOpScaleBuilder())
+  extends SparkDataGeneratorBuilder {
+  override def build(): MultiClassDataFrameGenerator = {
+    new MultiClassDataFrameGenerator(this)
+  }
 }
 
-case class KClassDataFrameGeneratorBuilder() extends SparkDataGeneratorBuilder {
-  override def build(): KClassDataFrameGenerator = new KClassDataFrameGenerator()
+case class KClassDataFrameGeneratorBuilder(var scale: DataSetScaleBuilder = new BalancedBinaryScaleBuilder())
+  extends SparkDataGeneratorBuilder {
+
+  override def build(): KClassDataFrameGenerator = new KClassDataFrameGenerator(this)
 }

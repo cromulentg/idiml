@@ -5,7 +5,7 @@ import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
-import com.idibon.ml.train.datagenerator.KClassDataFrameGenerator
+import com.idibon.ml.train.datagenerator.{KClassDataFrameGeneratorBuilder, KClassDataFrameGenerator}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.json4s._
@@ -53,7 +53,7 @@ class SimpleLogisticRegressionSpec extends FunSpec
       val features = simple.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGenerator(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
@@ -124,7 +124,7 @@ class XValLogisticRegressionSpec extends FunSpec
       val features = xval.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGenerator(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
@@ -195,7 +195,7 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
       val features = xval.featurizeData(() => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
-      }, new KClassDataFrameGenerator(), primedPipeline)
+      }, new KClassDataFrameGeneratorBuilder().build(), primedPipeline)
       features.get.size shouldBe 2
       features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
