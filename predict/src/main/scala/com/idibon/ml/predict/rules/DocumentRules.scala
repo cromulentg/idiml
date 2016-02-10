@@ -84,7 +84,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     *
     * The model needs to handle "featurization" here.
     *
-    * @param document the JObject to pull from.
+    * @param doc the JObject to pull from.
     * @param options Object of predict options.
     * @return
     */
