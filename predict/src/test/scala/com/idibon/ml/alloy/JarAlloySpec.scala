@@ -14,11 +14,7 @@ import org.json4s._
 import org.scalatest._
 
 /**
-  * Class to test the JarAlloy.
-  *
-  * It has a bunch of integration tests that should be fairly stable, unless one
-  * of the underlying models changes. Otherwise it contains unit tests for JarReader &
-  * JarWriter.
+  * Class to test the JarAlloyReader and JarAlloyWriter
   *
   * See http://doc.scalatest.org/2.2.6/#org.scalatest.BeforeAndAfter about before & after and
   * why it's okay to do what is going on here with the temp file deletion.
@@ -53,37 +49,6 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     }
   }
 
-  describe("integration tests") {
-    it("saves and loads ensemble model of rules as intended") {
-      val docRules1 = new DocumentRules("alabel", List())
-      val docRules2 = new DocumentRules("alabel", List(("is", 0.5f)))
-      val random = new Random().nextLong()
-      val labelToModel = Map("gang" -> new GangModel(Map("0" -> docRules1, "1" -> docRules2)))
-      val alloy = new JarAlloy(labelToModel, Map[String, Label]())
-      tempFilename = s"test_${random}.jar"
-      alloy.save(tempFilename)
-      // let's make sure to delete the file on exit
-      val jarFile = new File(tempFilename)
-      jarFile.exists() shouldBe true
-      // get alloy back & predict on it.
-      val resurrectedAlloy = JarAlloy.load[Classification](new EmbeddedEngine, tempFilename)
-      val options = new PredictOptionsBuilder().build()
-      val documentObject: JsonAST.JObject = JObject(List(("content", JString("content IS awesome"))))
-      val result1 = alloy.predict(documentObject, options)
-      val result2 = resurrectedAlloy.predict(documentObject, options)
-      result2 shouldBe result1
-    }
-  }
-
-  describe("Loads as intended") {
-    it("Throws exception on unhandled version") {
-      intercept[IOException] {
-        val jar = new File(".", "/predict/src/test/resources/fixtures/invalid_alloy_version.jar")
-        JarAlloy.load(null, jar.getCanonicalPath())
-      }
-    }
-  }
-
   describe("Tests JarWriter & JarReader") {
     /**
       * Helper function to create alloy writer.
@@ -93,9 +58,8 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
     def createAlloyWriter(filename: String): (File, JarOutputStream, Alloy.Writer) = {
       val file = File.createTempFile(filename, null)
       tempFilename = filename
-      val jos = new JarOutputStream(new FileOutputStream(file), new Manifest())
-      val jw: Alloy.Writer = new JarWriter("", jos)
-      (file, jos, jw)
+      val jos = new JarOutputStream(new FileOutputStream(file))
+      (file, jos, new JarAlloyWriter(jos))
     }
     /**
       * Helper function to create alloy reader.
@@ -105,8 +69,7 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       */
     def createAlloyReader(file: File): (JarFile, Alloy.Reader) = {
       val jarFile = new JarFile(file)
-      val reader: Alloy.Reader = new JarReader("", jarFile)
-      (jarFile, reader)
+      (jarFile, new JarAlloyReader(jarFile))
     }
     /**
       * Helper function to write to a resource.
@@ -117,8 +80,11 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       */
     def writeToResource(writer: Alloy.Writer, resource: String, value: String): Unit = {
       val dos: DataOutputStream = writer.resource(resource)
-      Codec.String.write(dos, value)
-      dos.close()
+      try {
+        Codec.String.write(dos, value)
+      } finally {
+        dos.close()
+      }
     }
     /**
       * Helper function to read from a resource and return the value.
@@ -129,9 +95,11 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       */
     def readFromResource(reader: Alloy.Reader, resource: String): String = {
       val stream: DataInputStream = reader.resource(resource)
-      val value = Codec.String.read(stream)
-      stream.close()
-      value
+      try {
+        Codec.String.read(stream)
+      } finally {
+        stream.close
+      }
     }
 
     it("Can write to and read from the same jar") {
@@ -204,68 +172,4 @@ class JarAlloySpec extends FunSpec with Matchers with BeforeAndAfter with Parall
       jarFile.close()
     }
   }
-
-  describe("Test validation") {
-    val c1 = new Classification("test1", 0.25f, 2, 2, Seq())
-    val c1a = new Classification("test1", 0.2501f, 2, 2, Seq())
-    val c1b = new Classification("test1", 0.5501f, 2, 2, Seq())
-    val c2 = new Classification("test2", 0.22343f, 2, 2, Seq())
-    val c2a = new Classification("test2", 0.22393f, 2, 2, Seq())
-    val c2b = new Classification("test2", 0.22443f, 2, 2, Seq())
-    val c3 = new Classification("test3", 0.33f, 2, 2, Seq())
-    val c4 = new Classification("test4", 0.523f, 2, 2, Seq())
-    val d1: Document = Document.document(JObject())
-
-    it("validates on exactly equal objects") {
-      val examples1 = new ValidationExamples[Classification](
-        List(new ValidationExample(d1, List(c1, c2))))
-      val examples2 = new ValidationExamples[Classification](
-        List(new ValidationExample(d1, List(c3, c4))))
-      val result = JarAlloy.validate[Classification](
-        Map("m1" -> new DummyPredictModel1(), "m2" -> new DummyPredictModel2()),
-        Map("m1"-> examples1, "m2" -> examples2))
-      result.isEmpty shouldBe true
-    }
-    it("validates on floats within tolerance") {
-      val examples = new ValidationExamples[Classification](
-        List(new ValidationExample(d1, List(c1a, c2a))))
-      val result = JarAlloy.validate[Classification](
-        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
-      result.isEmpty shouldBe true
-    }
-    it("returns non-empty string when tolerance exceeded") {
-      val examples = new ValidationExamples[Classification](
-        List(new ValidationExample(d1, List(c1b, c2b))))
-      val result = JarAlloy.validate[Classification](
-        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
-      result.isEmpty shouldBe false
-    }
-    it("returns non-empty string when anything else doesn't match between examples") {
-      val examples = new ValidationExamples[Classification](
-        List(new ValidationExample(d1, List(c3, c4))))
-      val result = JarAlloy.validate[Classification](
-        Map("m1" -> new DummyPredictModel1()), Map("m1"->examples))
-      result.isEmpty shouldBe false
-    }
-  }
-
-  describe("Test prediction") {
-    it("It uses the base class predict method successfully") {
-      //TODO: once alloy level predict API is finalized.
-    }
-  }
-}
-
-private class DummyPredictModel1 extends PredictModel[Classification] {
-  override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(new Classification("test1", 0.25f, 2, 2, Seq()), new Classification("test2", 0.22343f, 2, 2, Seq()))
-  }
-  override def getFeaturesUsed(): Vector = ???
-}
-
-private class DummyPredictModel2 extends PredictModel[Classification] {
-  override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(new Classification("test3", 0.33f, 2, 2, Seq()), new Classification("test4", 0.523f, 2, 2, Seq()))
-  }
-  override def getFeaturesUsed(): Vector = ???
 }
