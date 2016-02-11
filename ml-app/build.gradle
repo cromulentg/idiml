@@ -18,6 +18,11 @@ description = "Idibon ML CLI Utilities and Application Libraries"
 apply plugin: 'application'
 mainClassName = 'com.idibon.ml.app.App'
 
+/* setup a reasonable Java heap for training, and force UTF-8 as the
+ * system encoding, and UTC as the default time zone */
+applicationDefaultJvmArgs = [ "-Xmx4G", "-Dfile.encoding=UTF-8",
+  "-Duser.timezone=UTC" ]
+
 /* the "application" plugin builds distribution ZIP and JAR files by
  * default. we don't want to publish these, since that adds ~140M to
  * every maven deploy with transient dependencies that don't change.

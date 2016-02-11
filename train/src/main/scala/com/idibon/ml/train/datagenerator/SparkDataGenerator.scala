@@ -22,7 +22,7 @@ import scala.util.{Success, Try}
   * they can be easily converted by the consumers of this.
   *
   */
-trait SparkDataGenerator{
+trait SparkDataGenerator {
   /**
     *
     * @param engine
@@ -33,27 +33,6 @@ trait SparkDataGenerator{
   def getLabeledPointData(engine: Engine,
                           pipeline: FeaturePipeline,
                           docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]]
-
-  /**
-    * Add a shutdown hook to make sure that we clean up all temp files,
-    * regardless of how the JVM terminates.
-    *
-    * @param trainerTemp
-    * @param files
-    */
-  protected def addShutdownHook(trainerTemp: File, files: Map[String, Try[File]]): Unit = {
-    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run {
-        // delete all of the temporary files
-        files.foreach(_ match {
-          case (labelName: String, file: Success[File]) => file.get.delete
-          case _ => {}
-        })
-        // and the random parent folder
-        trainerTemp.delete
-      }
-    })
-  }
 
   /**
     * Creates subdirectory where data should be stored.
@@ -120,7 +99,11 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
     // convert RDDs to data frames
     val files = createPerLabelDFs(trainerTemp, sqlContext, perLabelRDDs)
     // make sure the files go away
-    addShutdownHook(trainerTemp, files)
+    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run {
+        FileUtils.rm_rf(trainerTemp)
+      }
+    })
 
     // only train if all labels were successfully stored
     if (files.exists({ case (_, file) => file.isFailure })) {
@@ -147,10 +130,8 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
                         perLabelRDDs: Map[String, RDD[LabeledPoint]]): Map[String, Try[File]] = {
     perLabelRDDs.zipWithIndex.map({ case ((label, rdd), index) => {
       (label, Try({
-        /* can't call File.createTempFile here, because the parquet writer
-         * doesn't like to overwrite files, including the empty file created
-         * by File.createTempFile, so use the integer index of the label
-         * within a random temp directory. :angry: */
+        /* can't call File.createTempFile here, because parquet "files" are
+         * actually directories. */
         val file = new File(trainerTemp, s"idiml-${index}.parquet")
         logger.info(s"Saving RDD for $label to $file")
         try {
@@ -162,7 +143,7 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
             /* if saving fails for any reason, delete the temporary file
              * and map store a Failure in the map */
             logger.error(s"Failed to save training data for $label", error)
-            file.delete
+            FileUtils.rm_rf(file)
             throw error
           }
         }
