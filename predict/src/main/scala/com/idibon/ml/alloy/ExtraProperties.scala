@@ -30,8 +30,9 @@ object HasValidationData {
     */
   def validate[T <: PredictResult with Buildable[T, Builder[T]]](
       reader: Alloy.Reader, alloy: BaseAlloy[T]) {
-    val resource = new FeatureInputStream(reader.resource(VALIDATION_RESOURCE))
-    if (resource == null) return;
+    val rawResource = reader.resource(VALIDATION_RESOURCE)
+    if (rawResource == null) return;
+    val resource = new FeatureInputStream(rawResource)
 
     try {
       val exampleCount = Codec.VLuint.read(resource)
