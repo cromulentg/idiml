@@ -2,8 +2,6 @@ package com.idibon.ml.train.datagenerator.scales
 
 import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipeline, FeaturePipelineBuilder}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint

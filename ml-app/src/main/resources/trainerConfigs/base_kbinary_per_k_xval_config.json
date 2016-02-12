@@ -74,7 +74,8 @@
       },
       {
         "inputs": [
-          "$document"
+          "$document",
+          "contentTypeDetector"
         ],
         "name": "languageDetector"
       },

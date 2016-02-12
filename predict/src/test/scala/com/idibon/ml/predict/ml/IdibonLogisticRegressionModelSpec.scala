@@ -28,7 +28,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   val pipeline: FeaturePipeline = (FeaturePipelineBuilder.named("StefansPipeline")
     += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
     += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language", "contentDetector"))
-    += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document"))
+    += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document", "contentDetector"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
     += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
     := ("convertToIndex"))
