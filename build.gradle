@@ -37,6 +37,13 @@ def getVersionString(String baseVersion) {
 }
 
 version = getVersionString("0.7.0")
+ext {
+  /* Gradle treats the JAR file as out-of-date if the timestamp
+   * changes, so just restrict the build date to a daily update
+   * to limit unnecessary repackaging. */
+  buildDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())
+  gitRef = "git rev-parse --short HEAD".execute().text.trim()
+}
 
 println "Current Version: ${version}"
 
@@ -65,6 +72,18 @@ subprojects {
 
   repositories {
     mavenCentral()
+  }
+
+  jar.manifest {
+    attributes (
+      'Implementation-Title': project.name,
+      'IdiML-Version': project.version,
+      'IdiML-Commit': parent.ext.gitRef,
+      'Build-Date': parent.ext.buildDate,
+      'Built-OS': "${System.getProperty('os.name')} ${System.getProperty('os.version')}",
+      'Built-Arch': System.getProperty('os.arch'),
+      'Built-JDK': "${System.getProperty('java.vendor')} ${System.getProperty('java.version')}"
+    )
   }
 
   dependencies {

@@ -40,6 +40,13 @@ class BaseAlloySpec extends FunSpec with Matchers {
     }
   }
 
+  describe(".getIdimlVersion") {
+    // FIXME: figure out how to get the MANIFEST in the class path for testing
+    ignore("should have a known version number") {
+      BaseAlloy.getIdimlVersion should not be "UNKNOWN"
+    }
+  }
+
   describe(".translateUUID") {
     it("should return null on an invalid label") {
       val alloy = new BaseAlloy("garbage",

@@ -88,7 +88,7 @@ object BaseAlloy extends StrictLogging {
       case _ => throw new UnsupportedOperationException(s"${man.specVersion}")
     }
 
-    logger.info(s"Load ${man.name}, version ${man.specVersion}, ${man.createdAt}")
+    logger.info(s"Load ${man.name}, v${man.specVersion} (IdiML v${man.idimlVersion}), ${man.createdAt}")
     new BaseAlloy(man.name, spec.loadLabels(reader),
       spec.loadModels[T](engine, reader))
   }
@@ -124,7 +124,7 @@ object BaseAlloy extends StrictLogging {
     val manifest = JsonMethods.compact(JsonMethods.render(
       ("name" -> alloy.name) ~
         ("specVersion" -> CURRENT_SPEC.VERSION) ~
-        ("idimlVersion" -> "FIXME: INCLUDE IDIML VERSION") ~
+        ("idimlVersion" -> getIdimlVersion) ~
         ("createdAt" -> dateFormat.format(new Date())) ~
         ("properties" -> (
           ("java.vendor" -> System.getProperty("java.vendor")) ~
@@ -140,6 +140,38 @@ object BaseAlloy extends StrictLogging {
       CURRENT_SPEC
     } finally {
       resource.close
+    }
+  }
+
+  /** Returns the IdiML Version stored in the IdiML predict JAR manifest. */
+  private[alloy] def getIdimlVersion = {
+    // look up the resource file in the classLoader for this class
+    val classFile = classOf[BaseAlloy[_]].getSimpleName + ".class"
+    val classPath = classOf[BaseAlloy[_]].getResource(classFile).toString
+
+    if (classPath.startsWith("jar")) {
+      // try to extract the IdiML attribute from the package manifest
+      try {
+        val manifestURL = new java.net.URL(classPath
+          .substring(0, classPath.lastIndexOf("!") + 1) +
+          "/META-INF/MANIFEST.MF")
+        val stream = manifestURL.openStream()
+        try {
+          new java.util.jar.Manifest(stream)
+            .getMainAttributes
+            .getValue("IdiML-Version")
+        } finally {
+          stream.close()
+        }
+      } catch {
+        case t: Throwable => {
+          logger.error("Unable to read IdiML version from Manifest.", t)
+          "UNKNOWN"
+        }
+      }
+    } else {
+      // if run in a test environment, the JAR may not exist
+      "UNKNOWN"
     }
   }
 }
