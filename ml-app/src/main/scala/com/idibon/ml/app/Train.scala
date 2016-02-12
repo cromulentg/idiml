@@ -62,8 +62,8 @@ object Train extends Tool with StrictLogging {
         readDocumentsFn, labelsAndRules, Some(trainingJob))
 
       JarAlloy.save(alloy, new File(cli.getOptionValue('o')))
-      val elapsed = System.currentTimeMillis - startTime
-      logger.info(s"Training completed in $elapsed ms")
+      val elapsed = (System.currentTimeMillis - startTime) / 1000.0
+      logger.info(s"Training completed in $elapsed s")
     } catch {
       case e: Throwable => logger.error("Unable to train model", e)
     } finally {

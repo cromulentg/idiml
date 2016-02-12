@@ -2,6 +2,7 @@ package com.idibon.ml.train.datagenerator
 
 import com.idibon.ml.feature.FeaturePipeline
 import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 import org.json4s.JsonAST.{JBool, JString}
 import org.json4s._
 
@@ -12,8 +13,8 @@ import org.json4s._
   * it for training K binary classifiers.
   *
   */
-class KClassDataFrameGenerator extends DataFrameBase {
-
+class KClassDataFrameGenerator(builder: KClassDataFrameGeneratorBuilder) extends DataFrameBase {
+  val scale = builder.scale.build()
   /**
     * Creates a map of label -> list of labelled points for that label.
     *
@@ -24,7 +25,7 @@ class KClassDataFrameGenerator extends DataFrameBase {
     * @return
     */
   override def createPerLabelLPs(pipeline: FeaturePipeline,
-                        docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]] = {
+                                 docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]] = {
     implicit val formats = org.json4s.DefaultFormats
     docs().flatMap(document => {
       val annotations = (document \ "annotations").extract[JArray]
@@ -42,18 +43,18 @@ class KClassDataFrameGenerator extends DataFrameBase {
           val JBool(isPositive) = jsonValue \ "isPositive"
           // Assign a number that MLlib understands
           val labelNumeric = if (isPositive) 1.0 else 0.0
-          // Create labeled points
           (label, LabeledPoint(labelNumeric, featureVector))
-        }
+          }
         })
       }
       // need to covert toList for groupBy to work...
     }).toList
       // group by label
-      .groupBy({ case (label, point) => label})
+      .groupBy({ case (label, point) => label })
       // need to change (label, List((label, pt))) to just (label, List(pt))
       .map({ case (label, listLabelAndPoint) => {
-        (label, listLabelAndPoint.map({case (_, pt) => pt}))
-    }}) // it's implicitly converted into a map so no need for explicit toMap
+      (label, listLabelAndPoint.map({ case (_, pt) => pt }))
+    }
+    }) // it's implicitly converted into a map so no need for explicit toMap
   }
 }

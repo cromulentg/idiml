@@ -50,7 +50,7 @@ class KClassDataFrameGeneratorSpec extends FunSpec with Matchers
       val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
-      val gen = new KClassDataFrameGenerator()
+      val gen = new KClassDataFrameGeneratorBuilder().build()
       val baseTraining = gen.createPerLabelLPs(primedPipeline, () => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
@@ -86,7 +86,7 @@ class KClassDataFrameGeneratorSpec extends FunSpec with Matchers
       val primedPipeline = pipeline.prime(
         Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject]))
 
-      val dataFrameMap = new KClassDataFrameGenerator().getLabeledPointData(engine, primedPipeline, () => {
+      val dataFrameMap = new KClassDataFrameGeneratorBuilder().build().getLabeledPointData(engine, primedPipeline, () => {
         Source.fromFile(inFilePath)
           .getLines.map(line => parse(line).extract[JObject])
       })
