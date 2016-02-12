@@ -8,6 +8,7 @@ import com.idibon.ml.alloy.{BaseAlloy, MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.tokenizer.{TokenTransformer, Token, Tag}
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
+import com.idibon.ml.feature.contenttype.ContentTypeDetector
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.predict._
 import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
@@ -26,9 +27,10 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
 
   val pipeline: FeaturePipeline = (FeaturePipelineBuilder.named("StefansPipeline")
     += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
-    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language"))
-    += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document"))
+    += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language", "contentDetector"))
+    += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document", "contentDetector"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
+    += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
     := ("convertToIndex"))
 
   val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"

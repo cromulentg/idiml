@@ -4,6 +4,7 @@ import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature.language.LanguageDetector
 import com.idibon.ml.feature.tokenizer.TokenTransformer
+import com.idibon.ml.feature.contenttype.ContentTypeDetector
 import com.idibon.ml.feature.{ContentExtractor, FeaturePipelineBuilder, FeaturePipeline}
 import com.idibon.ml.train.datagenerator.{KClassDataFrameGeneratorBuilder, KClassDataFrameGenerator}
 import org.apache.spark.mllib.linalg.Vectors
@@ -37,9 +38,10 @@ class SimpleLogisticRegressionSpec extends FunSpec
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
       += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
-      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
-      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
+      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
       := ("convertToIndex"))
   }
 
@@ -108,9 +110,10 @@ class XValLogisticRegressionSpec extends FunSpec
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
       += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
-      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
-      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
+      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
       := ("convertToIndex"))
   }
 
@@ -179,9 +182,10 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
       += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
-      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector"))
-      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
+      += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
       := ("convertToIndex"))
   }
 

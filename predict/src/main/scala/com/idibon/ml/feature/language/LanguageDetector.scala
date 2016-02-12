@@ -2,6 +2,7 @@ package com.idibon.ml.feature.language
 
 import scala.util.Try
 import com.idibon.ml.feature.{Feature, FeatureTransformer}
+import com.idibon.ml.feature.contenttype.{ContentType, ContentTypeCode}
 import com.idibon.ml.cld2._
 import com.ibm.icu.util.ULocale
 import org.json4s._
@@ -15,7 +16,10 @@ class LanguageDetector extends FeatureTransformer {
     * @param document - a parsed JSON document
     * @return - a LanguageCode feature
     */
-  def apply(document: JObject): LanguageCode = {
+  def apply(document: JObject,
+    contentType: Feature[ContentType]):
+      LanguageCode = {
+    // TODO: use the content-type feature here
     (document \ "metadata" \ "iso_639_1").toOption
       .flatMap(code => LanguageCode.normalize(code.asInstanceOf[JString].s))
       .map(iso639_2 => LanguageCode(Some(iso639_2)))

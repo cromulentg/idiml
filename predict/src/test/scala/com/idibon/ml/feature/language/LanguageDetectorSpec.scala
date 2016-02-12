@@ -3,6 +3,7 @@ package com.idibon.ml.feature.language
 import org.json4s._
 import org.scalatest.{Matchers, FunSpec}
 import com.idibon.ml.feature.Feature
+import com.idibon.ml.feature.contenttype.{ContentType, ContentTypeCode}
 
 class LanguageDetectorSpec extends FunSpec with Matchers {
 
@@ -17,13 +18,13 @@ class LanguageDetectorSpec extends FunSpec with Matchers {
         JField("metadata", JObject(List(
           JField("iso_639_1", JString("zh-Hant"))
         )))))
-      transform(document) shouldBe LanguageCode(Some("zho"))
+      transform(document, ContentType(ContentTypeCode.PlainText)) shouldBe LanguageCode(Some("zho"))
     }
 
     it("should use auto-detection if no metadata is present") {
       val document = JObject(List(
         JField("content", JString("Ceci est une phrase en français"))))
-      transform(document) shouldBe LanguageCode(Some("fra"))
+      transform(document, ContentType(ContentTypeCode.PlainText)) shouldBe LanguageCode(Some("fra"))
     }
   }
 

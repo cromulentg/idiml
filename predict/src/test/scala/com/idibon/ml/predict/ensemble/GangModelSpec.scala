@@ -5,8 +5,6 @@ import scala.collection.mutable.HashMap
 import com.idibon.ml.alloy.{Alloy, Codec, MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.common.{Engine, ArchiveLoader, Archivable, EmbeddedEngine}
 import com.idibon.ml.feature.indexer.IndexTransformer
-import com.idibon.ml.feature.language.LanguageDetector
-import com.idibon.ml.feature.tokenizer.TokenTransformer
 import com.idibon.ml.feature._
 import com.idibon.ml.predict.ml.{IdibonMultiClassLRModel, MLModel}
 import com.idibon.ml.predict.rules.{RuleFeature, DocumentRules}

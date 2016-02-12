@@ -61,13 +61,21 @@
       {
         "inputs": [
           "contentExtractor",
-          "languageDetector"
+          "languageDetector",
+          "contentTypeDetector"
         ],
         "name": "convertToTokens"
       },
       {
         "inputs": [
           "$document"
+        ],
+          "name": "contentTypeDetector"
+      },
+      {
+        "inputs": [
+          "$document",
+          "contentTypeDetector"
         ],
         "name": "languageDetector"
       },
@@ -100,6 +108,10 @@
       {
         "class": "com.idibon.ml.feature.language.LanguageDetector",
         "name": "languageDetector"
+      },
+      {
+        "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector",
+        "name": "contentTypeDetector"
       },
       {
         "class": "com.idibon.ml.feature.tokenizer.TokenTransformer",
