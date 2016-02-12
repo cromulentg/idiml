@@ -96,7 +96,7 @@ case class IdibonLogisticRegressionModel(label: String,
 
 object IdibonLogisticRegressionModel extends StrictLogging {
 
-  val FORMAT_VERSION = "0.0.2"
+  val FORMAT_VERSION = "0.0.3"
 
   /**
     * Static method to write our "libsvm" like format to a stream.
@@ -118,17 +118,20 @@ object IdibonLogisticRegressionModel extends StrictLogging {
     // dimensions
     Codec.VLuint.write(out, coefficients.size)
     // actual non-zero dimensions
-    Codec.VLuint.write(out, coefficients.numActives)
+    Codec.VLuint.write(out, coefficients.numNonzeros)
     var maxCoefficient = -10000.0
     var minCoefficient = 10000.0
-    coefficients.foreachActive{
-      case (index, value) =>
-        // do I need to worry about 0?
-        Codec.VLuint.write(out, index)
+
+    var lastIndex = 0
+    coefficients.foreachActive({ case (index, value) => {
+      if (value != 0.0) {
+        Codec.VLuint.write(out, index - lastIndex)
+        lastIndex = index
         out.writeDouble(value)
         if (value > maxCoefficient) maxCoefficient = value
         if (value < minCoefficient) minCoefficient = value
-    }
+      }
+    }})
   }
 
   /**
@@ -145,8 +148,12 @@ object IdibonLogisticRegressionModel extends StrictLogging {
     val dimensions = Codec.VLuint.read(in)
     // non-zero dimensions
     val numCoeffs = Codec.VLuint.read(in)
+
+    var indexValue = 0
     val (indices, values) = (0 until numCoeffs).map { _ =>
-      (Codec.VLuint.read(in), in.readDouble())
+      val (delta, coeff) = (Codec.VLuint.read(in), in.readDouble())
+      indexValue += delta
+      (indexValue, coeff)
     }.unzip
     logger.info(s"Read $numCoeffs dimensions from $dimensions for $uid with intercept $intercept")
     (intercept, Vectors.sparse(dimensions, indices.toArray, values.toArray), uid)

@@ -91,7 +91,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val config = model.save(new MemoryAlloyWriter(archive))
       implicit val formats = DefaultFormats
       val version = (config.get \ "version" ).extract[String]
-      version shouldEqual "0.0.2"
+      version shouldEqual "0.0.3"
       val featureMeta = (config.get \ "featurePipeline").extract[JObject]
       featureMeta should not be JNothing
       featureMeta should not be JNull
@@ -138,12 +138,20 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       IdibonMultiClassLRModel.writeCodecLibSVM(Map("alabel" -> 1, "!alabel" -> 0),
         new WrappedByteArrayOutputStream(out), intercept, coefficients, coefficients.size)
       out.toByteArray() shouldEqual Array[Byte](2, 6, 97, 108, 97, 98, 101, 108, 1, 7, 33, 97, 108,
-        97, 98, 101, 108, 0, 10, -65, -15, -9, -50, -39, 22, -121, 43, 10, 10, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 1, 63, -51, -13, -74, 69, -95, -54, -63, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,
-        0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 63, -13, -82, 20, 122, -31, 71, -82, 6, 0, 0, 0, 0,
-        0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 9, 65, 12, -105, -47,
-        -33, 59, 100, 90)
+        97, 98, 101, 108, 0, 10, -65, -15, -9, -50, -39, 22, -121, 43, 10, 3,
+        1, 63, -51, -13, -74, 69, -95, -54, -63, 4, 63, -13, -82, 20, 122, -31, 71, -82,
+        4, 65, 12, -105, -47, -33, 59, 100, 90)
       out.close()
+    }
+
+    it("reads compressed sparse vectors") {
+      val input = new ByteArrayInputStream(Array[Byte](2, 6, 97, 108, 97, 98, 101, 108, 1, 7, 33, 97, 108,
+        97, 98, 101, 108, 0, 10, -65, -15, -9, -50, -39, 22, -121, 43, 10, 3,
+        1, 63, -51, -13, -74, 69, -95, -54, -63, 4, 63, -13, -82, 20, 122, -31, 71, -82,
+        4, 65, 12, -105, -47, -33, 59, 100, 90))
+      val (intercept, coeff, labelMap, numFeatures) = IdibonMultiClassLRModel
+        .readCodecLibSVM(new WrappedByteArrayInputStream(input))
+      coeff shouldBe Vectors.sparse(10, Array[Int](1, 5, 9), Array[Double](0.234, 1.23, 234234.234))
     }
 
     it("test empty sparse vector"){
@@ -162,9 +170,9 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
     it("works on sparse vector") {
       val input = new ByteArrayInputStream(Array[Byte](2, 6, 97, 108, 97, 98, 101, 108, 1, 7, 33, 97, 108,
         97, 98, 101, 108, 0, 10, -65, -15, -9, -50, -39, 22, -121, 43, 10, 10, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 1, 63, -51, -13, -74, 69, -95, -54, -63, 2, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,
-        0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 63, -13, -82, 20, 122, -31, 71, -82, 6, 0, 0, 0, 0,
-        0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 9, 65, 12, -105, -47,
+        0, 0, 1, 63, -51, -13, -74, 69, -95, -54, -63, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 63, -13, -82, 20, 122, -31, 71, -82, 1, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 65, 12, -105, -47,
         -33, 59, 100, 90))
       val (intercept: Double,
       coefficients: Vector,

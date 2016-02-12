@@ -133,7 +133,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
       val out: ByteArrayOutputStream = new ByteArrayOutputStream()
       val intercept = -1.123
       val coefficients = Vectors.sparse(
-        5, Array[Int](1, 10, 100, 1000, 10000), Array[Double](0.234, 1.23, 234234.234, 64556.034, 2.0))
+        5, Array[Int](1, 11, 111, 1111, 11111), Array[Double](0.234, 1.23, 234234.234, 64556.034, 2.0))
       val uid = "thisIsAUID"
       IdibonLogisticRegressionModel.writeCodecLibSVM(
         new WrappedByteArrayOutputStream(out), intercept, coefficients, uid)
@@ -159,15 +159,15 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
   describe("Test readCodecLibSVM") {
     it("works on sparse vector") {
       val input = new ByteArrayInputStream(Array[Byte](10, 116, 104, 105, 115, 73, 115, 65, 85, 73, 68,
-        -65, -15, -9, -50, -39, 22, -121, 43, 5, 5, 1, 63, -51, -13, -74, 69, -95, -54, -63, 10,
-        63, -13, -82, 20, 122, -31, 71, -82, 100, 65, 12, -105, -47, -33, 59, 100, 90, -24, 7, 64,
+        -65, -15, -9, -50, -39, 22, -121, 43, 5, 5, 1, 63, -51, -13, -74, 69, -95, -54, -63, 9,
+        63, -13, -82, 20, 122, -31, 71, -82, 90, 65, 12, -105, -47, -33, 59, 100, 90, -24, 7, 64,
         -17, -123, -127, 22, -121, 43, 2, -112, 78, 64, 0, 0, 0, 0, 0, 0, 0))
       val (intercept: Double,
       coefficients: Vector,
       uid: String) = IdibonLogisticRegressionModel.readCodecLibSVM(new WrappedByteArrayInputStream(input))
       intercept shouldEqual -1.123
       coefficients shouldEqual  Vectors.sparse(
-        5, Array[Int](1, 10, 100, 1000, 10000), Array[Double](0.234, 1.23, 234234.234, 64556.034, 2.0))
+        5, Array[Int](1, 10, 100, 1100, 11100), Array[Double](0.234, 1.23, 234234.234, 64556.034, 2.0))
       uid shouldEqual "thisIsAUID"
     }
 
