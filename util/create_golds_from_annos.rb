@@ -16,6 +16,8 @@ holdout_percent = ARGV[1]
 File.open(source_annos.to_s+"_"+holdout_percent.to_s+"_golds.json", "w") {}
 File.open(source_annos.to_s+"_"+holdout_percent.to_s+"_train.json", "w") {}
 
+doc_name = 0
+
 File.foreach(source_annos) do |doc|
 	rand_val = rand
 	if rand_val <= holdout_percent.to_f
@@ -28,7 +30,9 @@ File.foreach(source_annos) do |doc|
 				gold_label = anno["label"]["name"]
 			end
 		}
-		gold_info = {"content" => content, "metadata" => { "gold" => gold_label}}
+		gold_info = {"content" => content, "metadata" => { "gold" => gold_label,
+								 "name" => doc_name } }
+	 	doc_name += 1	
 		File.open(source_annos.to_s+"_"+holdout_percent.to_s+"_golds.json", "a") { |f|
 			f.write(gold_info.to_json+"\n")
 		}
