@@ -16,6 +16,7 @@ private [this] object EmbeddedEngine {
   val sparkContext = {
     val conf = new SparkConf().setAppName("idiml")
       .set("spark.driver.host", "localhost")
+      .set("spark.ui.enabled", "false")
       .setMaster("local[3]")
     new SparkContext(conf)
   }
