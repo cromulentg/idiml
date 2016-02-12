@@ -44,7 +44,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         ("model-meta", JObject(List(
           ("0",
             JObject(List(("config",
-              JObject(List(("version",JString("0.0.2")),
+              JObject(List(("version",JString("0.0.3")),
                 ("featurePipeline",JObject(List(
                   ("version",JString("0.0.1")),
                   ("transforms",

@@ -50,24 +50,38 @@ import org.json4s._
       try {
         // write boolean for frozen
         fos.writeBoolean(frozen)
-        // save the dimensionality of the feature index, so that if frozen, we can create properly sized vectors
+        /* save the dimensionality of the feature index, so that if frozen,
+         * we can create properly sized vectors */
         Codec.VLuint.write(fos, frozenSize)
-        // Save the size of the featureIndex map so we know how many times to call Codec.read() at load time
-        Codec.VLuint.write(fos, featureIndex.size)
-        // Store each key (feature) / value (index) pair in sequence
-        featureIndex.foreach {
-          case (key, value) => {
-            key match {
-              case f: Feature[_] with Buildable[_, _] => {
-                fos.writeFeature(f)
-                Codec.VLuint.write(fos, value)
-              }
-              case _ => {
-                logger.warn(s"Unable to save feature of type ${key.getClass}")
-              }
-            }
-          }
-        }
+        /* sort the features in order of increasing index, so that we can
+         * delta-encode the indices in the file to take advantage of space
+         * savings from the VLuint data type. if any non-buildable features
+         * are in the index, log an error since these can't be saved */
+        val vocabulary = featureIndex.toSeq
+          .filter(_._1.isInstanceOf[Buildable[_, _]])
+          .map({ case (f, i) => (f.asInstanceOf[Feature[_] with Buildable[_, _]], i) })
+          .sortWith(_._2 < _._2)
+
+        val unsaveable = featureIndex.keys
+          .filter(!_.isInstanceOf[Buildable[_, _]])
+          .map(_.getClass).toList
+          .distinct
+
+        if (!unsaveable.isEmpty)
+          logger.error(s"Unable to save features: ${unsaveable.mkString(", ")}")
+
+        /* Save the size of the vocabulary so we know how many items to read
+         * at load time */
+        Codec.VLuint.write(fos, vocabulary.size)
+        /* store the difference in index value between adjacent indices in the
+         * vocabulary, to bias stored values to smaller values that take better
+         * advantage of the VLuint encoding */
+        var lastIndex = 0
+        vocabulary.foreach({ case (feature, index) => {
+          fos.writeFeature(feature)
+          Codec.VLuint.write(fos, index - lastIndex)
+          lastIndex = index
+        }})
       } finally {
         fos.close()
       }
@@ -229,11 +243,13 @@ import org.json4s._
 
           val transformer = new IndexTransformer(observations, frozen, frozenSize)
 
+          var indexValue = 0
           1 to size foreach { _ =>
             val feature = fis.readFeature
-            val value = Codec.VLuint.read(fis)
-            transformer.featureIndex += (feature -> value)
-            transformer.inverseIndex += (value -> feature)
+            val delta = Codec.VLuint.read(fis)
+            indexValue += delta
+            transformer.featureIndex += (feature -> indexValue)
+            transformer.inverseIndex += (indexValue -> feature)
           }
           transformer
         }

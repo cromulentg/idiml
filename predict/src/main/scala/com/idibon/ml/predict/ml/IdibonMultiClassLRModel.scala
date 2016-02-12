@@ -104,7 +104,7 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
   * Static object that houses static functions and constants.
   */
 object IdibonMultiClassLRModel extends StrictLogging {
-  val FORMAT_VERSION = "0.0.2"
+  val FORMAT_VERSION = "0.0.3"
 
   /**
     * Static method to write our "libsvm" like format to a stream.
@@ -120,7 +120,7 @@ object IdibonMultiClassLRModel extends StrictLogging {
                        coefficients: Vector,
                        numFeatures: Int): Unit = {
     logger.info(s"Writing ${coefficients.size} dimensions with " +
-      s"${coefficients.numActives} active dimensions with $intercept for MultiClass LR")
+      s"${coefficients.numNonzeros} active dimensions with $intercept for MultiClass LR")
     // int to label map
     // size
     Codec.VLuint.write(out, labelToInt.size)
@@ -137,17 +137,20 @@ object IdibonMultiClassLRModel extends StrictLogging {
     // dimensions
     Codec.VLuint.write(out, coefficients.size)
     // actual non-zero dimensions
-    Codec.VLuint.write(out, coefficients.numActives)
+    Codec.VLuint.write(out, coefficients.numNonzeros)
     var maxCoefficient = -10000.0
     var minCoefficient = 10000.0
-    coefficients.foreachActive{
-      case (index, value) =>
-        // do I need to worry about 0?
-        Codec.VLuint.write(out, index)
-        out.writeDouble(value)
-        if (value > maxCoefficient) maxCoefficient = value
-        if (value < minCoefficient) minCoefficient = value
-    }
+    var lastIndex = 0
+    coefficients.foreachActive({ case (index, value) => {
+        if (value != 0.0) {
+          // skip over zero values
+          Codec.VLuint.write(out, index - lastIndex)
+          lastIndex = index
+          out.writeDouble(value)
+          if (value > maxCoefficient) maxCoefficient = value
+          if (value < minCoefficient) minCoefficient = value
+        }
+    }})
   }
 
   /**
@@ -170,11 +173,20 @@ object IdibonMultiClassLRModel extends StrictLogging {
     val dimensions = Codec.VLuint.read(in)
     // non-zero dimensions
     val numCoeffs = Codec.VLuint.read(in)
-    val (indices, values) = (0 until numCoeffs).map { _ =>
-      (Codec.VLuint.read(in), in.readDouble())
-    }.unzip
+    // preallocate the weight vector
+    val coeffs = new Array[Double](dimensions)
+
+    var indexValue = 0
+    (0 until numCoeffs).foreach({ _ => {
+      val (delta, coeff) = (Codec.VLuint.read(in), in.readDouble())
+      var endIndex = indexValue + delta
+      (indexValue + 1 until endIndex).foreach(i => coeffs(i) = 0.0)
+      coeffs(endIndex) = coeff
+      indexValue = endIndex
+    }})
+
     logger.info(s"Read $numCoeffs dimensions from $dimensions for Multiclass with intercept $intercept")
-    (intercept, Vectors.dense(values.toArray), labelToInt, numFeatures)
+    (intercept, Vectors.dense(coeffs), labelToInt, numFeatures)
   }
 }
 
