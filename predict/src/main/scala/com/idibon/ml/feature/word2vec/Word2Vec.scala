@@ -1,5 +1,7 @@
 package com.idibon.ml.feature.word2vec
 
+import java.util
+
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature._
@@ -9,6 +11,8 @@ import org.apache.spark.mllib.feature.Word2VecModel
 import org.apache.spark.mllib.linalg._
 
 import org.json4s._
+
+import scala.collection.JavaConverters._
 
 /**
   * Word2Vec feature for creating vector representations from sequences of strings
@@ -71,7 +75,8 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
 class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
 
   /**
-    * Loads a Word2VecTransformer from a path pointing to a saved Word2VecModel
+    * Loads a Word2VecTransformer from a path pointing to a saved Spark Word2VecModel or
+    * a gzipped binary file output by the original Word2Vec C implementation
     *
     * @param engine implementation of the Engine trait
     * @param reader location within Alloy for loading any resources
@@ -82,9 +87,24 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
   def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): Word2VecTransformer = {
     implicit val formats = DefaultFormats
     val path = (config.get \ "path").extract[String]
-    val model = Word2VecModel.load(engine.sparkContext, path)
-    val transformer = new Word2VecTransformer(engine.sparkContext, model, path)
-    transformer
-  }
+    val modelType = (config.get \ "type").extract[String]
 
+    val model = modelType match {
+      case "spark" => Word2VecModel.load(engine.sparkContext, path)
+      case "bin" => {
+        val reader = new Word2VecBinReader
+        val binFilePath = path
+        val javaWord2VecMap: util.LinkedHashMap[String, Array[Float]] = reader.parseBinFile(binFilePath)
+        val scalaWord2VecMap = javaWord2VecMap.asScala.toMap
+        new Word2VecModel(scalaWord2VecMap)
+      }
+      case _ => {
+        throw new IllegalArgumentException("Invalid model type string ' " + modelType +
+          "'. Currently only 'spark' and 'bin' are allowed");
+      }
+    }
+
+    new Word2VecTransformer(engine.sparkContext, model, path)
+  }
 }
+
