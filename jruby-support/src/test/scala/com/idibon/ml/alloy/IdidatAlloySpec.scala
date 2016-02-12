@@ -20,6 +20,8 @@ import org.apache.spark.mllib.linalg.Vectors
 
 class IdidatAlloySpec extends FunSpec with Matchers {
 
+  def num(x: Float) = java.lang.Float.valueOf(x).asInstanceOf[java.lang.Number]
+
   describe("loadClassificationTask") {
 
     val labelFoo = new Label("00000000-0000-0000-0000-000000000001", "foo")
@@ -30,7 +32,8 @@ class IdidatAlloySpec extends FunSpec with Matchers {
     it("should create alloys from nothing") {
       val alloy = IdidatAlloy.loadClassificationTask(new EmbeddedEngine,
         "testing", null, List(labelFoo).asJava,
-        Map(labelFoo -> Map("foo" -> 1.0f, "bar" -> 0.0f).asJava).asJava, false)
+        Map(labelFoo -> Map("foo" -> num(1.0f),
+          "bar" -> num(0.0f)).asJava).asJava, false)
 
       val results = alloy.predict("content" -> "foobar", PredictOptions.DEFAULT)
       results shouldBe Seq(Classification(labelFoo.uuid.toString, 0.5f, 2, 1, Seq())).asJava
@@ -43,7 +46,7 @@ class IdidatAlloySpec extends FunSpec with Matchers {
       initialAlloy.save(new MemoryAlloyWriter(archive))
       val updatedAlloy = IdidatAlloy.loadClassificationTask(new EmbeddedEngine,
         "updated", new MemoryAlloyReader(archive.toMap), List(labelFoo).asJava,
-        Map(labelFoo -> Map("world" -> 0.8f).asJava).asJava, true)
+        Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
       r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava
@@ -60,7 +63,7 @@ class IdidatAlloySpec extends FunSpec with Matchers {
       initialAlloy.save(new MemoryAlloyWriter(archive))
       val updatedAlloy = IdidatAlloy.loadClassificationTask(new EmbeddedEngine,
         "updated", new MemoryAlloyReader(archive.toMap), List(labelFoo).asJava,
-        Map(labelFoo -> Map("world" -> 0.8f).asJava).asJava, true)
+        Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
       r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava

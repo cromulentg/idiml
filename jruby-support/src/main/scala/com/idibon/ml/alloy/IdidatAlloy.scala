@@ -17,6 +17,20 @@ import com.idibon.ml.predict.ensemble.GangModel
   */
 object IdidatAlloy {
 
+  private[this] def buildRulesGang(
+    r: JavaMap[Label, JavaMap[String, java.lang.Number]]):
+      GangModel = {
+    val rulesModels = r.asScala.map({ case (label, dictionary) => {
+      // convert JavaMap[String, Number] => List[String, Float]
+      val floatRules = dictionary.asScala.map({ case (phrase, weight) => {
+        phrase -> weight.floatValue
+      }}).toList
+      val labelId = label.uuid.toString
+      (labelId, new DocumentRules(labelId, floatRules))
+    }}).toMap
+    new GangModel(rulesModels)
+  }
+
   /** Loads an Alloy using a possibly-updated label and rule set
     *
     * @param engine Engine context for loading
@@ -29,15 +43,13 @@ object IdidatAlloy {
     */
   def loadClassificationTask(engine: Engine, name: String,
     alloyReader: Alloy.Reader, labels: JavaList[Label],
-    rules: JavaMap[Label, JavaMap[String, Float]], validate: Boolean):
+    rules: JavaMap[Label, JavaMap[String, java.lang.Number]],
+    validate: Boolean):
       Alloy[Classification] = {
 
     /* create new rules models for any label where rules are defined.
      * dump them all in a Gang so that they are processed in parallel */
-    val rulesGang = new GangModel(rules.asScala.map({ case (label, dict) => {
-      val labelUuid = label.uuid.toString
-      (labelUuid, new DocumentRules(labelUuid, dict.asScala.toList))
-    }}).toMap)
+    val rulesGang = buildRulesGang(rules)
 
     if (alloyReader == null) {
       // return a base alloy with just the rules
