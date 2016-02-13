@@ -3,7 +3,6 @@ package com.idibon.ml.predict.ml
 import com.idibon.ml.predict._
 import com.idibon.ml.feature.{FeaturePipeline, Feature}
 import org.apache.spark.mllib.linalg.Vector
-import org.json4s.JObject
 
 /** Base class for linear machine learning models
   *
@@ -31,5 +30,5 @@ abstract class MLModel[+T <: PredictResult](
     */
   protected def predictVector(features: Vector,
     invertFeatureFn: (Vector) => Seq[Option[Feature[_]]],
-    options: PredictOptions): Seq[T] = ???
+    options: PredictOptions): Seq[T]
 }
