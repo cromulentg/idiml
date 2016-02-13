@@ -47,8 +47,9 @@ File.foreach(source_annos) do |doc|
 				gold_label = label_map["uuid_to_label"][gold_uuid]
 			end
 		}
-		gold_info = {"content" => content, "metadata" => { "gold" => gold_label,
-								 "gold_uuid" => gold_uuid, "name" => doc_name } }
+		gold_info = {"content" => content, "name" => doc_name,
+								 "metadata" => { "gold" => gold_label,
+								 "gold_uuid" => gold_uuid } }
 	 	doc_name += 1	
 		File.open(gold_file, "a") { |f| f.write(gold_info.to_json+"\n")
 		}
