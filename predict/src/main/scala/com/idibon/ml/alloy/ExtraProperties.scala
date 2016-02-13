@@ -6,6 +6,10 @@ import com.idibon.ml.feature._
 import org.json4s._
 import org.json4s.native.JsonMethods
 
+/*
+ * File containing Optional traits that an Alloy could implement.
+ */
+
 /** Optional Alloy trait for Furnaces to include validation examples
   */
 trait HasValidationData {
@@ -26,37 +30,45 @@ object HasValidationData {
 
   /** Loads the validation examples from the alloy and checks for correctness
     *
-    * @throw ValidationException if the predicted results are invalid
+    * @throws ValidationError if the predicted results are invalid
     */
   def validate[T <: PredictResult with Buildable[T, Builder[T]]](
       reader: Alloy.Reader, alloy: BaseAlloy[T]) {
     val rawResource = reader.resource(VALIDATION_RESOURCE)
-    if (rawResource == null) return;
+    if (rawResource == null) return
     val resource = new FeatureInputStream(rawResource)
 
     try {
       val exampleCount = Codec.VLuint.read(resource)
       val modelCount = Codec.VLuint.read(resource)
+      // load model names
       val modelNames = (0 until modelCount).map(_ => Codec.String.read(resource))
-        (0 until exampleCount).foreach(_ => {
-          val docJson = JsonMethods.parse(Codec.String.read(resource))
-          val doc = Document.document(docJson.asInstanceOf[JObject])
-          modelNames.foreach(n => {
-            val expectCount = Codec.VLuint.read(resource)
-            val expected = (0 until expectCount).map(_ => {
-              resource.readBuildable.asInstanceOf[T]
-            })
-            val results = alloy.models(n).predict(doc, PredictOptions.DEFAULT)
-            if (results.size != expected.size)
-              throw new ValidationError(s"${alloy.name} ${n}")
-            results.zip(expected).foreach({ case (actual, gold) => {
-              if (!actual.isCloseEnough(gold))
-                throw new ValidationError(s"${alloy.name} ${n}")
-            }})
+      // for each validation example we have
+      (0 until exampleCount).foreach(_ => {
+        // get the document
+        val docJson = JsonMethods.parse(Codec.String.read(resource))
+        val doc = Document.document(docJson.asInstanceOf[JObject])
+        // for each model
+        modelNames.foreach(n => {
+          // load expected results
+          val expectCount = Codec.VLuint.read(resource)
+          val expected = (0 until expectCount).map(_ => {
+            resource.readBuildable.asInstanceOf[T]
           })
+          // get fresh prediction
+          val results = alloy.models(n).predict(doc, PredictOptions.DEFAULT)
+          // compare number of results
+          if (results.size != expected.size)
+            throw new ValidationError(s"${alloy.name} ${n}")
+          // compare with expected
+          results.zip(expected).foreach({ case (actual, gold) => {
+            if (!actual.isCloseEnough(gold))
+              throw new ValidationError(s"${alloy.name} ${n}")
+          }})
         })
+      })
     } finally {
-      resource.close
+      resource.close()
     }
   }
 
@@ -69,7 +81,7 @@ object HasValidationData {
       writer: Alloy.Writer, alloy: BaseAlloy[T] with HasValidationData) {
 
     val resource = new FeatureOutputStream(writer.resource(VALIDATION_RESOURCE))
-    val modelNames = alloy.models.map(_._1)
+    val modelNames = alloy.models.keys
 
     try {
       Codec.VLuint.write(resource, alloy.validationExamples.size)
@@ -77,8 +89,10 @@ object HasValidationData {
       modelNames.foreach(n => Codec.String.write(resource, n))
 
       alloy.validationExamples.foreach(doc => {
+        // save document
         Codec.String.write(resource, JsonMethods.compact(JsonMethods.render(doc)))
         val document = Document.document(doc)
+        // get predictions
         modelNames.foreach(n => {
           val results = alloy.models(n).predict(document, PredictOptions.DEFAULT)
           Codec.VLuint.write(resource, results.size)
@@ -86,7 +100,7 @@ object HasValidationData {
         })
       })
     } finally {
-      resource.close
+      resource.close()
     }
   }
 }
@@ -95,13 +109,18 @@ object HasValidationData {
 object HasTrainingConfig {
   val CONFIG_RESOURCE = "training.json"
 
+  /**
+    * Saves the training configuration file used to the alloy.
+    * @param writer
+    * @param alloy
+    */
   def save(writer: Alloy.Writer, alloy: HasTrainingConfig) {
     val config = JsonMethods.compact(JsonMethods.render(alloy.trainingConfig))
     val resource = writer.resource(CONFIG_RESOURCE)
     try {
       Codec.String.write(resource, config)
     } finally {
-      resource.close
+      resource.close()
     }
   }
 }

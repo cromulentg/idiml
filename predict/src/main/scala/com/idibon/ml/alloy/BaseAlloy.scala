@@ -111,7 +111,7 @@ object BaseAlloy extends StrictLogging {
 
   /** Generates and saves the Alloy manifest
     *
-    * @param w Writer for the Alloy
+    * @param writer Writer for the Alloy
     * @param alloy Alloy that will be saved
     * @return the layout spec implementation for the saved alloy
     */
@@ -293,7 +293,7 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
   * Records versioning information and associated system properties
   *
   * @param name User-friendly name for the alloy
-  * @param alloySpecVersion version of BaseAlloy spec followed
+  * @param specVersion version of BaseAlloy spec followed
   * @param idimlVersion version of idiml used to generate the Alloy
   * @param createdAt timestamp when Alloy was created
   * @param properties extra system details (JVM version, etc.)

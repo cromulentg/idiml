@@ -6,9 +6,22 @@ import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictResult
 import com.idibon.ml.feature.{Buildable, Builder}
 
+/**
+  * Use this to save & load Jar backed Alloys.
+  *
+  * @author "G.K. <gary@idibon.com>"
+  */
 object JarAlloy {
 
-  /** Loads a BaseAlloy stored in a JAR, optionally validating the models */
+  /**
+    * Loads a BaseAlloy stored in a JAR, optionally validating the models
+    *
+    * @param engine containts the spark context.
+    * @param file the file to load from.
+    * @param validate whether to validate against the internal examples.
+    * @tparam T The type of PredictResult we're expecting the alloy to produce.
+    * @return a JarAlloy.
+    */
   def load[T <: PredictResult with Buildable[T, Builder[T]]](
       engine: Engine, file: File, validate: Boolean): Alloy[T] = {
     val jar = new JarFile(file)
@@ -22,7 +35,13 @@ object JarAlloy {
     }
   }
 
-  /** Saves a BaseAlloy to a JAR */
+  /**
+    * Saves a BaseAlloy to a JAR
+    *
+    * @param alloy JarAlloy to save.
+    * @param file file to save alloy to.
+    * @tparam T the PredictResult type this alloy uses.
+    */
   def save[T <: PredictResult with Buildable[T, Builder[T]]](
       alloy: Alloy[T], file: File) = {
     val jos = new JarOutputStream(new FileOutputStream(file))
@@ -35,7 +54,9 @@ object JarAlloy {
   }
 }
 
-/** Reads alloy data from a JAR file */
+/** Reads alloy data from a JAR file.
+  * @param jarFile
+  */
 case class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
 
   def within(namespace: String): Alloy.Reader = new SubReader(namespace + "/")
@@ -56,7 +77,9 @@ case class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
   }
 }
 
-/** Writes alloy data to a JAR file */
+/** Writes alloy data to a JAR file.
+  * @param jarStream
+  */
 case class JarAlloyWriter(jarStream: JarOutputStream) extends Alloy.Writer {
 
   def within(namespace: String): Alloy.Writer = new SubWriter(namespace + "/")
