@@ -1,13 +1,16 @@
 package com.idibon.ml.train.furnace
 
+import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.common.Engine
-import com.idibon.ml.feature.FeaturePipeline
+import com.idibon.ml.feature.{Buildable, FeaturePipeline}
 import com.idibon.ml.predict.Classification
-import com.idibon.ml.predict.ml.{IdibonMultiClassLRModel}
+import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.predict.ml.{TrainingSummary, IdibonMultiClassLRModel}
 import com.idibon.ml.train.alloy.MultiClass
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.mllib.classification.{IdibonSparkMLLIBLRWrapper, LogisticRegressionWithLBFGS}
+import org.apache.spark.mllib.classification.{LogisticRegressionModel, IdibonSparkMLLIBLRWrapper, LogisticRegressionWithLBFGS}
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.mllib.linalg.{Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.sql.DataFrame
@@ -19,7 +22,7 @@ import org.json4s.JsonAST.JObject
   * @param builder
   */
 class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
-  extends Furnace[Classification] with StrictLogging {
+  extends Furnace[Classification] with StrictLogging with MetricHelper {
   val engine: Engine = builder.engine
   val maxIterations = builder.maxIterations
   val tolerance = builder.tolerance.head
@@ -46,10 +49,38 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
       .setNumIterations(maxIterations)
     // run training
     val model = trainer.run(rddData.cache())
-
-    // TODO: log some stats?
     val wrapper = IdibonSparkMLLIBLRWrapper.wrap(model)
-    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline)
+    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline) with HasTrainingSummary {
+      override val trainingSummary = Some(Seq(createTrainingSummary(label, model, data)))
+    }
+  }
+
+  /**
+    * Gathers metrics and packages them into a training summary.
+    *
+    * @param label the string value to group these metrics by.
+    * @param model the multiclass LR model
+    * @param data
+    * @return
+    */
+  def createTrainingSummary(label: String,
+                            model: LogisticRegressionModel,
+                            data: DataFrame): TrainingSummary = {
+    // create training stats using the training data.
+    val basicResults = data.rdd.map(row => {
+      val prediction = model.predict(row(1).asInstanceOf[Vector])
+      (prediction, row.getAs[Double](0))
+    })
+    val metrics = new MulticlassMetrics(basicResults)
+    logger.info(stringifyMulticlassMetrics(metrics))
+    val mmetrics = createMulticlassMetrics(metrics, labelToInt.map(x => (x._2.toDouble, x._1)))
+    val intToLabel = labelToInt.map(x => (x._2, x._1))
+    val dataSizes = getLabelCounts(data)
+      .map({case(lab, size) => {
+        new LabelIntMetric(MetricType.LabelCount, MetricClass.Multiclass,
+          intToLabel(lab.toInt), size)
+      }}).asInstanceOf[Seq[Metric with Buildable[_, _]]]
+    new TrainingSummary(label, mmetrics ++ dataSizes)
   }
 
   /**
