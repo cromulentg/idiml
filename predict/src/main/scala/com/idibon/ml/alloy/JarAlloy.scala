@@ -5,6 +5,7 @@ import java.util.jar._
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictResult
 import com.idibon.ml.feature.{Buildable, Builder}
+import com.idibon.ml.predict.ml.TrainingSummary
 
 /**
   * Use this to save & load Jar backed Alloys.
@@ -36,6 +37,21 @@ object JarAlloy {
   }
 
   /**
+    * Gets training summaries from the alloy if they exist.
+    * @param file location of the jar alloy file.
+    * @return
+    */
+  def getTrainingSummaries(file: File): List[TrainingSummary] = {
+    val jar = new JarFile(file)
+    try {
+      val reader = new JarAlloyReader(jar)
+      HasTrainingSummary.get(reader).toList
+    } finally {
+      jar.close()
+    }
+  }
+
+  /**
     * Saves a BaseAlloy to a JAR
     *
     * @param alloy JarAlloy to save.
@@ -55,6 +71,7 @@ object JarAlloy {
 }
 
 /** Reads alloy data from a JAR file.
+  *
   * @param jarFile
   */
 case class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
@@ -78,6 +95,7 @@ case class JarAlloyReader(jarFile: JarFile) extends Alloy.Reader {
 }
 
 /** Writes alloy data to a JAR file.
+  *
   * @param jarStream
   */
 case class JarAlloyWriter(jarStream: JarOutputStream) extends Alloy.Writer {

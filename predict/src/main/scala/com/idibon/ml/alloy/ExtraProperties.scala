@@ -2,6 +2,7 @@ package com.idibon.ml.alloy
 
 import com.idibon.ml.predict._
 import com.idibon.ml.feature._
+import com.idibon.ml.predict.ml.TrainingSummary
 
 import org.json4s._
 import org.json4s.native.JsonMethods
@@ -22,6 +23,9 @@ trait HasTrainingConfig {
   /** JSON object containing the training configuration */
   def trainingConfig: JObject
 }
+
+/** Optional Alloy trait for storing training summaries */
+trait HasTrainingSummary
 
 /** Companion object for HasValidationData */
 object HasValidationData {
@@ -111,6 +115,7 @@ object HasTrainingConfig {
 
   /**
     * Saves the training configuration file used to the alloy.
+    *
     * @param writer
     * @param alloy
     */
@@ -122,5 +127,54 @@ object HasTrainingConfig {
     } finally {
       resource.close()
     }
+  }
+}
+
+/** Companion object for HasTrainingSummary -- it saves and loads them */
+object HasTrainingSummary {
+
+  val TRAINING_SUMMARY_RESOURCE = "training-summary.json"
+
+  /**
+    * Gets a sequence of training summaries from the alloy if they exist.
+    *
+    * @param reader
+    * @return sequence of training summaries.
+    */
+  def get(reader: Alloy.Reader): Seq[TrainingSummary] = {
+    val readerResource = reader.resource(TRAINING_SUMMARY_RESOURCE)
+    if (readerResource == null) return Seq()
+    val resource = new FeatureInputStream(readerResource)
+    try {
+      val size = Codec.VLuint.read(resource)
+      (0 until size).map(_ => resource.readBuildable.asInstanceOf[TrainingSummary])
+    } finally {
+      resource.close()
+    }
+  }
+
+  /**
+    * Saves the training summaries if they exist to a resource in the alloy.
+    *
+    * @param writer
+    * @param alloy
+    * @tparam T
+    */
+  def save[T <: PredictResult with Buildable[T, Builder[T]]](
+      writer: Alloy.Writer, alloy: BaseAlloy[T] with HasTrainingSummary): Unit = {
+    val modelNames = alloy.models.keys
+    // get summaries
+    val summaries = modelNames.map(n => {alloy.models(n).getTrainingSummary()})
+      .collect { case Some(summary) => summary }.flatten
+    // only save if we have some
+    if (summaries.size < 1) return
+    val resource = new FeatureOutputStream(writer.resource(TRAINING_SUMMARY_RESOURCE))
+    try {
+      Codec.VLuint.write(resource, summaries.size)
+      summaries.foreach(summary => resource.writeBuildable(summary))
+    } finally {
+      resource.close()
+    }
+
   }
 }
