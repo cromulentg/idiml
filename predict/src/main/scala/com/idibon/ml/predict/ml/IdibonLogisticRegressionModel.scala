@@ -7,9 +7,9 @@ import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.predict._
-import com.idibon.ml.feature.{Feature, FeaturePipelineLoader, FeaturePipeline}
+import com.idibon.ml.feature.{Feature, FeaturePipeline}
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.ml.classification.IdibonSparkLogisticRegressionModelWrapper
+import org.apache.spark.ml.classification.{IdibonSparkLogisticRegressionModelWrapper}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.json4s._
 
@@ -92,6 +92,15 @@ case class IdibonLogisticRegressionModel(label: String,
       savePipelineIfPresent(writer)
     )))
   }
+
+  /**
+    * Returns a training summary. You have to override this to actually return something.
+    *
+    * @return
+    */
+  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
+    trainingSummary
+  }
 }
 
 object IdibonLogisticRegressionModel extends StrictLogging {
@@ -100,6 +109,7 @@ object IdibonLogisticRegressionModel extends StrictLogging {
 
   /**
     * Static method to write our "libsvm" like format to a stream.
+    *
     * @param out
     * @param intercept
     * @param coefficients
@@ -136,6 +146,7 @@ object IdibonLogisticRegressionModel extends StrictLogging {
 
   /**
     * Static method to read our "libsvm" like format from a stream.
+    *
     * @param in
     * @return
     */

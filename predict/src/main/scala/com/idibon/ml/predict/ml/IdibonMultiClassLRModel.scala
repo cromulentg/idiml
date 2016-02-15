@@ -5,7 +5,7 @@ import java.io.{IOException, DataInputStream, DataOutputStream}
 import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
-import com.idibon.ml.feature.{Feature, FeaturePipelineLoader, FeaturePipeline}
+import com.idibon.ml.feature.{Feature, FeaturePipeline}
 import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.classification.IdibonSparkMLLIBLRWrapper
@@ -27,7 +27,7 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
     extends MLModel[Classification](featurePipeline) with StrictLogging
     with Archivable[IdibonMultiClassLRModel, IdibonMultiClassLRModelLoader] {
 
-  val intToLabel = labelToInt.map({case (label, index) => (index, label)}).toMap
+  val intToLabel = labelToInt.map({case (label, index) => (index, label)})
 
   /**
     * The model will use a subset of features passed in. This method
@@ -43,7 +43,7 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
   /**
     * The method used to predict from a vector of features.
     *
-    * @param features Vector of features to use for prediction.
+    * @param featVec Vector of features to use for prediction.
     * @param options  Object of predict options.
     * @return
     */
@@ -97,6 +97,15 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
       JField("version", JString(IdibonMultiClassLRModel.FORMAT_VERSION)),
       savePipelineIfPresent(writer)
     )))
+  }
+
+  /**
+    * Returns a training summary. You have to override this to actually return something.
+    *
+    * @return
+    */
+  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
+    return trainingSummary
   }
 }
 

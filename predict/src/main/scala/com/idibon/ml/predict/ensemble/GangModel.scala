@@ -4,6 +4,7 @@ import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict._
+import com.idibon.ml.predict.ml.TrainingSummary
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
@@ -33,6 +34,19 @@ case class GangModel(
     *         that were used.
     */
   override def getFeaturesUsed(): Vector = ???
+
+  /**
+    * Returns a training summary. You have to override this to actually return something.
+    *
+    * @return
+    */
+  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
+    val ts = trainingSummary.getOrElse(Seq())
+    val summaries = models
+      .map({ case (label, model) => model.getTrainingSummary()})
+      .collect({ case Some(summary) => summary}).flatten ++ ts
+    if (summaries.isEmpty) None else Some(summaries.toSeq)
+  }
 
   /**
     * The method used to predict from a FULL DOCUMENT!
