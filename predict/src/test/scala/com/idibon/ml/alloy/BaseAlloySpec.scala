@@ -112,13 +112,13 @@ class BaseAlloySpec extends FunSpec with Matchers {
       val reader = new MemoryAlloyReader(archive.toMap)
       HasTrainingSummary.get(reader) shouldBe Seq(new TrainingSummary("testing123",
         Seq[Metric with Buildable[_, _]](
-          new FloatMetric(MetricType.AreaUnderROC, MetricClass.Binary, 0.5f),
-          new PointsMetric(MetricType.BestF1Threshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
-          new LabelIntMetric(MetricType.LabelCount, MetricClass.Binary, "testin123", 23),
-          new LabelFloatMetric(MetricType.LabelF1, MetricClass.Binary, "testin123", 0.5f),
-          new PropertyMetric(MetricType.HyperparameterProperties, MetricClass.Hyperparameter,
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
+          new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary, "testin123", 23),
+          new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "testin123", 0.5f),
+          new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Hyperparameter,
             Seq(("prop1", "value1"))),
-          new ConfusionMatrixMetric(MetricType.ConfusionMatrix, MetricClass.Multiclass,
+          new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Multiclass,
             Seq(("label1", "label2", 2.0f)))
         )))
     }
@@ -191,13 +191,13 @@ class LengthClassificationModel extends PredictModel[Classification] {
   override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
     Some(Seq(new TrainingSummary("testing123",
       Seq[Metric with Buildable[_, _]](
-        new FloatMetric(MetricType.AreaUnderROC, MetricClass.Binary, 0.5f),
-        new PointsMetric(MetricType.BestF1Threshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
-        new LabelIntMetric(MetricType.LabelCount, MetricClass.Binary, "testin123", 23),
-        new LabelFloatMetric(MetricType.LabelF1, MetricClass.Binary, "testin123", 0.5f),
-        new PropertyMetric(MetricType.HyperparameterProperties, MetricClass.Hyperparameter,
+        new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+        new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
+        new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary, "testin123", 23),
+        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "testin123", 0.5f),
+        new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Hyperparameter,
           Seq(("prop1", "value1"))),
-        new ConfusionMatrixMetric(MetricType.ConfusionMatrix, MetricClass.Multiclass,
+        new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Multiclass,
           Seq(("label1", "label2", 2.0f)))
       ))))
   }

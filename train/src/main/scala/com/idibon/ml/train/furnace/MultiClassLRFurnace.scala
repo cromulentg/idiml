@@ -77,7 +77,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     val intToLabel = labelToInt.map(x => (x._2, x._1))
     val dataSizes = getLabelCounts(data)
       .map({case(lab, size) => {
-        new LabelIntMetric(MetricType.LabelCount, MetricClass.Multiclass,
+        new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Multiclass,
           intToLabel(lab.toInt), size)
       }}).asInstanceOf[Seq[Metric with Buildable[_, _]]]
     new TrainingSummary(label, mmetrics ++ dataSizes)

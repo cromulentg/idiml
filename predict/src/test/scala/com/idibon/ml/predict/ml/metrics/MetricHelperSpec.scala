@@ -66,7 +66,7 @@ class MetricHelperSpec extends FunSpec with Matchers
       val models = List(("test",
         DummyModel(Some(Seq(
           new TrainingSummary("test",
-            Seq(new FloatMetric(MetricType.BestF1Threshold, MetricClass.Binary, 0.6f))))))))
+            Seq(new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, 0.6f))))))))
       val actual = gen.getModelThresholds(models)
       actual shouldBe Map("test" -> 0.6f)
     }

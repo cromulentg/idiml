@@ -16,20 +16,26 @@ import com.idibon.ml.feature.{FeatureInputStream, FeatureOutputStream, Builder, 
   * Metric trait. All metrics extend this bad boy.
   */
 trait Metric {
-  val metricType: MetricType.Value
+  val metricType: MetricTypes
   val metricClass: MetricClass.Value
+}
+
+abstract class RawMetric(override val metricType: MetricTypes,
+                         override val metricClass: MetricClass.Value) extends Metric {
+  if (this.getClass != metricType.dataType)
+    throw new IllegalArgumentException("Invalid data type!")
 }
 
 /**
   * Creates metrics that are around a float value.
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param float
   */
-case class FloatMetric(override val metricType: MetricType.Value,
-                       override val metricClass: MetricClass.Value,
+case class FloatMetric(mType: MetricTypes,
+                       mClass: MetricClass.Value,
                        float: Float)
-  extends Metric with Buildable[FloatMetric, FloatMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[FloatMetric, FloatMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -41,22 +47,22 @@ class FloatMetricBuilder extends Builder[FloatMetric] {
     val mType = Codec.String.read(input)
     val mClass = Codec.String.read(input)
     val float = input.readFloat()
-    new FloatMetric(MetricType.withName(mType), MetricClass.withName(mClass), float)
+    new FloatMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), float)
   }
 }
 
 /**
   * Creates metrics that are around a float value & label.
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param label
   * @param float
   */
-case class LabelFloatMetric(override val metricType: MetricType.Value,
-                            override val metricClass: MetricClass.Value,
+case class LabelFloatMetric(mType: MetricTypes,
+                            mClass: MetricClass.Value,
                             label: String,
                             float: Float)
-  extends Metric with Buildable[LabelFloatMetric, LabelFloatMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[LabelFloatMetric, LabelFloatMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -70,22 +76,22 @@ class LabelFloatMetricBuilder extends Builder[LabelFloatMetric] {
     val mClass = Codec.String.read(input)
     val label = Codec.String.read(input)
     val float = input.readFloat()
-    new LabelFloatMetric(MetricType.withName(mType), MetricClass.withName(mClass), label, float)
+    new LabelFloatMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, float)
   }
 }
 
 /**
   * Creates metrics that are around an integer value.
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param label
   * @param int
   */
-case class LabelIntMetric(override val metricType: MetricType.Value,
-                          override val metricClass: MetricClass.Value,
+case class LabelIntMetric(mType: MetricTypes,
+                          mClass: MetricClass.Value,
                           label: String,
                           int: Int)
-  extends Metric with Buildable[LabelIntMetric, LabelIntMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[LabelIntMetric, LabelIntMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -99,20 +105,20 @@ class LabelIntMetricBuilder extends Builder[LabelIntMetric] {
     val mClass = Codec.String.read(input)
     val label = Codec.String.read(input)
     val int = Codec.VLuint.read(input)
-    new LabelIntMetric(MetricType.withName(mType), MetricClass.withName(mClass), label, int)
+    new LabelIntMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, int)
   }
 }
 
 /**
   * Creates metrics that are around a set of points. E.g. this could be plotted.
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param points
   */
-case class PointsMetric(override val metricType: MetricType.Value,
-                        override val metricClass: MetricClass.Value,
+case class PointsMetric(mType: MetricTypes,
+                        mClass: MetricClass.Value,
                         points: Seq[(Float, Float)])
-  extends Metric with Buildable[PointsMetric, PointsMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[PointsMetric, PointsMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -131,7 +137,7 @@ class PointsMetricBuilder extends Builder[PointsMetric] {
     val points = (0 until size).map(_ => {
       (input.readFloat(), input.readFloat())
     })
-    new PointsMetric(MetricType.withName(mType), MetricClass.withName(mClass), points)
+    new PointsMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), points)
   }
 }
 
@@ -141,14 +147,14 @@ class PointsMetricBuilder extends Builder[PointsMetric] {
   * Makes all values strings. It is the consumers responsibility to
   * know how to reinterpret the string values.
   *
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param properties
   */
-case class PropertyMetric(override val metricType: MetricType.Value,
-                          override val metricClass: MetricClass.Value,
+case class PropertyMetric(mType: MetricTypes,
+                          mClass: MetricClass.Value,
                           properties: Seq[(String, String)])
-  extends Metric with Buildable[PropertyMetric, PropertyMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[PropertyMetric, PropertyMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -167,21 +173,21 @@ class PropertyMetricBuilder extends Builder[PropertyMetric] {
     val properties = (0 until size).map(_ => {
       (Codec.String.read(input), Codec.String.read(input))
     })
-    new PropertyMetric(MetricType.withName(mType), MetricClass.withName(mClass), properties)
+    new PropertyMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), properties)
   }
 }
 
 
 /**
   * Creates metrics that represent a confusion matrix.
-  * @param metricType
-  * @param metricClass
+  * @param mType
+  * @param mClass
   * @param points
   */
-case class ConfusionMatrixMetric(override val metricType: MetricType.Value,
-                                 override val metricClass: MetricClass.Value,
+case class ConfusionMatrixMetric(mType: MetricTypes,
+                                 mClass: MetricClass.Value,
                                  points: Seq[(String, String, Float)])
-  extends Metric with Buildable[ConfusionMatrixMetric, ConfusionMatrixMetricBuilder] {
+  extends RawMetric(mType, mClass) with Buildable[ConfusionMatrixMetric, ConfusionMatrixMetricBuilder] {
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, metricType.toString)
     Codec.String.write(output, metricClass.toString)
@@ -201,7 +207,7 @@ class ConfusionMatrixMetricBuilder extends Builder[ConfusionMatrixMetric] {
     val points = (0 until size).map(_ => {
       (Codec.String.read(input), Codec.String.read(input), input.readFloat())
     })
-    new ConfusionMatrixMetric(MetricType.withName(mType), MetricClass.withName(mClass), points)
+    new ConfusionMatrixMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), points)
   }
 }
 

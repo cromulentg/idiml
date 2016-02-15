@@ -79,31 +79,31 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
       .where(summary.fMeasureByThreshold.col("F-Measure") === maxFMeasure)
       .select("threshold").head().getDouble(0)
     val metrics = Seq[Metric with Buildable[_,_]](
-      new FloatMetric(MetricType.BestF1Threshold, MetricClass.Binary, bestThreshold.toFloat),
+      new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, bestThreshold.toFloat),
       new FloatMetric(
-        MetricType.AreaUnderROC, MetricClass.Binary, summary.areaUnderROC.toFloat),
+        MetricTypes.AreaUnderROC, MetricClass.Binary, summary.areaUnderROC.toFloat),
       new PointsMetric(
-        MetricType.ReceiverOperatingCharacteristic,
+        MetricTypes.ReceiverOperatingCharacteristic,
         MetricClass.Binary,
         convertDataFrame(summary.roc, "TPR", "FPR")),
       new PointsMetric(
-        MetricType.PrecisionRecallCurve,
+        MetricTypes.PrecisionRecallCurve,
         MetricClass.Binary,
         convertDataFrame(summary.pr, "precision", "recall")),
       new PointsMetric(
-        MetricType.F1ByThreshold,
+        MetricTypes.F1ByThreshold,
         MetricClass.Binary,
         convertDataFrame(summary.fMeasureByThreshold, "threshold", "F-Measure")),
       new PointsMetric(
-        MetricType.PrecisionByThreshold,
+        MetricTypes.PrecisionByThreshold,
         MetricClass.Binary,
         convertDataFrame(summary.precisionByThreshold, "threshold", "precision")),
       new PointsMetric(
-        MetricType.RecallByThreshold,
+        MetricTypes.RecallByThreshold,
         MetricClass.Binary,
         convertDataFrame(summary.recallByThreshold, "threshold", "recall")),
       new PropertyMetric(
-        MetricType.HyperparameterProperties,
+        MetricTypes.HyperparameterProperties,
         MetricClass.Hyperparameter,
         lrm.parent.extractParamMap().toSeq.map(pp => {
           (pp.param.toString(), pp.value.toString)
@@ -112,7 +112,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     val doubleToString = Map(1.0 -> "positive", 0.0 -> "negative")
     val dataSizes = getLabelCounts(data)
       .map({case(lab, size) => {
-        new LabelIntMetric(MetricType.LabelCount, MetricClass.Binary,
+        new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary,
           doubleToString(lab), size)
       }}).asInstanceOf[Seq[Metric with Buildable[_, _]]]
     new TrainingSummary(label, metrics ++ dataSizes)

@@ -125,13 +125,13 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("should collate training summaries from underlying models"){
       val summary1 = Some(Seq(new TrainingSummary("testing1",
         Seq[Metric with Buildable[_, _]](
-          new FloatMetric(MetricType.AreaUnderROC, MetricClass.Binary, 0.5f),
-          new PointsMetric(MetricType.F1ByThreshold, MetricClass.Binary,
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
             Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
       val summary2 = Some(Seq(new TrainingSummary("testing2",
         Seq[Metric with Buildable[_, _]](
-          new FloatMetric(MetricType.F1, MetricClass.Binary, 0.7f),
-          new PointsMetric(MetricType.F1ByThreshold, MetricClass.Binary,
+          new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.7f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
             Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
       val gang1 = new GangModel(Map(
         "0" -> new FakeMCModel(List("alabel", "blabel")),
@@ -154,7 +154,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
 
     it("should return none when no underlying model summaries exist") {
       val gangSummary = new TrainingSummary("gang",
-        Seq(new FloatMetric(MetricType.Recall, MetricClass.Multiclass, 0.5f)))
+        Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
       val gang1 = new GangModel(Map(
         "0" -> new FakeMCModel(List("alabel", "blabel")))) with HasTrainingSummary{
         override val trainingSummary = Some(Seq(gangSummary))
@@ -165,16 +165,16 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("should collate training summaries with underlying models"){
       val summary1 = Some(Seq(new TrainingSummary("testing1",
         Seq[Metric with Buildable[_, _]](
-          new FloatMetric(MetricType.AreaUnderROC, MetricClass.Binary, 0.5f),
-          new PointsMetric(MetricType.F1ByThreshold, MetricClass.Binary,
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
             Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
       val summary2 = Some(Seq(new TrainingSummary("testing2",
         Seq[Metric with Buildable[_, _]](
-          new FloatMetric(MetricType.F1, MetricClass.Binary, 0.7f),
-          new PointsMetric(MetricType.F1ByThreshold, MetricClass.Binary,
+          new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.7f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
             Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
       val gangSummary = new TrainingSummary("gang",
-        Seq(new FloatMetric(MetricType.Recall, MetricClass.Multiclass, 0.5f)))
+        Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
       val gang1 = new GangModel(Map(
         "0" -> new FakeMCModel(List("alabel", "blabel")),
         "1" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
