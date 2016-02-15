@@ -170,7 +170,7 @@ trait MetricHelper {
 
   /**
     * Helper function to get suggested model thresholds from the freshly trained models.
- *
+    *
     * @param models
     * @return
     */
@@ -269,7 +269,7 @@ trait MetricHelper {
           .map({ case (_, label) => label })
         Some(positives, featureVector)
       }
-    }).filter({case (positives, fVect) => !positives.isEmpty}).toSeq
+    }).filter({case (positives, fVect) => positives.nonEmpty}).toSeq
     (labelToDoubleMap.map(x=> (x._2, x._1)).toMap, positivesWithVector)
   }
 }
