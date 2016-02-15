@@ -8,7 +8,8 @@ object App extends Tool {
 
   private [this] val _dispatcher = Map(
     ("predict" -> Predict),
-    ("train" -> Train)
+    ("train" -> Train),
+    ("trainingSummary" -> GetTrainingStats)
   )
 
   def run(engine: Engine, argv: Array[String]) {
