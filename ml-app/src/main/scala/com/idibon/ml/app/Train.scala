@@ -26,6 +26,7 @@ object Train extends Tool with StrictLogging {
       .addOption("r", "label-rules", true, "Input file with label and rules data. Required.")
       .addOption("w", "wiggle-wiggle", false, "Wiggle Wiggle")
       .addOption("c", "config", true, "JSON Config file for creating a trainer.")
+      .addOption("n", "name", true, "Provide a name for this alloy.")
 
     new (org.apache.commons.cli.BasicParser).parse(options, argv)
   }
@@ -58,7 +59,12 @@ object Train extends Tool with StrictLogging {
 
     try {
       val startTime = System.currentTimeMillis()
-      val alloy = trainer.trainAlloy("FIXME: include name",
+      val name = if (cli.hasOption('n')) {
+        cli.getOptionValue('n')
+      } else {
+        java.net.InetAddress.getLocalHost.getHostName() + "-" + System.currentTimeMillis().toString
+      }
+      val alloy = trainer.trainAlloy(name,
         readDocumentsFn, labelsAndRules, Some(trainingJob))
 
       JarAlloy.save(alloy, new File(cli.getOptionValue('o')))
