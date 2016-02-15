@@ -2,10 +2,16 @@ package com.idibon.ml.train.alloy
 
 import java.util
 
-import com.idibon.ml.predict.{PredictModel, Classification}
+import com.idibon.ml.alloy.HasTrainingSummary
+import com.idibon.ml.feature.{Feature, FeaturePipeline}
+import com.idibon.ml.predict.ml.metrics.{MetricHelper}
+import com.idibon.ml.predict.ml.{TrainingSummary}
+import com.idibon.ml.predict.{PredictOptions, Document, PredictModel, Classification}
 import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.train.datagenerator.SparkDataGenerator
+import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGenerator, SparkDataGenerator}
 import com.typesafe.scalalogging.StrictLogging
+import org.apache.spark.mllib.evaluation.{MultilabelMetrics, MulticlassMetrics}
+import org.apache.spark.mllib.linalg.Vector
 import org.json4s.JObject
 
 /**
@@ -16,7 +22,8 @@ import org.json4s.JObject
 class KClass1FP(builder: KClass1FPBuilder)
   extends BaseTrainer(builder.engine,
     builder.dataGenBuilder.build(),
-    builder.furnaceBuilder.build(builder.engine)) with OneFeaturePipeline with StrictLogging {
+    builder.furnaceBuilder.build(builder.engine))
+    with OneFeaturePipeline with StrictLogging with MetricHelper {
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.
@@ -27,8 +34,9 @@ class KClass1FP(builder: KClass1FPBuilder)
     * @return
     */
   override def melt(rawData: () => TraversableOnce[JObject],
-      dataGen: SparkDataGenerator,
-      pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]] = {
+                    dataGen: SparkDataGenerator,
+                    pipelineConfig: Option[JObject],
+                    classification_type: String): Map[String, PredictModel[Classification]] = {
 
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {

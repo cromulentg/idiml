@@ -45,7 +45,9 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]] = {
+                    pipelineConfig: Option[JObject],
+                    classification_type: String):
+  Map[String, PredictModel[Classification]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
       case Some(config) => createFeaturePipeline(this.engine, config)
