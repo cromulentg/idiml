@@ -82,6 +82,7 @@ class MetricHelperSpec extends FunSpec with Matchers
 case class Dummy()
 
 case class DummyModel(training: Option[Seq[TrainingSummary]] = None) extends PredictModel[Classification] {
+  val reifiedType = classOf[DummyModel]
   override def predict(document: Document, options: PredictOptions): Seq[Classification] = ???
   override def getFeaturesUsed(): Vector = ???
   override def getTrainingSummary(): Option[Seq[TrainingSummary]] = training

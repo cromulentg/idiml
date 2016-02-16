@@ -26,6 +26,8 @@ case class GangModel(
   /** Used to reduce multiple Classifications for a label into a final result */
   private [this] val _reducer: PredictResultReduction[Classification] = Classification
 
+  val reifiedType = classOf[GangModel]
+
   /**
     * The model will use a subset of features passed in. This method
     * should return the ones used.
@@ -91,7 +93,7 @@ case class GangModel(
     implicit val formats = org.json4s.DefaultFormats
     // create list of model types by label
     val modelTypes = models.map({case (label, model) => {
-      (label, model.getClass.getName, model)
+      (label, model.reifiedType.getName, model)
     }}).toList
     //save each model into it's own space
     val modelMetadata: List[JField] = modelTypes.map {

@@ -115,6 +115,8 @@ class VClassificationModel(label: String)
     extends PredictModel[Classification]
     with Archivable[VClassificationModel, VClassificationModelLoader] {
 
+  val reifiedType = classOf[VClassificationModel]
+
   def predict(document: Document, options: PredictOptions) = {
     document.transformed.map({ case (vector, sigFeatFn) => {
       Seq(Classification(label, vector(0).toFloat, 1, 0, Seq()))

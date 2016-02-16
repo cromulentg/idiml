@@ -24,6 +24,8 @@ case class IdibonLogisticRegressionModel(label: String,
     extends MLModel[Classification](featurePipeline) with StrictLogging
     with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
 
+  val reifiedType = classOf[IdibonLogisticRegressionModel]
+
   /** The method used to predict from a vector of features.
     *
     * @param featureVec Vector of features to use for prediction.

@@ -31,9 +31,11 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
   val fp = pipeline.prime(List(doc))
 
   describe("save and load") {
-    it("should save and load properly") {
+    it("should save and load properly, using reified types") {
       val archive = HashMap[String, Array[Byte]]()
-      val docRules1 = new DocumentRules("alabel", List(("loves", 0.5f)))
+      val docRules1 = new DocumentRules("alabel", List(("loves", 0.5f))) {
+        def uselessAnonymousClass = "break getClass calls"
+      }
       val docRules2 = new DocumentRules("blabel", List(("is", 0.5f)))
       val mcModel = new IdibonMultiClassLRModel(Map("alabel" -> 0, "blabel" -> 1),
         new IdibonSparkMLLIBLRWrapper(Vectors.dense(Array(0.5, 0.5, 0.5)), 0.0, 3, 2), Some(fp))
@@ -267,6 +269,8 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
 case class FakeMCModel(labels: List[String])
     extends PredictModel[Classification]
     with Archivable[FakeMCModel, FakeMCModelLoader] {
+
+  val reifiedType = classOf[FakeMCModel]
 
   def predict(document: Document,
       options: PredictOptions): Seq[Classification] = {

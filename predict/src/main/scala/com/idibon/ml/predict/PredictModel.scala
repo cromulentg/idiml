@@ -8,6 +8,13 @@ trait PredictModel[+T <: PredictResult] {
   /** Default training summary; None **/
   val trainingSummary: Option[Seq[TrainingSummary]] = None
 
+  /** Returns the class that should be used to reify this model.
+    *
+    * When alloys are trained, various sub-classes (possibly anonymous) may
+    * be used to provide auxiliary data back to the application.
+    */
+  val reifiedType: Class[_ <: PredictModel[T]]
+
   /**
     * The method used to predict from a vector of features.
     *
