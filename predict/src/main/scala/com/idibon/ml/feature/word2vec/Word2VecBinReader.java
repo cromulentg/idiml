@@ -21,20 +21,19 @@ public class Word2VecBinReader {
      * @return the actual long integer
      */
     public long readAsciiLong(DataInputStream dis) {
-        long accum = 0;
+        String accum = "";
         while(true){
             try{
                 char c = (char) dis.readByte();
                 if (Character.isWhitespace(c)) {
                     break;
                 }
-                accum *= 10;
-                accum += Character.getNumericValue(c);
+                accum += c;
             } catch (IOException e){
                 e.printStackTrace();
             }
         }
-        return accum;
+        return Long.parseLong(accum);
     }
 
     /**
