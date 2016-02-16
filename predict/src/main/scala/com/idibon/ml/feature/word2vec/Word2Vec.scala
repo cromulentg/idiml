@@ -35,26 +35,18 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     * This is based on the transform method in org.apache.spark.ml.feature.Word2Vec. That method
     * takes a DataFrame as input and has been adapted here to take a sequence of tokens.
     *
+    * OOV words return a vector of zeros.
+    *
     * @param words a sequence of strings
     * @return average of vectors for all words in the sequence
     */
   def apply(words: Seq[String]): Vector = {
-    val sum = Vectors.zeros(vectorSize)
-
-    if (words.size == 0) {
-      Vectors.sparse(vectorSize, Array.empty[Int], Array.empty[Double])
-    } else {
-      val sum = Vectors.zeros(vectorSize)
-      words.foreach { word =>
-        try {
-          IdibonBLAS.axpy(1.0, model.transform(word), sum)
-        } catch {
-          case _: IllegalStateException => Vectors.sparse(vectorSize, Array.empty[Int], Array.empty[Double])
-        }
-      }
-      IdibonBLAS.scal(1.0 / words.size, sum)
-      sum
-    }
+    words.foldLeft(Vectors.zeros(vectorSize))({ case (accum, word) => {
+      Try({
+        IdibonBLAS.axpy(1.0, model.transform(word), accum)
+        accum
+      }).getOrElse(accum)
+    }})
   }
 
   /**
