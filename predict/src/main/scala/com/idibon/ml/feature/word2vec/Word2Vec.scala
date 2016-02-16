@@ -1,5 +1,7 @@
 package com.idibon.ml.feature.word2vec
 
+import java.net.URI
+
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature._
@@ -10,14 +12,17 @@ import org.apache.spark.mllib.linalg._
 
 import org.json4s._
 
+import scala.collection.JavaConversions.mapAsScalaMap
+import scala.util.Try
+
 /**
   * Word2Vec feature for creating vector representations from sequences of strings
   *
   * @param sc SparkContext object
   * @param model Word2VecModel model object
-  * @param path path to directory where the model is stored (a String)
+  * @param uri URI for the directory where the model is stored (a String)
   */
-class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val path: String) extends FeatureTransformer
+class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val uri: URI) extends FeatureTransformer
   with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
 
   val vectors = model.getVectors
@@ -31,26 +36,22 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     * This is based on the transform method in org.apache.spark.ml.feature.Word2Vec. That method
     * takes a DataFrame as input and has been adapted here to take a sequence of tokens.
     *
+    * OOV words return a vector of zeros.
+    *
     * @param words a sequence of strings
     * @return average of vectors for all words in the sequence
     */
   def apply(words: Seq[String]): Vector = {
-    val sum = Vectors.zeros(vectorSize)
-
-    if (words.size == 0) {
-      Vectors.sparse(vectorSize, Array.empty[Int], Array.empty[Double])
-    } else {
-      val sum = Vectors.zeros(vectorSize)
-      words.foreach { word =>
-        IdibonBLAS.axpy(1.0, model.transform(word), sum)
-      }
-      IdibonBLAS.scal(1.0 / words.size, sum)
-      sum
-    }
+    words.foldLeft(Vectors.zeros(vectorSize))({ case (accum, word) => {
+      Try({
+        IdibonBLAS.axpy(1.0, model.transform(word), accum)
+        accum
+      }).getOrElse(accum)
+    }})
   }
 
   /**
-    * Saves the path to the model object in a JObject. (This path is the
+    * Saves the URI for the model object in a JObject. (This URI is the
     * only info needed to reload the Word2VecTransformer.)
     *
     * @param writer destination within Alloy for any resources that
@@ -59,7 +60,7 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     *   to reload the object. None if no configuration is needed
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
-    Some(JObject(JField("path", JString(path))))
+    Some(JObject(JField("uri", JString(uri.toString()))))
   }
 
 }
@@ -67,7 +68,8 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
 class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
 
   /**
-    * Loads a Word2VecTransformer from a path pointing to a saved Word2VecModel
+    * Loads a Word2VecTransformer from a URI pointing to a saved Spark Word2VecModel or
+    * a gzipped binary file output by the original Word2Vec C implementation
     *
     * @param engine implementation of the Engine trait
     * @param reader location within Alloy for loading any resources
@@ -77,10 +79,23 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
     */
   def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): Word2VecTransformer = {
     implicit val formats = DefaultFormats
-    val path = (config.get \ "path").extract[String]
-    val model = Word2VecModel.load(engine.sparkContext, path)
-    val transformer = new Word2VecTransformer(engine.sparkContext, model, path)
-    transformer
-  }
+    val uri = new URI((config.get \ "uri").extract[String])
+    val modelType = (config.get \ "type").extract[String]
 
+    val model = modelType match {
+      case "spark" => Word2VecModel.load(engine.sparkContext, new java.io.File(uri).getAbsolutePath())
+      case "bin" => {
+        val reader = new Word2VecBinReader
+        val word2VecMap = reader.parseBinFile(uri).toMap
+        new Word2VecModel(word2VecMap)
+      }
+      case _ => {
+        throw new IllegalArgumentException("Invalid model type string ' " + modelType +
+          "'. Currently only 'spark' and 'bin' are allowed");
+      }
+    }
+
+    new Word2VecTransformer(engine.sparkContext, model, uri)
+  }
 }
+
