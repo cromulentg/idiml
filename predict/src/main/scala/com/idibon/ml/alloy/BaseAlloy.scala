@@ -63,6 +63,11 @@ case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
       HasTrainingConfig.save(writer,
         this.asInstanceOf[Alloy[T] with HasTrainingConfig])
     }
+
+    if (this.isInstanceOf[HasTrainingSummary]) {
+      HasTrainingSummary.save(writer,
+        this.asInstanceOf[BaseAlloy[T] with HasTrainingSummary])
+    }
   }
 }
 
@@ -105,13 +110,13 @@ object BaseAlloy extends StrictLogging {
       JsonMethods.parse(Codec.String.read(resource))
         .extract[BaseAlloyManifest]
     } finally {
-      resource.close
+      resource.close()
     }
   }
 
   /** Generates and saves the Alloy manifest
     *
-    * @param w Writer for the Alloy
+    * @param writer Writer for the Alloy
     * @param alloy Alloy that will be saved
     * @return the layout spec implementation for the saved alloy
     */
@@ -139,7 +144,7 @@ object BaseAlloy extends StrictLogging {
       Codec.String.write(resource, manifest)
       CURRENT_SPEC
     } finally {
-      resource.close
+      resource.close()
     }
   }
 
@@ -217,7 +222,7 @@ private[alloy] trait BaseAlloySpecVersion {
     try {
       Codec.String.write(meta, JsonMethods.compact(JsonMethods.render(json)))
     } finally {
-      meta.close
+      meta.close()
     }
   }
 }
@@ -253,7 +258,7 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
       Codec.VLuint.write(resource, labels.size)
       labels.foreach(l => l.save(resource))
     } finally {
-      resource.close
+      resource.close()
     }
   }
 
@@ -264,7 +269,7 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
       val count = Codec.VLuint.read(resource)
       (0 until count).map(_ => builder.build(resource))
     } finally {
-      resource.close
+      resource.close()
     }
   }
 
@@ -293,7 +298,7 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
   * Records versioning information and associated system properties
   *
   * @param name User-friendly name for the alloy
-  * @param alloySpecVersion version of BaseAlloy spec followed
+  * @param specVersion version of BaseAlloy spec followed
   * @param idimlVersion version of idiml used to generate the Alloy
   * @param createdAt timestamp when Alloy was created
   * @param properties extra system details (JVM version, etc.)

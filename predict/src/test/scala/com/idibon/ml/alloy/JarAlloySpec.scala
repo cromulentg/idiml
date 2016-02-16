@@ -1,16 +1,13 @@
 package com.idibon.ml.alloy
 
 import java.io._
-import java.util.Random
 import java.util.jar.{JarFile, JarOutputStream}
 
+import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict._
-import com.idibon.ml.predict.ensemble.GangModel
-import com.idibon.ml.predict.rules.DocumentRules
-import com.idibon.ml.common.EmbeddedEngine
-import org.apache.spark.mllib.linalg.Vector
-import scala.collection.mutable
-import org.json4s._
+import com.idibon.ml.predict.ml.TrainingSummary
+import com.idibon.ml.predict.ml.metrics._
+import scala.collection.mutable.HashMap
 import org.scalatest._
 
 class JarAlloySpec extends FunSpec with Matchers {
@@ -138,6 +135,52 @@ class JarAlloySpec extends FunSpec with Matchers {
       } finally {
         if (baseReader != null) baseReader.jarFile.close
         jw.jarStream.close
+        file.delete
+      }
+    }
+
+    it("returns training summaries when they exist") {
+      val alloy = new BaseAlloy("garbage",
+        List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
+        Map("model for foo" -> new LengthClassificationModel))
+        with HasTrainingSummary {
+      }
+      val archive = HashMap[String, Array[Byte]]()
+      val (file: File, jw: JarAlloyWriter) = createAlloyWriter("trainingsummary.jar")
+      var baseReader: JarAlloyReader = null
+      try {
+        alloy.save(jw)
+        jw.jarStream.close()
+        JarAlloy.getTrainingSummaries(file) shouldBe Seq(new TrainingSummary("testing123",
+          Seq[Metric with Buildable[_, _]](
+            new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+            new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
+            new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary, "testin123", 23),
+            new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "testin123", 0.5f),
+            new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Hyperparameter,
+              Seq(("prop1", "value1"))),
+            new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Multiclass,
+              Seq(("label1", "label2", 2.0f)))
+          )))
+      } finally {
+        jw.jarStream.close()
+        file.delete
+      }
+    }
+
+    it("returns empty sequence when no training summaries exist") {
+      val alloy = new BaseAlloy("garbage",
+        List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
+        Map("model for foo" -> new LengthClassificationModel))
+      val archive = HashMap[String, Array[Byte]]()
+      val (file: File, jw: JarAlloyWriter) = createAlloyWriter("trainingsummary.jar")
+      var baseReader: JarAlloyReader = null
+      try {
+        alloy.save(jw)
+        jw.jarStream.close()
+        JarAlloy.getTrainingSummaries(file) shouldBe List()
+      } finally {
+        jw.jarStream.close()
         file.delete
       }
     }

@@ -72,7 +72,7 @@ public interface Alloy<T extends PredictResult> {
 
     /**
      * Top level method to save an alloy.
-     * @param path
+     * @param writer
      * @throws IOException
      */
     public void save(Alloy.Writer writer) throws IOException;

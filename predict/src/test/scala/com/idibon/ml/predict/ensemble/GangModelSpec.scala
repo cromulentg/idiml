@@ -1,12 +1,13 @@
 package com.idibon.ml.predict.ensemble
 
+import com.idibon.ml.predict.ml.metrics._
+
 import scala.collection.mutable.HashMap
 
-import com.idibon.ml.alloy.{Alloy, Codec, MemoryAlloyReader, MemoryAlloyWriter}
+import com.idibon.ml.alloy._
 import com.idibon.ml.common.{Engine, ArchiveLoader, Archivable, EmbeddedEngine}
-import com.idibon.ml.feature.indexer.IndexTransformer
 import com.idibon.ml.feature._
-import com.idibon.ml.predict.ml.{IdibonMultiClassLRModel, MLModel}
+import com.idibon.ml.predict.ml.{TrainingSummary, IdibonMultiClassLRModel}
 import com.idibon.ml.predict.rules.{RuleFeature, DocumentRules}
 import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.predict._
@@ -44,17 +45,17 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         ("model-meta", JObject(List(
           ("0",
             JObject(List(("config",
-              JObject(List(("version",JString("0.0.3")),
-                ("featurePipeline",JObject(List(
-                  ("version",JString("0.0.1")),
+              JObject(List(("version", JString("0.0.3")),
+                ("featurePipeline", JObject(List(
+                  ("version", JString("0.0.1")),
                   ("transforms",
-                    JArray(List(JObject(List(("name",JString("metaExtractor")),
-                      ("class",JString("com.idibon.ml.predict.ensemble.MetadataNumberExtractor")),
-                      ("config",JNothing)))))),
+                    JArray(List(JObject(List(("name", JString("metaExtractor")),
+                      ("class", JString("com.idibon.ml.predict.ensemble.MetadataNumberExtractor")),
+                      ("config", JNothing)))))),
                   ("pipeline",
-                    JArray(List(JObject(List(("name",JString("metaExtractor")),
-                      ("inputs",JArray(List(JString("$document")))))),
-                      JObject(List(("name",JString("$output")), ("inputs",JArray(List(JString("metaExtractor"))))))))))))))),
+                    JArray(List(JObject(List(("name", JString("metaExtractor")),
+                      ("inputs", JArray(List(JString("$document")))))),
+                      JObject(List(("name", JString("$output")), ("inputs", JArray(List(JString("metaExtractor"))))))))))))))),
               ("class", JString("com.idibon.ml.predict.ml.IdibonMultiClassLRModel"))))),
           ("1", JObject(List(
             ("config", JObject(List(("label", JString("alabel"))))),
@@ -62,7 +63,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
           ("2", JObject(List(
             ("config", JObject(List(("label", JString("blabel"))))),
             ("class", JString("com.idibon.ml.predict.rules.DocumentRules"))))
-          )))),
+            )))),
         ("featurePipeline", JNothing)
       )))
       metadata shouldBe expectedMetadata
@@ -84,17 +85,17 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val metadata = gang1.save(new MemoryAlloyWriter(archive))
       val expectedMetadata = Some(JObject(List(
         ("labels", JArray(List(JString("0"), JString("1"), JString("2")))),
-        ("model-meta",JObject(List(
+        ("model-meta", JObject(List(
           ("0", JObject(List(
             ("config", JNothing),
-            ("class",JString("com.idibon.ml.predict.ensemble.FakeMCModel"))))),
+            ("class", JString("com.idibon.ml.predict.ensemble.FakeMCModel"))))),
           ("1", JObject(List(
-            ("config", JObject(List(("label",JString("alabel"))))),
-            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))),
-          ("2",JObject(List(
-            ("config", JObject(List(("label",JString("blabel"))))),
-            ("class",JString("com.idibon.ml.predict.rules.DocumentRules"))))
-          )))),
+            ("config", JObject(List(("label", JString("alabel"))))),
+            ("class", JString("com.idibon.ml.predict.rules.DocumentRules"))))),
+          ("2", JObject(List(
+            ("config", JObject(List(("label", JString("blabel"))))),
+            ("class", JString("com.idibon.ml.predict.rules.DocumentRules"))))
+            )))),
         ("featurePipeline", JNothing))))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(
@@ -108,16 +109,85 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val metadata = gang1.save(new MemoryAlloyWriter(archive))
       val expectedMetadata = Some(JObject(List(
         ("labels", JArray(List(JString("0")))),
-        ("model-meta",JObject(List(
+        ("model-meta", JObject(List(
           ("0", JObject(List(
             ("config", JNothing),
-            ("class",JString("com.idibon.ml.predict.ensemble.FakeMCModel")))))
+            ("class", JString("com.idibon.ml.predict.ensemble.FakeMCModel")))))
         ))),
         ("featurePipeline", JNothing))))
       metadata shouldBe expectedMetadata
       val gang2 = (new GangModelLoader).load(
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), metadata)
       gang1 shouldBe gang2
+    }
+  }
+  describe("training summary test cases") {
+    it("should collate training summaries from underlying models"){
+      val summary1 = Some(Seq(new TrainingSummary("testing1",
+        Seq[Metric with Buildable[_, _]](
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
+            Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
+      val summary2 = Some(Seq(new TrainingSummary("testing2",
+        Seq[Metric with Buildable[_, _]](
+          new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.7f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
+            Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
+      val gang1 = new GangModel(Map(
+        "0" -> new FakeMCModel(List("alabel", "blabel")),
+        "1" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+          override val trainingSummary = summary1
+        },
+        "2" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+          override val trainingSummary = summary2
+        }))
+      val actual = gang1.getTrainingSummary().get.sortBy(ts => ts.identifier)
+      val expected = summary1.get ++ summary2.get
+      actual shouldBe expected
+
+    }
+    it("should return none when no summaries exist") {
+      val gang1 = new GangModel(Map(
+        "0" -> new FakeMCModel(List("alabel", "blabel"))))
+      gang1.getTrainingSummary() shouldBe None
+    }
+
+    it("should return none when no underlying model summaries exist") {
+      val gangSummary = new TrainingSummary("gang",
+        Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
+      val gang1 = new GangModel(Map(
+        "0" -> new FakeMCModel(List("alabel", "blabel")))) with HasTrainingSummary{
+        override val trainingSummary = Some(Seq(gangSummary))
+      }
+      gang1.getTrainingSummary() shouldBe Some(Seq(gangSummary))
+    }
+
+    it("should collate training summaries with underlying models"){
+      val summary1 = Some(Seq(new TrainingSummary("testing1",
+        Seq[Metric with Buildable[_, _]](
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
+            Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
+      val summary2 = Some(Seq(new TrainingSummary("testing2",
+        Seq[Metric with Buildable[_, _]](
+          new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.7f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary,
+            Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
+      val gangSummary = new TrainingSummary("gang",
+        Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
+      val gang1 = new GangModel(Map(
+        "0" -> new FakeMCModel(List("alabel", "blabel")),
+        "1" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+          override val trainingSummary = summary1
+        },
+        "2" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+          override val trainingSummary = summary2
+        })) with HasTrainingSummary {
+        override val trainingSummary=Some(Seq(gangSummary))
+      }
+      val actual = gang1.getTrainingSummary().get.sortBy(ts => ts.identifier)
+      val expected = Seq(gangSummary) ++ summary1.get ++ summary2.get
+      actual shouldBe expected
     }
   }
 
@@ -191,6 +261,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
 
 /**
   * Fake class to make it easy to test combining results.
+ *
   * @param labels
   */
 case class FakeMCModel(labels: List[String])
@@ -207,6 +278,10 @@ case class FakeMCModel(labels: List[String])
         Classification(label, 0.2f, 1, 0, Seq())
       }
     })
+  }
+
+  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
+    trainingSummary
   }
 
   override def getFeaturesUsed(): Vector = ???

@@ -1,18 +1,21 @@
 package com.idibon.ml.train.furnace
 
+import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.common.Engine
-import com.idibon.ml.feature.FeaturePipeline
+import com.idibon.ml.feature.{Buildable, FeaturePipeline}
+import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.predict.{PredictModel, Classification}
-import com.idibon.ml.predict.ml.{IdibonLogisticRegressionModel}
+import com.idibon.ml.predict.ml.{TrainingSummary, IdibonLogisticRegressionModel}
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.ml.classification.{LogisticRegression, BinaryLogisticRegressionSummary, LogisticRegressionModel, IdibonSparkLogisticRegressionModelWrapper}
+import org.apache.spark.ml.classification._
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.tuning.{TrainValidationSplit, ParamGridBuilder, CrossValidator}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.json4s.JsonAST.JObject
 import org.json4s._
+import org.json4s.native.JsonMethods
 
 
 /**
@@ -23,7 +26,7 @@ import org.json4s._
   * @tparam T The type of trainer to expect to train on.
   */
 abstract class LogisticRegressionFurnace[T](engine: Engine)
-    extends Furnace[Classification] with StrictLogging {
+    extends Furnace[Classification] with StrictLogging with MetricHelper {
 
   /**
     * Function to take care of featurizing the data.
@@ -53,7 +56,81 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     // wrap into one we want
     val wrapper = IdibonSparkLogisticRegressionModelWrapper.wrap(lr)
     // create MLModel for label:
-    new IdibonLogisticRegressionModel(label, wrapper, pipeline)
+    new IdibonLogisticRegressionModel(label, wrapper, pipeline) with HasTrainingSummary {
+      override val trainingSummary = Some(Seq(createTrainingSummary(label, lr, data)))
+    }
+  }
+
+  /**
+    * Gathers metrics and packages them into a training summary.
+    *
+    * @param label the string value to group these metrics by.
+    * @param lrm the logistic regression model trained to inspect.
+    * @param data the training dataframe.
+    * @return
+    */
+  def createTrainingSummary(label: String,
+                            lrm: LogisticRegressionModel,
+                            data: DataFrame): TrainingSummary = {
+    // we already have training summary data courtesy of the summary in the model.
+    val summary = lrm.summary.asInstanceOf[BinaryLogisticRegressionTrainingSummary]
+    val maxFMeasure = summary.fMeasureByThreshold.select(max("F-Measure")).head().getDouble(0)
+    val bestThreshold = summary.fMeasureByThreshold
+      .where(summary.fMeasureByThreshold.col("F-Measure") === maxFMeasure)
+      .select("threshold").head().getDouble(0)
+    val metrics = Seq[Metric with Buildable[_,_]](
+      new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, bestThreshold.toFloat),
+      new FloatMetric(
+        MetricTypes.AreaUnderROC, MetricClass.Binary, summary.areaUnderROC.toFloat),
+      new PointsMetric(
+        MetricTypes.ReceiverOperatingCharacteristic,
+        MetricClass.Binary,
+        convertDataFrame(summary.roc, "TPR", "FPR")),
+      new PointsMetric(
+        MetricTypes.PrecisionRecallCurve,
+        MetricClass.Binary,
+        convertDataFrame(summary.pr, "precision", "recall")),
+      new PointsMetric(
+        MetricTypes.F1ByThreshold,
+        MetricClass.Binary,
+        convertDataFrame(summary.fMeasureByThreshold, "threshold", "F-Measure")),
+      new PointsMetric(
+        MetricTypes.PrecisionByThreshold,
+        MetricClass.Binary,
+        convertDataFrame(summary.precisionByThreshold, "threshold", "precision")),
+      new PointsMetric(
+        MetricTypes.RecallByThreshold,
+        MetricClass.Binary,
+        convertDataFrame(summary.recallByThreshold, "threshold", "recall")),
+      new PropertyMetric(
+        MetricTypes.HyperparameterProperties,
+        MetricClass.Hyperparameter,
+        lrm.parent.extractParamMap().toSeq.map(pp => {
+          (pp.param.toString(), pp.value.toString)
+        }))
+    )
+    val doubleToString = Map(1.0 -> "positive", 0.0 -> "negative")
+    val dataSizes = getLabelCounts(data)
+      .map({case(lab, size) => {
+        new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary,
+          doubleToString(lab), size)
+      }}).asInstanceOf[Seq[Metric with Buildable[_, _]]]
+    new TrainingSummary(label, metrics ++ dataSizes)
+  }
+
+  /**
+    * Helper method to convert a dataframe of points to a sequence of float to float.
+    *
+    * @param df the dataframe to get data from.
+    * @param xName the x-axis name.
+    * @param yName the y-axis name.
+    * @return map of floats.
+    */
+  def convertDataFrame(df: DataFrame, xName: String, yName: String): Seq[(Float, Float)] = {
+    implicit val formats = org.json4s.DefaultFormats
+    df.toJSON.collect()
+      .map(x => JsonMethods.parse(x).extract[Map[String, Double]])
+      .map(m => (m(xName).toFloat, m(yName).toFloat))
   }
 
   /**

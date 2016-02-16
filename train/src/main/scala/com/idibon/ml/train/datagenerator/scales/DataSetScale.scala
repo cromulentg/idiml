@@ -12,6 +12,8 @@ import org.apache.spark.rdd.RDD
 /**
   * Trait that deals with scaling datasets to appropriate proportions of
   * negative & positive examples.
+  *
+  * The name "scale" alludes to weighing metals...
   */
 trait DataSetScale {
 

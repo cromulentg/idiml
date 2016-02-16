@@ -3,8 +3,10 @@ package com.idibon.ml.alloy
 import java.io._
 import com.idibon.ml.predict._
 import com.idibon.ml.common._
-import com.idibon.ml.feature.{FeatureInputStream, FeatureOutputStream}
+import com.idibon.ml.feature.{Buildable, FeatureInputStream, FeatureOutputStream}
 import com.idibon.ml.feature.bagofwords.Word
+import com.idibon.ml.predict.ml.TrainingSummary
+import com.idibon.ml.predict.ml.metrics._
 
 import org.scalatest._
 import org.json4s._
@@ -72,7 +74,7 @@ class BaseAlloySpec extends FunSpec with Matchers {
 
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
-      archive.get("validation.dat") should not be None
+      archive.get(HasValidationData.VALIDATION_RESOURCE) should not be None
       val reader = new MemoryAlloyReader(archive.toMap)
       val reload = BaseAlloy.load[Classification](new EmbeddedEngine, reader)
       HasValidationData.validate(reader, reload)
@@ -94,6 +96,42 @@ class BaseAlloySpec extends FunSpec with Matchers {
       intercept[ValidationError] {
         HasValidationData.validate(reader, reload)
       }
+    }
+  }
+
+  describe("get TrainingSummary") {
+    it("saves metrics in an alloy & can load it") {
+      val alloy = new BaseAlloy("garbage",
+        List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
+        Map("model for foo" -> new LengthClassificationModel))
+        with HasTrainingSummary {
+      }
+      val archive = HashMap[String, Array[Byte]]()
+      alloy.save(new MemoryAlloyWriter(archive))
+      archive.get(HasTrainingSummary.TRAINING_SUMMARY_RESOURCE) should not be None
+      val reader = new MemoryAlloyReader(archive.toMap)
+      HasTrainingSummary.get(reader) shouldBe Seq(new TrainingSummary("testing123",
+        Seq[Metric with Buildable[_, _]](
+          new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+          new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
+          new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary, "testin123", 23),
+          new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "testin123", 0.5f),
+          new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Hyperparameter,
+            Seq(("prop1", "value1"))),
+          new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Multiclass,
+            Seq(("label1", "label2", 2.0f)))
+        )))
+    }
+
+    it("raises doesn't die on an alloy without any metrics") {
+      val alloy = new BaseAlloy("garbage",
+        List(new Label("00000000-0000-0000-0000-000000000000", "foo")),
+        Map("model for foo" -> new LengthClassificationModel))
+      val archive = HashMap[String, Array[Byte]]()
+      alloy.save(new MemoryAlloyWriter(archive))
+      archive.get(HasTrainingSummary.TRAINING_SUMMARY_RESOURCE) shouldBe None
+      val reader = new MemoryAlloyReader(archive.toMap)
+      HasTrainingSummary.get(reader) shouldBe Seq()
     }
   }
 
@@ -149,6 +187,20 @@ class LengthClassificationModel extends PredictModel[Classification] {
   }
 
   def getFeaturesUsed: org.apache.spark.mllib.linalg.Vector = ???
+
+  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
+    Some(Seq(new TrainingSummary("testing123",
+      Seq[Metric with Buildable[_, _]](
+        new FloatMetric(MetricTypes.AreaUnderROC, MetricClass.Binary, 0.5f),
+        new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.3f, 0.4f))),
+        new LabelIntMetric(MetricTypes.LabelCount, MetricClass.Binary, "testin123", 23),
+        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "testin123", 0.5f),
+        new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Hyperparameter,
+          Seq(("prop1", "value1"))),
+        new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Multiclass,
+          Seq(("label1", "label2", 2.0f)))
+      ))))
+  }
 }
 
 case class DummyClassificationModel(label: String, confidence: Float, feature: Word)
