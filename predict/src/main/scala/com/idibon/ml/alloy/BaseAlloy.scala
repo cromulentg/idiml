@@ -207,6 +207,17 @@ private[alloy] trait BaseAlloySpecVersion {
   def loadLabels(reader: Alloy.Reader): Seq[Label]
 
   /** Loads a JSON payload from a resource in the Alloy */
+  def readJsonResource(resource: String, reader: Alloy.Reader): JValue =
+    BaseAlloySpecVersion.readJsonResource(resource, reader)
+
+  /** Writes a JSON payload to a resource in the Alloy */
+  def writeJsonResource(json: JValue, resource: String, writer: Alloy.Writer) {
+    BaseAlloySpecVersion.writeJsonResource(json, resource, writer)
+  }
+}
+
+private [alloy] object BaseAlloySpecVersion {
+  /** Loads a JSON payload from a resource in the Alloy */
   def readJsonResource(resource: String, reader: Alloy.Reader): JValue = {
     val meta = reader.resource(resource)
     try {
@@ -239,7 +250,7 @@ private[this] object BaseAlloy_1 extends BaseAlloySpecVersion {
       writer: Alloy.Writer, models: Map[String, PredictModel[T]]) {
     val modelWriter = writer.within(MODEL_DIRECTORY)
     val modelEntries = models.map({ case (name, model) => {
-      ArchivedModelEntry_1(name, model.getClass.getName,
+      ArchivedModelEntry_1(name, model.reifiedType.getName,
         Archivable.save(model, modelWriter.within(name)))
     }})
 

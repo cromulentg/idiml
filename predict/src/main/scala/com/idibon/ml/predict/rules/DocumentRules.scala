@@ -31,6 +31,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
       logger.warn(s"[$this] ignoring invalid weight $weight for $phrase")
     }})
 
+  val reifiedType = classOf[DocumentRules]
 
   val ruleWeightMap = rules.filter(r => DocumentRules.isValidWeight(r._2)).toMap
   val rulesCache = DocumentRules.compileRules(ruleWeightMap.map(_._1))

@@ -29,6 +29,8 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
 
   val intToLabel = labelToInt.map({case (label, index) => (index, label)})
 
+  val reifiedType = classOf[IdibonMultiClassLRModel]
+
   /**
     * The model will use a subset of features passed in. This method
     * should return the ones used.

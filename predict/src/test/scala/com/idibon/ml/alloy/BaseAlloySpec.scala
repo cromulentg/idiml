@@ -74,6 +74,14 @@ class BaseAlloySpec extends FunSpec with Matchers {
 
       val archive = HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
+
+      val modelConfig = BaseAlloySpecVersion.readJsonResource("models.json",
+        new MemoryAlloyReader(archive.toMap))
+      modelConfig shouldBe JArray(List(
+        ("name" -> "model for foo") ~
+        ("class" -> "com.idibon.ml.alloy.LengthClassificationModel")
+      ))
+
       archive.get(HasValidationData.VALIDATION_RESOURCE) should not be None
       val reader = new MemoryAlloyReader(archive.toMap)
       val reload = BaseAlloy.load[Classification](new EmbeddedEngine, reader)
@@ -181,6 +189,8 @@ class BaseAlloySpec extends FunSpec with Matchers {
 }
 
 class LengthClassificationModel extends PredictModel[Classification] {
+  val reifiedType = classOf[LengthClassificationModel]
+
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
     val content = (document.json \ "content").asInstanceOf[JString].s
     Seq(Classification("00000000-0000-0000-0000-000000000000", 1.0f / content.length, 1, 0, Seq()))
@@ -206,6 +216,8 @@ class LengthClassificationModel extends PredictModel[Classification] {
 case class DummyClassificationModel(label: String, confidence: Float, feature: Word)
     extends PredictModel[Classification]
     with Archivable[DummyClassificationModel, DummyClassificationModelLoader] {
+
+  val reifiedType = classOf[DummyClassificationModel]
 
   def save(w: Alloy.Writer): Option[JObject] = {
     val r = new FeatureOutputStream(w.resource("feature"))
@@ -235,6 +247,8 @@ class DummyClassificationModelLoader extends ArchiveLoader[DummyClassificationMo
 case class FailsValidationModel(label: String, confidence: Float)
     extends PredictModel[Classification]
     with Archivable[FailsValidationModel, FailsValidationModelLoader] {
+
+  val reifiedType = classOf[FailsValidationModel]
 
   def save(w: Alloy.Writer): Option[JObject] = {
     Some(("label" -> label) ~ ("confidence" -> confidence))
