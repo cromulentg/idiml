@@ -1,6 +1,7 @@
 package com.idibon.ml.feature.word2vec;
 
 import java.io.*;
+import java.net.URI;
 import java.util.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -39,17 +40,17 @@ public class Word2VecBinReader {
     /**
      * Parses a gzipped binary file output by the word2vec C implementation
      *
-     * @param path path to gzipped bin file
+     * @param uri uri to gzipped bin file
      * @return LinkedHashMap mapping words to vectors
      */
-    public LinkedHashMap<String, float[]> parseBinFile(String path) {
+    public LinkedHashMap<String, float[]> parseBinFile(URI uri) {
         LinkedHashMap<String, float[]> vectors = new LinkedHashMap<>();
 
         try {
             DataInputStream data = new DataInputStream(
                     new BufferedInputStream(
                         new GZIPInputStream(
-                            new FileInputStream(path))));
+                            new FileInputStream(new File(uri)))));
 
             words = readAsciiLong(data);
             size = readAsciiLong(data);

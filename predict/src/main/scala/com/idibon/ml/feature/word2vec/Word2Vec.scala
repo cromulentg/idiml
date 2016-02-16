@@ -1,6 +1,7 @@
 package com.idibon.ml.feature.word2vec
 
 import java.util
+import java.net.URI
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
@@ -13,15 +14,16 @@ import org.apache.spark.mllib.linalg._
 import org.json4s._
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
   * Word2Vec feature for creating vector representations from sequences of strings
   *
   * @param sc SparkContext object
   * @param model Word2VecModel model object
-  * @param path path to directory where the model is stored (a String)
+  * @param uri URI for the directory where the model is stored (a String)
   */
-class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val path: String) extends FeatureTransformer
+class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val uri: URI) extends FeatureTransformer
   with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
 
   val vectors = model.getVectors
@@ -50,7 +52,7 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
   }
 
   /**
-    * Saves the path to the model object in a JObject. (This path is the
+    * Saves the URI for the model object in a JObject. (This URI is the
     * only info needed to reload the Word2VecTransformer.)
     *
     * @param writer destination within Alloy for any resources that
@@ -59,7 +61,7 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
     *   to reload the object. None if no configuration is needed
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
-    Some(JObject(JField("path", JString(path))))
+    Some(JObject(JField("uri", JString(uri.toString()))))
   }
 
 }
@@ -67,7 +69,7 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val pa
 class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
 
   /**
-    * Loads a Word2VecTransformer from a path pointing to a saved Spark Word2VecModel or
+    * Loads a Word2VecTransformer from a URI pointing to a saved Spark Word2VecModel or
     * a gzipped binary file output by the original Word2Vec C implementation
     *
     * @param engine implementation of the Engine trait
@@ -78,15 +80,14 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
     */
   def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): Word2VecTransformer = {
     implicit val formats = DefaultFormats
-    val path = (config.get \ "path").extract[String]
+    val uri = new URI((config.get \ "uri").extract[String])
     val modelType = (config.get \ "type").extract[String]
 
     val model = modelType match {
-      case "spark" => Word2VecModel.load(engine.sparkContext, path)
+      case "spark" => Word2VecModel.load(engine.sparkContext, new java.io.File(uri).getAbsolutePath())
       case "bin" => {
         val reader = new Word2VecBinReader
-        val binFilePath = path
-        val javaWord2VecMap: util.LinkedHashMap[String, Array[Float]] = reader.parseBinFile(binFilePath)
+        val javaWord2VecMap: util.LinkedHashMap[String, Array[Float]] = reader.parseBinFile(uri)
         val scalaWord2VecMap = javaWord2VecMap.asScala.toMap
         new Word2VecModel(scalaWord2VecMap)
       }
@@ -96,7 +97,7 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
       }
     }
 
-    new Word2VecTransformer(engine.sparkContext, model, path)
+    new Word2VecTransformer(engine.sparkContext, model, uri)
   }
 }
 

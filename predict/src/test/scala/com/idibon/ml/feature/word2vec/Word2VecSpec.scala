@@ -13,34 +13,34 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
 
   val archive = HashMap[String, Array[Byte]]()
 
-  def loadModel(path: String, modelType: String): Word2VecTransformer = {
-    val config = JObject(JField("path", JString(path)), JField("type", JString(modelType)))
+  def loadModel(uri: String, modelType: String): Word2VecTransformer = {
+    val config = JObject(JField("uri", JString(uri.toString())), JField("type", JString(modelType)))
     val loader = new Word2VecTransformerLoader()
     val transform = loader.load(
       new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), Some(config))
     transform
   }
 
-  def aWord2VecTransformer(path: String, modelType: String, vocabSize: Int) {
+  def aWord2VecTransformer(uri: String, modelType: String, vocabSize: Int) {
 
     it("should load a Word2VecTransformer with type "+modelType) {
-      val transform = loadModel(path, modelType)
+      val transform = loadModel(uri, modelType)
       transform.vectors shouldBe a[Map[_, Array[Float]]]
       transform.vectors.size shouldBe vocabSize
       transform.vectorSize shouldBe 100
     }
 
     it("should save a Word2VecTransformer with type "+modelType) {
-      val transform = loadModel(path, modelType)
+      val transform = loadModel(uri, modelType)
       val json = transform.save(new MemoryAlloyWriter(archive))
       implicit val formats = DefaultFormats
-      val outputPath = (json.get \ "path").extract[String]
-      outputPath shouldBe path
+      val outputURI = (json.get \ "uri").extract[String]
+      outputURI shouldBe uri
     }
 
 
     describe("apply") {
-      val transform = loadModel(path, modelType)
+      val transform = loadModel(uri, modelType)
       val zeroVector = Vectors.sparse(100, Array.empty[Int], Array.empty[Double])
 
       it("should return an empty sparse vector of size 100 on empty input with type "+modelType) {
@@ -75,11 +75,12 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
 class Word2VecSpec extends FunSpec with Matchers with Word2VecTransformerBehaviors {
 
   describe("Word2VecTransformer") {
-    val sparkModelPath = "src/test/resources/fixtures/sparkWord2VecModel/model"
-    val binModelPath = "src/test/resources/fixtures/word2vec-test-vectors.bin.gz"
+    val baseURI = "file://" + System.getProperty("user.dir")
+    val sparkModelURI = baseURI + "/src/test/resources/fixtures/sparkWord2VecModel/model"
+    val binModelURI = baseURI + "/src/test/resources/fixtures/word2vec-test-vectors.bin.gz"
 
-    it should behave like aWord2VecTransformer(sparkModelPath, "spark", 433)
-    it should behave like aWord2VecTransformer(binModelPath, "bin", 434)
+    it should behave like aWord2VecTransformer(sparkModelURI, "spark", 433)
+    it should behave like aWord2VecTransformer(binModelURI, "bin", 434)
 
   }
 }
