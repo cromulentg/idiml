@@ -47,7 +47,7 @@ File.foreach(source_annos) do |doc|
 				gold_label = label_map["uuid_to_label"][gold_uuid]
 			end
 		}
-		gold_info = {"content" => content, "name" => doc_name,
+		gold_info = {"content" => content, "name" => doc_name.to_s,
 								 "metadata" => { "gold" => gold_label,
 								 "gold_uuid" => gold_uuid } }
 	 	doc_name += 1	
