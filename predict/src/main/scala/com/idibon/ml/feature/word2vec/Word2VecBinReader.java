@@ -41,16 +41,13 @@ public class Word2VecBinReader {
      * Parses a gzipped binary file output by the word2vec C implementation
      *
      * @param uri uri to gzipped bin file
-     * @return LinkedHashMap mapping words to vectors
+     * @return Map of words to vectors
      */
-    public LinkedHashMap<String, float[]> parseBinFile(URI uri) {
-        LinkedHashMap<String, float[]> vectors = new LinkedHashMap<>();
+    public Map<String, float[]> parseBinFile(URI uri) {
+        Map<String, float[]> vectors = new HashMap<>();
 
-        try {
-            DataInputStream data = new DataInputStream(
-                    new BufferedInputStream(
-                        new GZIPInputStream(
-                            new FileInputStream(new File(uri)))));
+        try (DataInputStream data = new DataInputStream(
+                new GZIPInputStream(new FileInputStream(new File(uri)), 65536))) {
 
             words = readAsciiLong(data);
             size = readAsciiLong(data);

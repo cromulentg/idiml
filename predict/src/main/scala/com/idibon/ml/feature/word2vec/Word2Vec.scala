@@ -1,6 +1,5 @@
 package com.idibon.ml.feature.word2vec
 
-import java.util
 import java.net.URI
 
 import com.idibon.ml.alloy.Alloy
@@ -13,7 +12,7 @@ import org.apache.spark.mllib.linalg._
 
 import org.json4s._
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConversions.mapAsScalaMap
 import scala.util.Try
 
 /**
@@ -87,9 +86,8 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
       case "spark" => Word2VecModel.load(engine.sparkContext, new java.io.File(uri).getAbsolutePath())
       case "bin" => {
         val reader = new Word2VecBinReader
-        val javaWord2VecMap: util.LinkedHashMap[String, Array[Float]] = reader.parseBinFile(uri)
-        val scalaWord2VecMap = javaWord2VecMap.asScala.toMap
-        new Word2VecModel(scalaWord2VecMap)
+        val word2VecMap = reader.parseBinFile(uri).toMap
+        new Word2VecModel(word2VecMap)
       }
       case _ => {
         throw new IllegalArgumentException("Invalid model type string ' " + modelType +

@@ -13,7 +13,7 @@ class Word2VecBinReaderSpec extends FunSpec with Matchers {
 
     val reader = new Word2VecBinReader
     val binFileUriString= "file://" + System.getProperty("user.dir") + "/src/test/resources/fixtures/word2vec-test-vectors.bin.gz"
-    val word2VecMap: util.LinkedHashMap[String, Array[Float]] = reader.parseBinFile(new URI(binFileUriString))
+    val word2VecMap: util.Map[String, Array[Float]] = reader.parseBinFile(new URI(binFileUriString))
 
 
     it("should have the expected vocabulary") {
