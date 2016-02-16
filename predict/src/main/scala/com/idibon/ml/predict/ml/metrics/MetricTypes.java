@@ -12,33 +12,125 @@ package com.idibon.ml.predict.ml.metrics;
  * free to reorder though.
  */
 public enum MetricTypes {
-    BestF1Threshold(FloatMetric.class),
+    /**
+     * The over accuracy of our model.
+     */
+    Accuracy(FloatMetric.class),
+    /**
+     * Value for the area under the receiver operating charactistic curve.
+     */
     AreaUnderROC(FloatMetric.class),
-    ReceiverOperatingCharacteristic(PointsMetric.class),
-    PrecisionRecallCurve(PointsMetric.class),
-    F1ByThreshold(PointsMetric.class),
-    PrecisionByThreshold(PointsMetric.class),
-    RecallByThreshold(PointsMetric.class),
-    Precision(FloatMetric.class),
-    Recall(FloatMetric.class),
-    F1(FloatMetric.class),
-    LabelPrecision(LabelFloatMetric.class),
-    LabelRecall(LabelFloatMetric.class),
-    LabelF1(LabelFloatMetric.class),
-    LabelFPR(LabelFloatMetric.class),
-    WeightedPrecision(FloatMetric.class),
-    WeightedRecall(FloatMetric.class),
-    WeightedF1(FloatMetric.class),
-    WeightedFPR(FloatMetric.class),
+    /**
+     * This is reserved for the threshold that results in the Best F1.
+     * Used for tuning binary classifiers.
+     */
+    BestF1Threshold(FloatMetric.class),
+    /**
+     * Points to create a confusion matrix.
+     */
     ConfusionMatrix(ConfusionMatrixMetric.class),
-    LabelCount(LabelIntMetric.class),
-    HyperparameterProperties(PropertyMetric.class),
-    MicroF1(FloatMetric.class),
-    MicroPrecision(FloatMetric.class),
-    MicroRecall(FloatMetric.class),
+    /**
+     * The harmonic mean between precision and recall.
+     */
+    F1(FloatMetric.class),
+    /**
+     * Points to plot F1 by decision threshold.
+     */
+    F1ByThreshold(PointsMetric.class),
+    /**
+     * The hamming loss. A metric for the multi-label case.
+     */
     HammingLoss(FloatMetric.class),
+    /**
+     * Properties related to fitting of a model.
+     */
+    HyperparameterProperties(PropertyMetric.class),
+    /**
+     * Count of data points for that label.
+     */
+    LabelCount(LabelIntMetric.class),
+    /**
+     * F1 but for an individual label.
+     */
+    LabelF1(LabelFloatMetric.class),
+    /**
+     * False Positive Rate but for an individual label.
+     */
+    LabelFPR(LabelFloatMetric.class),
+    /**
+     * Precision but for an individual label.
+     */
+    LabelPrecision(LabelFloatMetric.class),
+    /**
+     * Recall but for an individual label.
+     */
+    LabelRecall(LabelFloatMetric.class),
+    /**
+     * The average of individual label F1s in the non-mutually
+     * exclusive case.
+     */
+    MicroF1(FloatMetric.class),
+    /**
+     * The average of individual label Precision in the non-mutually
+     * exclusive case.
+     */
+    MicroPrecision(FloatMetric.class),
+    /**
+     * The average of individual label Recall in the non-mutually
+     * exclusive case.
+     */
+    MicroRecall(FloatMetric.class),
+    /**
+     * The precision as a float. When we call something
+     * foo, how accurate are we?
+     */
+    Precision(FloatMetric.class),
+    /**
+     * Points to plot precision by decision threshold.
+     */
+    PrecisionByThreshold(PointsMetric.class),
+    /**
+     * Points to plot the precision - recall curve.
+     * Useful for showing the trade-off between the two.
+     */
+    PrecisionRecallCurve(PointsMetric.class),
+    /**
+     * The recall as a float. Out of all things foo,
+     * how many of them do we correctly identify?
+     */
+    Recall(FloatMetric.class),
+    /**
+     * Points to plot recall by decision threshold.
+     */
+    RecallByThreshold(PointsMetric.class),
+    /**
+     * Points to plot the receiver operating characteristic.
+     */
+    ReceiverOperatingCharacteristic(PointsMetric.class),
+    /**
+     * How accurate each label is in the non-mutually exclusive case.
+     */
     SubsetAccuracy(FloatMetric.class),
-    Accuracy(FloatMetric.class);
+    /**
+     * F1 weighted by the number of items in
+     * each class (i.e. label)
+     */
+    WeightedF1(FloatMetric.class),
+    /**
+     * False positive rate weighted by the number of items in
+     * each class (i.e. label)
+     */
+    WeightedFPR(FloatMetric.class),
+    /**
+     * Precision weighted by the number of items in
+     * each class (i.e. label)
+     */
+    WeightedPrecision(FloatMetric.class),
+    /**
+     * Recall weighted by the number of items in
+     * each class (i.e. label)
+     */
+    WeightedRecall(FloatMetric.class);
 
     MetricTypes(Class<? extends RawMetric> dataType) {
         this.dataType = dataType;
