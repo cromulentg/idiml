@@ -272,3 +272,30 @@ case class PerLabelFurnaceBuilder(private[furnace] var labelFurnaces: Map[String
     new PerLabelFurnace(this)
   }
 }
+
+/**
+  * Builder class to make it easy to create the right XValLR Furnace.
+  *
+  * @param maxIterations
+  * @param regParam
+  * @param tolerance
+  * @param elasticNetParam
+  * @param numFolds
+  */
+case class XValWithFPLogisticRegressionFurnaceBuilder(private[furnace] var maxIterations: Int = BuilderDefaults.MAX_ITERATIONS,
+                                                private[furnace] var regParam: Array[Double] = BuilderDefaults.REGULARIZATION_PARAMETERS,
+                                                private[furnace] var tolerance: Array[Double] = BuilderDefaults.TOLERANCES,
+                                                private[furnace] var elasticNetParam: Array[Double] = BuilderDefaults.ELASTIC_NET_PARAMETERS,
+                                                private[furnace] var numFolds: Int = BuilderDefaults.NUMBER_OF_FOLDS)
+  extends FurnaceBuilder[Classification]
+  with HasStochasticOptimizer
+  with HasRegularization
+  with HasElasticNet
+  with HasXValidation {
+
+
+  override def build(engine: Engine): XValWithFPLogisticRegressionFurnace = {
+    this.engine = engine
+    new XValWithFPLogisticRegressionFurnace(this)
+  }
+}

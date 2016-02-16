@@ -18,7 +18,7 @@ import scala.io.Source
 /**
   * Tests SimpleLogisticRegression
   */
-class SimpleLogisticRegressionSpec extends FunSpec
+class SimpleLogisticRegressionFurnaceSpec extends FunSpec
   with Matchers with BeforeAndAfter with ParallelTestExecution with BeforeAndAfterAll {
 
   override def beforeAll = {
@@ -90,7 +90,7 @@ class SimpleLogisticRegressionSpec extends FunSpec
 /**
   * Tests XValLogisticRegression
   */
-class XValLogisticRegressionSpec extends FunSpec
+class XValLogisticRegressionFurnaceSpec extends FunSpec
   with Matchers with BeforeAndAfter with ParallelTestExecution with BeforeAndAfterAll {
 
   override def beforeAll = {

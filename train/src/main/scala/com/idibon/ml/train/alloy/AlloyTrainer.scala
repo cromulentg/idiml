@@ -11,6 +11,7 @@ import org.json4s.JObject
 import org.json4s.JsonAST.JArray
 
 import scala.collection.mutable
+import scala.util.Try
 
 /**
   * This is the trait that an alloy trainer implements.
@@ -143,7 +144,7 @@ abstract class BaseTrainer(protected val engine: Engine,
   override def trainAlloy(name: String,
                           docs: () => TraversableOnce[JObject],
                           labelsAndRules: JObject,
-                          config: Option[JObject]): Alloy[Classification] = {
+                          config: Option[JObject]): Try[Alloy[Classification]] = {
     implicit val formats = org.json4s.DefaultFormats
     val rules = (labelsAndRules \ "rules").extract[JArray]
     val uuidTolabel = (labelsAndRules \ "uuid_to_label").extract[JObject]

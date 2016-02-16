@@ -13,11 +13,23 @@ import org.json4s.JsonAST.JObject
   * Performs both native Spark cross validation and xval of different feature pipelines to choose a logistic regression
   * model.
   *
-  * @param engine
+  * @param builder
   */
-class XValWithFPLogisticRegressionFurnace(engine: Engine) extends Furnace[Classification] with StrictLogging {
+class XValWithFPLogisticRegressionFurnace(builder: XValWithFPLogisticRegressionFurnaceBuilder)
+  extends Furnace[Classification] with StrictLogging {
+  val engine: Engine = builder.engine
+  val maxIterations = builder.maxIterations
+  val regressionParams = builder.regParam
+  val tolerances = builder.tolerance
+  val elasticNetParams = builder.elasticNetParam
+  val numberOfFolds = builder.numFolds
+
   // TODO: Verify that only one of these is needed instead of one per pipeline
-  val xvalFurnace = new XValLogisticRegressionFurnaceBuilder().build(this.engine)
+  val xvalFurnace = new XValLogisticRegressionFurnaceBuilder(maxIterations, regressionParams, tolerances,
+    elasticNetParams, numberOfFolds).build(this.engine)
+
+  var winningModel : PredictModel[Classification] = _
+  var winningPipeline : FeaturePipeline = _
 
   /**
     * Function to generate the best LR model based on Spark's native xval
@@ -27,7 +39,7 @@ class XValWithFPLogisticRegressionFurnace(engine: Engine) extends Furnace[Classi
     * @param pipelines a List of featurization pipelines for use with the data at the same index location
     * @return a List of tuples: (trained MLModels that are a best fit for each pipeline, areaUnderROC)
     */
-  def getBestModels(label: String,
+  private def getBestModels(label: String,
                             data: Seq[DataFrame],
                             pipelines: Seq[FeaturePipeline]): Seq[(PredictModel[Classification], Double)] = {
     // Create a tuple of pipelines and the associated training data
@@ -39,7 +51,7 @@ class XValWithFPLogisticRegressionFurnace(engine: Engine) extends Furnace[Classi
     }.toList
 
     val evalMetrics = models.map {
-      case (m: MLModel[Classification]) => m.getEvaluationMetric()
+      case m: MLModel[Classification] => m.getEvaluationMetric()
     }
 
     models zip evalMetrics
@@ -49,24 +61,32 @@ class XValWithFPLogisticRegressionFurnace(engine: Engine) extends Furnace[Classi
   /**
     * Function to generate the best LR model based on Spark's native xval
     *
-    * @param models a List of tuples: (trained MLModels that are a best fit for each pipeline, evaluation metric)
+    * @param evaluationMetric a List of tuples: (trained MLModels that are a best fit for each pipeline, evaluation metric)
     * @return an MLModel with the "best" evaluation metric
     */
-  def getWinningModel(models: Seq[(PredictModel[Classification], Double)]) : PredictModel[Classification] = {
-    var maxEvalMetric: Double = 0.0
-    var bestModel: PredictModel[Classification] = models.head._1
+  private def findWinningModelIndex(evaluationMetric: Seq[(PredictModel[Classification], Double)]) : Int = {
+    var maxEvalMetric: Double = evaluationMetric.head._2
+    var bestModelIndex: Int = 0
 
-    models.foreach {
-      case (m: PredictModel[Classification], e: Double) => {
+    var i = 0
+    evaluationMetric.foreach { case (m, e) => {
         if (e > maxEvalMetric) {
           maxEvalMetric = e
-          bestModel = m
+          bestModelIndex = i
         }
+        i = i + 1
       }
     }
 
-    // Return the winner
-    bestModel
+    bestModelIndex
+  }
+
+  def getWinningPipeline() : FeaturePipeline = {
+    winningPipeline
+  }
+
+  def getWinningModel() : PredictModel[Classification] = {
+    winningModel
   }
 
 
@@ -104,9 +124,12 @@ class XValWithFPLogisticRegressionFurnace(engine: Engine) extends Furnace[Classi
       case Some(p) => p
       case None => throw new RuntimeException("Failed to fit " + this.getClass())
     }
-    val bestModels = getBestModels(label, data, pipelines_not_null)
+    val bestModels : Seq[(PredictModel[Classification], Double)] = getBestModels(label, data, pipelines_not_null)
 
-    getWinningModel(bestModels)
+    val winningModelIndex : Int = findWinningModelIndex(bestModels)
+    val winningModel = bestModels(winningModelIndex)._1
+
+    winningModel
   }
 
 }

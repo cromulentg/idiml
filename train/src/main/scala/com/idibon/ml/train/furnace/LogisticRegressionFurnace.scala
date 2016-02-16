@@ -350,6 +350,8 @@ class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
                              dataGen: SparkDataGenerator,
                              featurePipeline: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames
-    List(dataGen.getLabeledPointData(this.engine, featurePipeline.head, rawData))
+    featurePipeline.map { case p: FeaturePipeline =>
+        dataGen.getLabeledPointData(this.engine, p, rawData)
+    }.toList
   }
 }
