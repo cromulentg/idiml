@@ -30,7 +30,8 @@ class KClassKFP(builder: KClassKFPBuilder)
     */
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
-                    pipelineConfig: Option[JObject]): Map[String, PredictModel[Classification]] = {
+                    pipelineConfig: Option[JObject],
+                    classification_type: String = "classification.single"): Map[String, PredictModel[Classification]] = {
 
     // 1. Create feature pipelines
     val rawPipelines = pipelineConfig match {

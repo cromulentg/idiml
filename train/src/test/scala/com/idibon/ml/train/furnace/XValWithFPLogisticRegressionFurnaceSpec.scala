@@ -36,6 +36,7 @@ class XValWithFPLogisticRegressionFurnaceSpec extends FunSpec
   val predictionsFile : String = "test_data/predictions.json"
   val engine = new EmbeddedEngine
   var trainer : AlloyTrainer = _
+  val trainerName: String = "RichardSimmons"
   var trainerConfigJObject: JObject = _
   var labelsAndRulesJObject: JObject = _
   var alloy : Alloy[Classification] = _
@@ -62,7 +63,8 @@ class XValWithFPLogisticRegressionFurnaceSpec extends FunSpec
   // Alloy test
   describe("Alloy tests") {
     it("trains an alloy") {
-      val alloyTry = trainer.trainAlloy(
+      alloy = trainer.trainAlloy(
+        trainerName,
         () => {
           // training data
           Source.fromFile(getClass.getClassLoader.getResource(annotationsFile).getPath())
@@ -72,9 +74,8 @@ class XValWithFPLogisticRegressionFurnaceSpec extends FunSpec
         Some(trainerConfigJObject)
       )
 
-      alloyTry shouldBe a[Success[_]]
+      alloy shouldBe an[Alloy[_]]
 
-      alloy = alloyTry.get
 
       // Test some predictions
       Source.fromFile(getClass.getClassLoader.getResource(predictionsFile).getPath())

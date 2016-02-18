@@ -144,7 +144,7 @@ abstract class BaseTrainer(protected val engine: Engine,
   override def trainAlloy(name: String,
                           docs: () => TraversableOnce[JObject],
                           labelsAndRules: JObject,
-                          config: Option[JObject]): Try[Alloy[Classification]] = {
+                          config: Option[JObject]): Alloy[Classification] = {
     implicit val formats = org.json4s.DefaultFormats
     val rules = (labelsAndRules \ "rules").extract[JArray]
     val uuidTolabel = (labelsAndRules \ "uuid_to_label").extract[JObject]
