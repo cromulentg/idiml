@@ -48,6 +48,7 @@ public class CLD2Test {
         tc.put("出ようと思ってるんだ", LangID.JAPANESE);
         tc.put("טיאָן פלייץ גרופּעס טראַנ", LangID.YIDDISH);
         tc.put("后打时他们的同事", LangID.CHINESE);
+        tc.put("สวัสดีมันเป็นสิ่งที่ดีที่ได้พบคุณ", LangID.THAI);
         run(tc);
     }
 

@@ -87,6 +87,14 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
     }
   }
 
+  describe("thai") {
+    it("should tokenize thai reasonably") {
+      !!("สวัสดีมันเป็นสิ่งที่ดีที่ได้พบคุณ", ULocale.forLanguageTag("tha")) shouldBe List(
+        "สวัสดี", "มัน", "เป็น", "สิ่ง", "ที่", "ดี", "ที่", "ได้", "พบ", "คุณ"
+      )
+    }
+  }
+
   describe("japanese") {
 
     ignore("should group full-width numbers") {
