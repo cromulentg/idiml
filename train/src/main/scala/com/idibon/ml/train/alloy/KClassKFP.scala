@@ -93,39 +93,6 @@ class KClassKFP(builder: KClassKFPBuilder)
       }
     }
 
-/*    val labelModels : (FeaturePipeline, Seq[Option[Map[String, DataFrame]]]) => (String, PredictModel[Classification]) = pipelinesFeatures.map {
-      case (pipeline : FeaturePipeline, featureMap : Option[Map[String, DataFrame]]) => {
-        case Some(featureMap : Map[String, DataFrame]) => {
-          case (label : String, data : DataFrame) => {
-            // Get a copy of the pipeline
-            val pipelineCopy = pipeline.prime(None)
-            val model = furnace.fit(label, List(data), Some(List(pipelineCopy)))
-
-            // 5. Prepare for pruning
-            val featuresUsed = new util.HashSet[Int](100000)
-            //    Function to pass down so that the feature transforms can prune themselves.
-            //    i.e. if it isn't used, remove it.
-            def isNotUsed(featureIndex: Int): Boolean = {
-              !featuresUsed.contains(featureIndex)
-            }
-            //    Gather all features used.
-            val usedFeatures = model.getFeaturesUsed()
-            //    add what was used so we can prune it from the feature pipeline.
-            usedFeatures.foreachActive((index, _) => featuresUsed.add(index))
-            logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
-
-            // 6. Prune unused features
-            pipelineCopy.prune(isNotUsed)
-
-            // Now that the furnace includes the pipeline, there's no need to keep track of it
-            (label, model)
-          }
-        }
-        case None => throw new IllegalArgumentException("Error occurred fitting models during training.")
-      }
-    }
-    */
-
     // 7. Find the winning models & pipeline
     var winningModels = scala.collection.mutable.Map[String, PredictModel[Classification]]()
     val labelModelsGroupBy = labelFeatures.groupBy(_._1)
