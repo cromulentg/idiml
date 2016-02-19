@@ -116,9 +116,9 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
       case _ => return List(None)
     }
     // only grab the data frame in the map that makes sense
-    data.map(_.filter(x => x._1.equals(MultiClass.MODEL_KEY)))
+    val returnMe = data.map(_.filter(x => x._1.equals(MultiClass.MODEL_KEY)))
 
-    data match {
+    returnMe match {
       case features: Some[_] => List(features)
       case _ => List(None)
     }
