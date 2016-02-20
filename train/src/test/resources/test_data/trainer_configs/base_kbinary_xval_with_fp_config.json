@@ -8,18 +8,15 @@
       "jsonClass": "XValWithFPLogisticRegressionFurnaceBuilder",
       "maxIterations": 100,
       "regParam": [
-        0.001,
-        0.01,
         0.1
       ],
       "tolerance": [
         1.0E-4
       ],
       "elasticNetParam": [
-        0.9,
         1.0
       ],
-      "numFolds": 10
+      "numFolds": 2
     }
   },
   "pipelineConfig": {

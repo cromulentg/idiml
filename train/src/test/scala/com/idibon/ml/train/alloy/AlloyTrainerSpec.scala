@@ -30,7 +30,7 @@ class AlloyTrainerSpec extends FunSpec
 
   val configFile : String = "test_data/trainer_configs/base_kbinary_xval_with_fp_config.json"
   val trainingFile : String = "test_data/english_social_sentiment/training_small.json"
-  val labelsAndRulesFile : String = "test_data/english_social_sentiment/label_rule_config.json"
+  val labelsAndRulesFile : String = "test_data/english_social_sentiment/label_rule_config_small.json"
   val predictionsFile : String = "test_data/english_social_sentiment/predictions_small.json"
   val engine = new EmbeddedEngine
   var trainer : AlloyTrainer = _
