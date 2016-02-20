@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.scalatest._
+import org.scalatest.Matchers._
 
 import scala.io.Source
 
@@ -28,9 +29,9 @@ class AlloyTrainerSpec extends FunSpec
   implicit val formats = DefaultFormats
 
   val configFile : String = "test_data/trainer_configs/base_kbinary_xval_with_fp_config.json"
-  val annotationsFile : String = "test_data/annotations.json"
-  val labelsAndRulesFile : String = "test_data/simple_language/label_rule_config.json"
-  val predictionsFile : String = "test_data/predictions.json"
+  val trainingFile : String = "test_data/english_social_sentiment/training_small.json"
+  val labelsAndRulesFile : String = "test_data/english_social_sentiment/label_rule_config.json"
+  val predictionsFile : String = "test_data/english_social_sentiment/predictions_small.json"
   val engine = new EmbeddedEngine
   var trainer : AlloyTrainer = _
   val trainerName: String = "RichardSimmons"
@@ -68,7 +69,7 @@ class AlloyTrainerSpec extends FunSpec
         trainerName,
         () => {
           // training data
-          Source.fromFile(getClass.getClassLoader.getResource(annotationsFile).getPath())
+          Source.fromFile(getClass.getClassLoader.getResource(trainingFile).getPath())
             .getLines.map(line => parse(line).extract[JObject])
         },
         labelsAndRulesJObject,
@@ -76,9 +77,13 @@ class AlloyTrainerSpec extends FunSpec
       )
 
       alloy shouldBe an[Alloy[_]]
+
     }
 
     it("makes predictions") {
+      val minPrediction : Float = 0.0f
+      val maxPrediction : Float = 1.0f
+
       // Test some predictions
       Source.fromFile(getClass.getClassLoader.getResource(predictionsFile).getPath())
         .getLines.toStream.par
@@ -89,12 +94,12 @@ class AlloyTrainerSpec extends FunSpec
           val result = alloy.predict(document, builder.build)
 
           result.toArray.foreach(r => {
-            // TODO: Assert expected predictions
             logger.debug(s"result: $r, " + (document \ "content").extract[JValue])
+
+            // Expect the prediction to be reasonable
+            r.asInstanceOf[Classification].probability should (be > minPrediction and be < maxPrediction)
           })
         })
     }
-
-
   }
 }

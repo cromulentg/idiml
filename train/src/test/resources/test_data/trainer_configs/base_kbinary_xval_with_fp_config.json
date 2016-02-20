@@ -126,15 +126,9 @@
         "pipeline": [
           {
             "inputs": [
-              "ngrams"
-            ],
-            "name": "convertToIndex"
-          },
-          {
-            "inputs": [
               "bagOfWords"
             ],
-            "name": "ngrams"
+            "name": "convertToIndex"
           },
           {
             "inputs": [
@@ -181,14 +175,6 @@
           {
             "class": "com.idibon.ml.feature.ContentExtractor",
             "name": "contentExtractor"
-          },
-          {
-            "class": "com.idibon.ml.feature.ngram.NgramTransformer",
-            "config": {
-              "max": 3,
-              "min": 1
-            },
-            "name": "ngrams"
           },
           {
             "class": "com.idibon.ml.feature.language.LanguageDetector",
