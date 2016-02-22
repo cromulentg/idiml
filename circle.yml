@@ -1,4 +1,6 @@
 machine:
+  environment:
+    GRADLE_OPTS: '-Xmx1G'
   java:
     version: oraclejdk8
 

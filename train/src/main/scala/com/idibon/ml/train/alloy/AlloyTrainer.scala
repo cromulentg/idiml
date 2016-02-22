@@ -11,6 +11,7 @@ import org.json4s.JObject
 import org.json4s.JsonAST.JArray
 
 import scala.collection.mutable
+import scala.util.Try
 
 /**
   * This is the trait that an alloy trainer implements.

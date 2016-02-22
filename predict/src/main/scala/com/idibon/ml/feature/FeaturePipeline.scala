@@ -294,15 +294,15 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
     val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
 
-
     /* instantiate all of the transformers and pass any configuration data
-             * to them, generating a map of the transform name to the reified
-             * transformer object. */
+     * to them, generating a map of the transform name to the reified
+     * transformer object. */
     val transforms = xfJson.map(obj => {
       FeaturePipeline.checkTransformerName(obj.name)
       val resourceReader = if (reader.isDefined) Some(reader.get.within(obj.name)) else None
       (obj.name -> reify(engine, resourceReader, obj))
     }).toMap
+
     val pipeline = FeaturePipeline.bind(transforms, pipeJson)
     reader match {
       case Some(reader) => {
@@ -310,7 +310,6 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
       }
       case None => pipeline
     }
-
   }
 
 
@@ -665,6 +664,12 @@ private[feature] case class TransformEntry(name: String, `class`: String,
 
 // Schema for each entry within the pipeline JSON array
 private[feature] case class PipelineEntry(name: String, inputs: List[String])
+
+// Schema for a single entry within the pipeline JSON array
+private[feature] case class SinglePipeline(pipeline: Seq[PipelineEntry], transform: Seq[TransformEntry])
+
+// Schema for the array that holds all pipelines within the pipeline JSON array
+private[feature] case class Pipelines(pipelines: Seq[SinglePipeline])
 
 // Binds a reified FeatureTransformer within a processing graph
 private[feature] case class BoundTransform(name: String,

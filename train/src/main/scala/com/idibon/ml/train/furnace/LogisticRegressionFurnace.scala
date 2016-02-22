@@ -34,15 +34,17 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     *
     * @param rawData a function that returns an iterator over training documents.
     * @param dataGen SparkDataGenerator that creates the data splits for training.
-    * @param featurePipeline the feature pipeline to use for labeled point creation.
+    * @param featurePipelines the feature pipeline to use for labeled point creation.
     * @return a map from label name to the training DataFrame for that label
     */
-  override def featurizeData(rawData: () => TraversableOnce[JObject],
+  def featurizeData(rawData: () => TraversableOnce[JObject],
                              dataGen: SparkDataGenerator,
-                             featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]] = {
+                             featurePipelines: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames
-    dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
+    List(dataGen.getLabeledPointData(this.engine, featurePipelines.head, rawData))
   }
+
+
 
   /**
     * Function takes a data frame of data
@@ -50,14 +52,18 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     * @param data
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: Option[FeaturePipeline]) = {
-    val lr = fitModel(getEstimator(), data)
+  def fit(label: String, data: Seq[DataFrame], pipelines: Option[Seq[FeaturePipeline]]) : PredictModel[Classification] = {
+    val lr = fitModel(getEstimator(), data.head)
     logTrainingSummary(label, lr)
     // wrap into one we want
     val wrapper = IdibonSparkLogisticRegressionModelWrapper.wrap(lr)
     // create MLModel for label:
+    val pipeline = pipelines match {
+      case Some(p) => Some(p.head)
+      case None => None
+    }
     new IdibonLogisticRegressionModel(label, wrapper, pipeline) with HasTrainingSummary {
-      override val trainingSummary = Some(Seq(createTrainingSummary(label, lr, data)))
+      override val trainingSummary = Some(Seq(createTrainingSummary(label, lr, data.head)))
     }
   }
 
@@ -173,7 +179,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
   *
   * @param builder
   */
-class SimpleLogisticRegression(builder: SimpleLogisticRegressionBuilder)
+class SimpleLogisticRegressionFurnace(builder: SimpleLogisticRegressionFurnaceBuilder)
   extends LogisticRegressionFurnace[LogisticRegression](builder.engine) {
 
   val maxIterations = builder.maxIterations
@@ -212,7 +218,7 @@ class SimpleLogisticRegression(builder: SimpleLogisticRegressionBuilder)
   *
   * @param builder
   */
-class XValLogisticRegression(builder: XValLogisticRegressionBuilder)
+class XValLogisticRegressionFurnace(builder: XValLogisticRegressionFurnaceBuilder)
   extends LogisticRegressionFurnace[CrossValidator](builder.engine) {
   val maxIterations = builder.maxIterations
   val regressionParams = builder.regParam
@@ -327,8 +333,8 @@ class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
     * @return
     */
   override def fit(label: String,
-                   data: DataFrame,
-                   pipeline: Option[FeaturePipeline]): PredictModel[Classification] = {
+                   data: Seq[DataFrame],
+                   pipeline: Option[Seq[FeaturePipeline]]): PredictModel[Classification] = {
     labelFurnaces(label).fit(label, data, pipeline)
   }
 
@@ -340,10 +346,12 @@ class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
     * @param featurePipeline
     * @return
     */
-  override def featurizeData(rawData: () => TraversableOnce[JObject],
+  def featurizeData(rawData: () => TraversableOnce[JObject],
                              dataGen: SparkDataGenerator,
-                             featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]] = {
+                             featurePipeline: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames
-    dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
+    featurePipeline.map { case p: FeaturePipeline =>
+        dataGen.getLabeledPointData(this.engine, p, rawData)
+    }.toList
   }
 }

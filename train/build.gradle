@@ -11,4 +11,9 @@ dependencies {
   testCompile project(path: ':predict', configuration: 'testArchives')
 }
 
+tasks.withType(Test) {
+  it.maxHeapSize = "1500M"
+  it.maxParallelForks = 1
+}
+
 description = "Idibon ML Training and Cross-Validation Library"

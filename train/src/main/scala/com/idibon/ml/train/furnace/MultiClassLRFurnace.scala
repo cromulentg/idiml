@@ -34,12 +34,12 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     *
     * @param label
     * @param data
-    * @param pipeline
+    * @param pipelines
     * @return
     */
-  override def fit(label: String, data: DataFrame, pipeline: Option[FeaturePipeline]) = {
+  override def fit(label: String, data: Seq[DataFrame], pipelines: Option[Seq[FeaturePipeline]]) = {
     // convert to rdd
-    val rddData = data.rdd.map(row => LabeledPoint(row.getDouble(0), row.getAs[Vector](1)))
+    val rddData = data.head.rdd.map(row => LabeledPoint(row.getDouble(0), row.getAs[Vector](1)))
     val trainer = new LogisticRegressionWithLBFGS()
       .setNumClasses(labelToInt.size)
       .setIntercept(true)
@@ -50,8 +50,12 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     // run training
     val model = trainer.run(rddData.cache())
     val wrapper = IdibonSparkMLLIBLRWrapper.wrap(model)
+    val pipeline = pipelines match {
+      case Some(p) => Some(p.head)
+      case None => None
+    }
     new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline) with HasTrainingSummary {
-      override val trainingSummary = Some(Seq(createTrainingSummary(label, model, data)))
+      override val trainingSummary = Some(Seq(createTrainingSummary(label, model, data.head)))
     }
   }
 
@@ -92,14 +96,14 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     *
     * @param rawData
     * @param dataGen
-    * @param featurePipeline primed pipeline
+    * @param featurePipelines primed pipeline
     * @return
     */
   override def featurizeData(rawData: () => TraversableOnce[JObject],
                              dataGen: SparkDataGenerator,
-                             featurePipeline: FeaturePipeline):
-  Option[Map[String, DataFrame]] = {
-    val data = dataGen.getLabeledPointData(this.engine, featurePipeline, rawData)
+                             featurePipelines: Seq[FeaturePipeline]):
+  Seq[Option[Map[String, DataFrame]]] = {
+    val data = dataGen.getLabeledPointData(this.engine, featurePipelines.head, rawData)
 
     // lets set what we're actually fitting to what integer label
     labelToInt = data match {
@@ -109,9 +113,14 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
           .filter(x => !x._1.equals(MultiClass.MODEL_KEY))
           .map({case (label, df) => (label, df.collect()(0).getDouble(0).toInt)})
       }
-      case _ => return None
+      case _ => return List(None)
     }
     // only grab the data frame in the map that makes sense
-    data.map(_.filter(x => x._1.equals(MultiClass.MODEL_KEY)))
+    val returnMe = data.map(_.filter(x => x._1.equals(MultiClass.MODEL_KEY)))
+
+    returnMe match {
+      case features: Some[_] => List(features)
+      case _ => List(None)
+    }
   }
 }

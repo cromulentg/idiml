@@ -8,8 +8,8 @@ import org.apache.spark.sql.DataFrame
 import org.json4s.JsonAST.JObject
 
 /**
-  * Trait that produce MLModels.
-  * We stick elements into the furnance to produce items that go into an alloy.
+  * Trait that produces MLModels.
+  * We stick elements into the furnace to produce items that go into an alloy.
   */
 trait Furnace[T <: PredictResult] {
 
@@ -18,23 +18,24 @@ trait Furnace[T <: PredictResult] {
     *
     * @param label
     * @param data
-    * @param pipeline
+    * @param pipelines
     * @return
     */
-  def fit(label: String, data: DataFrame,
-    pipeline: Option[FeaturePipeline]): PredictModel[T]
+  def fit(label: String,
+          data: Seq[DataFrame],
+          pipelines: Option[Seq[FeaturePipeline]]): PredictModel[T]
 
   /**
     * Function is used for featurizing data.
     *
     * @param rawData
     * @param dataGen
-    * @param featurePipeline
+    * @param featurePipelines
     * @return
     */
   def featurizeData(rawData: () => TraversableOnce[JObject],
     dataGen: SparkDataGenerator,
-    featurePipeline: FeaturePipeline): Option[Map[String, DataFrame]]
+    featurePipelines: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]]
 }
 
 

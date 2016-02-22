@@ -56,13 +56,13 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
     // create featurized data once since we only have one feature pipeline
-    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipeline) match {
+    val featurizedData = furnace.featurizeData(rawData, dataGen, List(primedPipeline)).head match {
       case Some(data) => data(MultiClass.MODEL_KEY) // should be only MultiClass.MODEL_KEY
       case _ => throw new RuntimeException("Failed to create training data.")
     }
     val featuresUsed = new util.HashSet[Int](100000)
     // delegate to the furnace for producing MLModel for all labels
-    val model = furnace.fit(MultiClass.MODEL_KEY, featurizedData, Some(primedPipeline))
+    val model = furnace.fit(MultiClass.MODEL_KEY, List(featurizedData), Some(List(primedPipeline)))
     // add what was used so we can prune it from the global feature pipeline.
     model.getFeaturesUsed().foreachActive((index, _) => featuresUsed.add(index))
 

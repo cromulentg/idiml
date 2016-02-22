@@ -290,6 +290,8 @@ case class FakeMCModel(labels: List[String])
 
   override def getFeaturesUsed(): Vector = ???
 
+  override def getEvaluationMetric(): Double = ???
+
   override def save(writer: Alloy.Writer): Option[JObject] = {
     val out = writer.resource("stuff")
     Codec.VLuint.write(out, labels.size)

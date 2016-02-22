@@ -38,4 +38,10 @@ trait PredictModel[+T <: PredictResult] {
     * @return
     */
   def getTrainingSummary(): Option[Seq[TrainingSummary]] = trainingSummary
+
+  /**
+    * After training, this method returns the value of the metric commonly used to evaluate model performance
+    * @return Double (e.g. AreaUnderROC)
+    */
+  def getEvaluationMetric(): Double
 }

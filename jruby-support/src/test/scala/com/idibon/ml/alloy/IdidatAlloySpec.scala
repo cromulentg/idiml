@@ -127,6 +127,8 @@ class VClassificationModel(label: String)
 
   def getFeaturesUsed: Vector = ???
 
+  def getEvaluationMetric: Double = ???
+
   def save(w: Alloy.Writer): Option[JObject] = {
     Some("label" -> label)
   }

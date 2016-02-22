@@ -6,7 +6,9 @@ import com.idibon.ml.alloy.Alloy
 import org.json4s._
 import org.apache.spark.mllib.linalg.SparseVector
 
-/** Mixin trait for models that may optionally include a FeaturePipeline */
+/** Mixin trait for models that may optionally include a single FeaturePipeline
+  *
+  * Note: if more than one pipeline is defined, only the first is used */
 trait CanHazPipeline {
 
   def featurePipeline: Option[FeaturePipeline]
@@ -43,7 +45,7 @@ trait CanHazPipeline {
 object CanHazPipeline {
   val KEY = "featurePipeline"
 
-  /** Loads a feature pipeline, if one is defined in the current namespace
+  /** Loads a single feature pipeline, if one is defined in the current namespace
     *
     */
   def loadPipelineIfPresent(engine: Engine, reader: Option[Alloy.Reader],

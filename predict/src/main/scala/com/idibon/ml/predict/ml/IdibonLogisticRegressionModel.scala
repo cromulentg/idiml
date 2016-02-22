@@ -68,6 +68,15 @@ case class IdibonLogisticRegressionModel(label: String,
     lrm.coefficients
   }
 
+  /**
+    * This method returns the metric that best represents model quality after training
+    *
+    * @return Double (e.g. AreaUnderROC)
+    */
+  override def getEvaluationMetric(): Double = {
+    lrm.getSummary.areaUnderROC
+  }
+
   /** Serializes the object within the Alloy
     *
     * Implementations are responsible for persisting any internal state

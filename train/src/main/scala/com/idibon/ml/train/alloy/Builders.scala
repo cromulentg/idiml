@@ -1,9 +1,9 @@
 package com.idibon.ml.train.alloy
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{Classification}
-import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGeneratorBuilder, KClassDataFrameGeneratorBuilder, SparkDataGeneratorBuilder}
-import com.idibon.ml.train.furnace.{MultiClassLRFurnaceBuilder, XValLogisticRegressionBuilder, FurnaceBuilder}
+import com.idibon.ml.predict.Classification
+import com.idibon.ml.train.datagenerator.{KClassDataFrameGeneratorBuilder, MultiClassDataFrameGeneratorBuilder, SparkDataGeneratorBuilder}
+import com.idibon.ml.train.furnace.{FurnaceBuilder, MultiClassLRFurnaceBuilder, XValLogisticRegressionFurnaceBuilder, XValWithFPLogisticRegressionFurnaceBuilder}
 import org.json4s.ShortTypeHints
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization._
@@ -12,7 +12,7 @@ import org.json4s.native.Serialization._
   * Static object to house global defaults for Alloy Trainer builders.
   */
 object BuilderDefaults {
-  val classHints = List(classOf[KClass1FPBuilder], classOf[MultiClass1FPBuilder])
+  val classHints = List(classOf[KClass1FPBuilder], classOf[KClassKFPBuilder], classOf[MultiClass1FPBuilder])
   // we need to connect all the different possible classes underneath so we can
   // create a single JSON config that gets split into the respective builders.
   implicit val formats = Serialization.formats(ShortTypeHints(classHints ++
@@ -56,13 +56,33 @@ trait AlloyTrainerBuilder {
   * @param furnaceBuilder The builder that produces the class to fit models.
   */
 case class KClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGeneratorBuilder = new KClassDataFrameGeneratorBuilder(),
-                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new XValLogisticRegressionBuilder())
+                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new XValLogisticRegressionFurnaceBuilder())
   extends AlloyTrainerBuilder {
   private[alloy] var engine: Engine = null
 
   override def build(engine: Engine): KClass1FP = {
     this.engine = engine
     new KClass1FP(this)
+  }
+}
+
+
+/**
+  * Builder for creating the K Class K FP trainer.
+  *
+  * @param dataGenBuilder The builder that produce the data generator for input to fit models.
+  * @param furnaceBuilder The builder that produces the class to fit models.
+  */
+case class KClassKFPBuilder(private[alloy] var dataGenBuilder: SparkDataGeneratorBuilder =
+                              new KClassDataFrameGeneratorBuilder(),
+                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] =
+                              new XValWithFPLogisticRegressionFurnaceBuilder())
+  extends AlloyTrainerBuilder {
+  private[alloy] var engine: Engine = null
+
+  override def build(engine: Engine): KClassKFP = {
+    this.engine = engine
+    new KClassKFP(this)
   }
 }
 

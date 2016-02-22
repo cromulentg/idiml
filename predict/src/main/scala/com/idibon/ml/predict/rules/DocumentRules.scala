@@ -49,6 +49,13 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
     */
   override def getFeaturesUsed(): Vector = new SparseVector(1, Array(0), Array(0))
 
+  /**
+    * This method returns the metric that best represents model quality after training
+    *
+    * @return Double (e.g. AreaUnderROC)
+    */
+  override def getEvaluationMetric(): Double = ???
+
   /** Serializes the object within the Alloy
     *
     * Implementations are responsible for persisting any internal state

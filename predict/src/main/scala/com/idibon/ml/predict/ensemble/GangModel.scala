@@ -51,6 +51,13 @@ case class GangModel(
   }
 
   /**
+    * This method returns the metric that best represents model quality after training
+    *
+    * @return Double (e.g. AreaUnderROC)
+    */
+  override def getEvaluationMetric(): Double = ???
+
+  /**
     * The method used to predict from a FULL DOCUMENT!
     *
     * The model needs to handle "featurization" here.
