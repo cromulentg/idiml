@@ -1,5 +1,10 @@
 package com.idibon.ml.alloy
 
+import java.lang.Float
+import java.util
+
+import com.idibon.ml.predict.ml.metrics.{FloatMetric, MetricTypes}
+
 import scala.collection.JavaConverters._
 import java.util.{Date, TimeZone}
 
@@ -68,6 +73,41 @@ case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
       HasTrainingSummary.save(writer,
         this.asInstanceOf[BaseAlloy[T] with HasTrainingSummary])
     }
+  }
+
+  /**
+    * Returns suggested thresholds for each label in the alloy.
+    *
+    * This walks through each model and gets the training summaries, finding the
+    * BestF1Threshold metric. It then tries to match the labels with a model threshold
+    * based on the training summary identifier.
+    *
+    * NOTE: If there is no suggested threshold for a label, there wont be an entry returned
+    * for it.
+    *
+    */
+  override def getSuggestedThresholds: util.Map[Label, Float] = {
+    // get thresholds from models
+    val modelIDtoFloat = this.models.map {case (name, model) => model.getTrainingSummary()}
+      .collect { case Some(summaries) => summaries }
+      .flatten
+      .map { ts => (ts.identifier, ts) }
+      .map {  case (label, ts) =>
+        (label, ts.metrics.filter(m => m.metricType == MetricTypes.BestF1Threshold))
+      }.filter { case (label, ts) => ts.nonEmpty
+      }.map { case (label, ts) => (label, ts.head)
+      }.map { case (label, metric) =>
+        val floatValue: Float = metric match {
+          case f: FloatMetric => f.float
+          case o => throw new IllegalStateException(s"Error best f1 is not float metric. " +
+            s"It is ${o.getClass.getName}")
+        }
+        (label, floatValue)
+      }.toMap
+    // map labels to model threshold
+    labels
+      .filter(label => modelIDtoFloat.contains(label.uuid.toString))
+      .map(label => (label, modelIDtoFloat(label.uuid.toString))).toMap.asJava
   }
 }
 

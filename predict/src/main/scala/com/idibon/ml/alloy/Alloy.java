@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for interacting with Alloys
@@ -83,4 +84,10 @@ public interface Alloy<T extends PredictResult> {
      * @return human readable label object.
      */
     public Label translateUUID(String uuid);
+
+    /**
+     * Returns suggested Threshold for labels.
+     * @return
+     */
+    public Map<Label, Float> getSuggestedThresholds();
 }
