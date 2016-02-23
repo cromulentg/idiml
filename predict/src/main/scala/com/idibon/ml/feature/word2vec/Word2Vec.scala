@@ -23,7 +23,8 @@ import scala.util.Try
   * @param uri URI for the directory where the model is stored (a String)
   */
 class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val uri: URI) extends FeatureTransformer
-  with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
+  with Archivable[Word2VecTransformer,Word2VecTransformerLoader]
+  with TerminableTransformer {
 
   val vectors = model.getVectors
   private val (_, firstVector) = vectors.head
@@ -41,10 +42,11 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
     * @param words a sequence of strings
     * @return average of vectors for all words in the sequence
     */
-  def apply(words: Seq[String]): Vector = {
+
+  def apply(words: Seq[Feature[String]]): Vector = {
     words.foldLeft(Vectors.zeros(vectorSize))({ case (accum, word) => {
       Try({
-        IdibonBLAS.axpy(1.0, model.transform(word), accum)
+        IdibonBLAS.axpy(1.0, model.transform(word.get), accum)
         accum
       }).getOrElse(accum)
     }})
@@ -62,6 +64,14 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(JField("uri", JString(uri.toString()))))
   }
+
+  def numDimensions = Some(vectorSize)
+
+  def freeze(): Unit = { }
+
+  def prune(pruneFn: (Int) => Boolean): Unit = { }
+
+  def getFeatureByIndex(dim: Int): Option[Feature[_]] = None
 
 }
 
