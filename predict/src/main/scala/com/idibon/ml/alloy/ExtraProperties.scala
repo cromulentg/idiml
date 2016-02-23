@@ -25,7 +25,9 @@ trait HasTrainingConfig {
 }
 
 /** Optional Alloy trait for storing training summaries */
-trait HasTrainingSummary
+trait HasTrainingSummary {
+  def getTrainingSummaries: Option[Seq[TrainingSummary]] = None
+}
 
 /** Companion object for HasValidationData */
 object HasValidationData {
@@ -164,8 +166,13 @@ object HasTrainingSummary {
       writer: Alloy.Writer, alloy: BaseAlloy[T] with HasTrainingSummary): Unit = {
     val modelNames = alloy.models.keys
     // get summaries
-    val summaries = modelNames.map(n => {alloy.models(n).getTrainingSummary()})
-      .collect { case Some(summary) => summary }.flatten
+    val summaries = alloy.getTrainingSummaries match {
+      case None => {
+        modelNames.map(n => {alloy.models(n).getTrainingSummary()})
+          .collect { case Some(summary) => summary }.flatten
+      }
+      case Some(summaries) => summaries
+    }
     // only save if we have some
     if (summaries.size < 1) return
     val resource = new FeatureOutputStream(writer.resource(TRAINING_SUMMARY_RESOURCE))

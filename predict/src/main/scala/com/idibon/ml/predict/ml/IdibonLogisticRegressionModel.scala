@@ -21,7 +21,7 @@ import org.json4s._
 case class IdibonLogisticRegressionModel(label: String,
   lrm: IdibonSparkLogisticRegressionModelWrapper,
   override val featurePipeline: Option[FeaturePipeline])
-    extends MLModel[Classification](featurePipeline) with StrictLogging
+    extends MLModel[Classification](featurePipeline)
     with Archivable[IdibonLogisticRegressionModel, IdibonLogisticRegressionModelLoader] {
 
   val reifiedType = classOf[IdibonLogisticRegressionModel]
@@ -102,15 +102,6 @@ case class IdibonLogisticRegressionModel(label: String,
       JField("version", JString(IdibonLogisticRegressionModel.FORMAT_VERSION)),
       savePipelineIfPresent(writer)
     )))
-  }
-
-  /**
-    * Returns a training summary. You have to override this to actually return something.
-    *
-    * @return
-    */
-  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
-    trainingSummary
   }
 }
 

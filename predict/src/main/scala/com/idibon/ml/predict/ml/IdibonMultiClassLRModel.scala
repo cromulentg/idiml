@@ -108,15 +108,6 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
       savePipelineIfPresent(writer)
     )))
   }
-
-  /**
-    * Returns a training summary. You have to override this to actually return something.
-    *
-    * @return
-    */
-  override def getTrainingSummary(): Option[Seq[TrainingSummary]] = {
-    return trainingSummary
-  }
 }
 
 /**
