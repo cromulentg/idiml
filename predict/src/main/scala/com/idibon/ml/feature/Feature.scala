@@ -20,6 +20,9 @@ import com.idibon.ml.alloy.Codec
 trait Feature[T] {
   /** Returns the internal representation of this feature. */
   def get: T
+
+  /** Returns a human-readable version of the significant features **/
+  def getAsString: Option[String]
 }
 
 /** Simple feature representing raw string text.
@@ -34,6 +37,13 @@ case class StringFeature(value: String) extends Feature[String]
   /** Saves a StringFeature to an output stream */
   def save(output: FeatureOutputStream) {
     Codec.String.write(output, value)
+  }
+
+  def getAsString : Option[String] = {
+    value match {
+      case null => None
+      case s => Some(s)
+    }
   }
 }
 

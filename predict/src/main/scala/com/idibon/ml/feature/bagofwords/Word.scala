@@ -15,6 +15,8 @@ case class Word(word: String) extends Feature[Word]
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, word)
   }
+
+  def getAsString: Option[String] = ???
 }
 
 class WordBuilder extends Builder[Word] {

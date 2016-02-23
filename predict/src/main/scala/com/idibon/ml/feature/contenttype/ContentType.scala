@@ -22,6 +22,8 @@ case class ContentType(code: ContentTypeCode.Value) extends Feature[ContentType]
   def save(output: FeatureOutputStream) {
     Codec.VLuint.write(output, code.id)
   }
+
+  def getAsString: Option[String] = ???
 }
 
 class ContentTypeBuilder extends Builder[ContentType] {

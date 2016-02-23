@@ -40,5 +40,9 @@ class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform(tokens) shouldBe expected
     }
 
+    it ("should return None from getAsString") {
+      Shape("Cc").getAsString shouldBe None
+    }
+
   }
 }
