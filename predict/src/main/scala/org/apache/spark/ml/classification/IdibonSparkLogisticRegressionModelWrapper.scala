@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
 class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
                                                 override val coefficients: Vector,
                                                 override val intercept: Double)
-    extends LogisticRegressionModel(uid, coefficients, intercept) with StrictLogging {
+    extends LogisticRegressionModel(uid, coefficients, intercept) {
 
   /**
     * Makes this method Public for us to access.
@@ -35,7 +35,6 @@ class IdibonSparkLogisticRegressionModelWrapper(override val uid: String,
       val delta = features.size - coefficients.size
       // delta should always be greater than 0, else FeaturePipeline is wonky.
       assert(delta > 0, s"Expected ${coefficients.size} but got ${features.size} which was smaller.")
-      logger.trace(s"Predicting with ${delta} OOV dimensions.")
       val sparseVector = features.asInstanceOf[SparseVector]
       val stoppingIndex = {
         val index = sparseVector.indices.indexWhere(_ >= coefficients.size)

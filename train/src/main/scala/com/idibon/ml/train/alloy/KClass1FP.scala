@@ -2,7 +2,6 @@ package com.idibon.ml.train.alloy
 
 import java.util
 
-import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.feature.{Feature, FeaturePipeline}
 import com.idibon.ml.predict.ml.metrics.{MetricHelper}
 import com.idibon.ml.predict.ml.{TrainingSummary}
@@ -66,7 +65,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     }
     val gangTrainingSummary = classification_type match {
       case "classification.single" => Some( // do multi-class
-        Seq(createMulticlassSummary("kclass1FPGang", rawData, primedPipeline, models)))
+         Seq(createMulticlassSummary("kclass1FPGang", rawData, primedPipeline, models)))
       case "classification.multiple" => Some(  // do multi-label
         Seq(createMultilabelSummary("kclass1FPGang", rawData, primedPipeline, models)))
     }
@@ -79,7 +78,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     // prune unused features from global feature pipeline
     primedPipeline.prune(isNotUsed)
     // return MLModels
-    Map("kclass1fp" -> new GangModel(models.toMap, Some(primedPipeline)) with HasTrainingSummary {
+    Map("kclass1fp" -> new GangModel(models.toMap, Some(primedPipeline)) {
       override val trainingSummary = gangTrainingSummary
     })
   }
@@ -182,7 +181,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     val predictionRDDs = engine.sparkContext.parallelize(predictions)
     val metrics = new MulticlassMetrics(predictionRDDs)
     logger.info(stringifyMulticlassMetrics(metrics))
-    new TrainingSummary(identifier, createMulticlassMetrics(metrics, doubleLabelToUUIDLabel))
+    new TrainingSummary(identifier, createMultiClassMetrics(metrics, doubleLabelToUUIDLabel))
   }
 
 }

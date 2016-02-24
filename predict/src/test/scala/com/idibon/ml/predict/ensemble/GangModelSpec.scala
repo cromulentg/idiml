@@ -137,10 +137,10 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
             Seq((0.4f, 0.5f), (0.3f, 0.2f)))))))
       val gang1 = new GangModel(Map(
         "0" -> new FakeMCModel(List("alabel", "blabel")),
-        "1" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+        "1" -> new FakeMCModel(List("alabel", "blabel")) {
           override val trainingSummary = summary1
         },
-        "2" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+        "2" -> new FakeMCModel(List("alabel", "blabel")) {
           override val trainingSummary = summary2
         }))
       val actual = gang1.getTrainingSummary().get.sortBy(ts => ts.identifier)
@@ -158,7 +158,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val gangSummary = new TrainingSummary("gang",
         Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
       val gang1 = new GangModel(Map(
-        "0" -> new FakeMCModel(List("alabel", "blabel")))) with HasTrainingSummary{
+        "0" -> new FakeMCModel(List("alabel", "blabel")))) {
         override val trainingSummary = Some(Seq(gangSummary))
       }
       gang1.getTrainingSummary() shouldBe Some(Seq(gangSummary))
@@ -179,12 +179,12 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         Seq(new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, 0.5f)))
       val gang1 = new GangModel(Map(
         "0" -> new FakeMCModel(List("alabel", "blabel")),
-        "1" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+        "1" -> new FakeMCModel(List("alabel", "blabel")) {
           override val trainingSummary = summary1
         },
-        "2" -> new FakeMCModel(List("alabel", "blabel")) with HasTrainingSummary {
+        "2" -> new FakeMCModel(List("alabel", "blabel")) {
           override val trainingSummary = summary2
-        })) with HasTrainingSummary {
+        })) {
         override val trainingSummary=Some(Seq(gangSummary))
       }
       val actual = gang1.getTrainingSummary().get.sortBy(ts => ts.identifier)
