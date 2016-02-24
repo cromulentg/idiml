@@ -2,7 +2,7 @@ package com.idibon.ml.app
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.PredictOptionsBuilder
-import com.idibon.ml.train.alloy.{AlloyFactory}
+import com.idibon.ml.train.alloy._
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -39,11 +39,10 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    val ngramSize = Integer.valueOf(cli.getOptionValue('n', "3")).toInt
     val startTime = System.currentTimeMillis()
     // get the config file else the default one
     val configFilePath = if (cli.getOptionValue('c', "").isEmpty()) {
-      getClass.getClassLoader.getResource("trainerConfigs/base_multiclass_config.json").getPath()
+      getClass.getClassLoader.getResource("trainerConfigs/base_kbinary_learning_curves.json").getPath()
     } else cli.getOptionValue('c')
     val trainingJobJValue = parse(Source.fromFile(configFilePath).reader())
     logger.info(s"Reading in Config ${writePretty(trainingJobJValue)}")
@@ -56,14 +55,15 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
         .getLines.map(line => parse(line).extract[JObject])
       },
         parse(line).extract[JObject]
-      ,
+      , //take feature pipeline from passed in configuration
       Some(trainingJobJValue.extract[JObject])
     )
     val elapsed = System.currentTimeMillis - startTime
     logger.info(s"Training completed in $elapsed ms")
 
-    val doc = new JObject(List("content" -> new JString("this is some content")))
-    val result = model.predict(doc,
-      new PredictOptionsBuilder().showSignificantFeatures(0.01f).build()).asScala
+//
+//    val doc = new JObject(List("content" -> new JString("this is some content")))
+//    val result = model.predict(doc,
+//      new PredictOptionsBuilder().showSignificantFeatures(0.01f).build()).asScala
   }
 }
