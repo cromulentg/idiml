@@ -55,6 +55,9 @@ object PredictDataFrames extends Tool with StrictLogging {
 
     output.printRecord(Seq("Content", "Label", "Probability").asJava)
 
+    val start = System.currentTimeMillis()
+    val processed = new java.util.concurrent.atomic.AtomicLong(0)
+
     engine.sparkContext.runJob(docText, (partition: Iterator[String]) => {
       val taskEngine = new com.idibon.ml.common.EmbeddedEngine
       val alloy = JarAlloy.load[Classification](taskEngine, new File(alloyName), false)
@@ -69,10 +72,14 @@ object PredictDataFrames extends Tool with StrictLogging {
       }).toList
     }, (partitionId: Int, results: List[(String, String, Float)]) => {
       logger.info(s"Partition ${partitionId} processed ${results.size} items")
+      processed.addAndGet(results.size)
       results.foreach({ case (content, label, probability) => {
         output.printRecord(Seq(content, label, probability).asJava)
       }})
     })
+
+    val elapsed = System.currentTimeMillis() - start
+    logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}s")
 
     output.close()
   }

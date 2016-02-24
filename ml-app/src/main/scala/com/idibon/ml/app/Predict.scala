@@ -58,6 +58,8 @@ object Predict extends Tool with StrictLogging {
 
     output.printRecord((Seq("Name", "Content") ++ labelCols).asJava)
 
+    val processed = new java.util.concurrent.atomic.AtomicLong(0)
+
     val resultsThread = new Thread(new Runnable() {
       override def run {
         Stream.continually(results.take)
@@ -78,6 +80,7 @@ object Predict extends Tool with StrictLogging {
                 (document \ "name").extract[Option[String]].getOrElse(""),
                 (document \ "content").extract[String]) ++ outputCols).asJava
 
+              processed.incrementAndGet()
               output.printRecord(row)
             }
             case _ => { }
@@ -85,6 +88,8 @@ object Predict extends Tool with StrictLogging {
       }
     })
     resultsThread.start
+
+    val start = System.currentTimeMillis()
 
     try {
       Source.fromFile(cli.getOptionValue('i'), "UTF-8")
@@ -102,6 +107,8 @@ object Predict extends Tool with StrictLogging {
       results.offer(None)
       // wait for the output thread to finish and close the stream
       resultsThread.join
+      val elapsed = System.currentTimeMillis() - start
+      logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}s")
       output.close
     }
   }
