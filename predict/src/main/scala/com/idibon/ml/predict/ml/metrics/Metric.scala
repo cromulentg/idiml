@@ -142,6 +142,42 @@ class PointsMetricBuilder extends Builder[PointsMetric] {
 }
 
 /**
+  * Creates metrics that are around a set of points for a label. E.g. this could be plotted.
+  * @param mType
+  * @param mClass
+  * @param label
+  * @param points
+  */
+case class LabelPointsMetric(mType: MetricTypes,
+                             mClass: MetricClass.Value,
+                             label: String,
+                             points: Seq[(Float, Float)])
+  extends RawMetric(mType, mClass) with Buildable[LabelPointsMetric, LabelPointsMetricBuilder] {
+  override def save(output: FeatureOutputStream): Unit = {
+    Codec.String.write(output, metricType.toString)
+    Codec.String.write(output, metricClass.toString)
+    Codec.String.write(output, label)
+    Codec.VLuint.write(output, points.size)
+    points.foreach { case (x, y) => {
+      output.writeFloat(x)
+      output.writeFloat(y)
+    }}
+  }
+}
+class LabelPointsMetricBuilder extends Builder[LabelPointsMetric] {
+  override def build(input: FeatureInputStream): LabelPointsMetric = {
+    val mType = Codec.String.read(input)
+    val mClass = Codec.String.read(input)
+    val label = Codec.String.read(input)
+    val size = Codec.VLuint.read(input)
+    val points = (0 until size).map(_ => {
+      (input.readFloat(), input.readFloat())
+    })
+    new LabelPointsMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, points)
+  }
+}
+
+/**
   * Creates metrics that are around a set of properties.
   *
   * Makes all values strings. It is the consumers responsibility to

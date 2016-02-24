@@ -66,6 +66,22 @@ public enum MetricTypes {
      */
     LabelRecall(LabelFloatMetric.class),
     /**
+     * Learning Curve F1
+     */
+    LearningCurveF1(PointsMetric.class),
+    /**
+     * Learning curve F1 for a label.
+     */
+    LearningCurveLabelF1(LabelPointsMetric.class),
+    /**
+     * Learning curve Precision for a label.
+     */
+    LearningCurveLabelPrecision(LabelPointsMetric.class),
+    /**
+     * Learning curve recall for a label.
+     */
+    LearningCurveLabelRecall(LabelPointsMetric.class),
+    /**
      * The average of individual label F1s in the non-mutually
      * exclusive case.
      */
