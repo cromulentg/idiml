@@ -56,7 +56,8 @@ trait AlloyTrainerBuilder {
   * @param furnaceBuilder The builder that produces the class to fit models.
   */
 case class KClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGeneratorBuilder = new KClassDataFrameGeneratorBuilder(),
-                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new XValLogisticRegressionFurnaceBuilder())
+                            private[alloy] var furnaceBuilder: FurnaceBuilder[Classification] = new XValLogisticRegressionFurnaceBuilder(),
+                            private[alloy] var skipGangeMetrics: Boolean = false)
   extends AlloyTrainerBuilder {
   private[alloy] var engine: Engine = null
 
