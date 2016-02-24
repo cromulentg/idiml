@@ -1,6 +1,5 @@
 package com.idibon.ml.train.furnace
 
-import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{Buildable, FeaturePipeline}
 import com.idibon.ml.predict.ml.metrics._
@@ -62,7 +61,7 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
       case Some(p) => Some(p.head)
       case None => None
     }
-    new IdibonLogisticRegressionModel(label, wrapper, pipeline) with HasTrainingSummary {
+    new IdibonLogisticRegressionModel(label, wrapper, pipeline) {
       override val trainingSummary = Some(Seq(createTrainingSummary(label, lr, data.head)))
     }
   }
@@ -346,7 +345,7 @@ class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
     * @param featurePipeline
     * @return
     */
-  def featurizeData(rawData: () => TraversableOnce[JObject],
+  override def featurizeData(rawData: () => TraversableOnce[JObject],
                              dataGen: SparkDataGenerator,
                              featurePipeline: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames

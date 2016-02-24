@@ -44,37 +44,39 @@ trait MetricHelper {
     * @param doubleToLabel
     * @return
     */
-  def createMulticlassMetrics(metrics: MulticlassMetrics,
-                              doubleToLabel: Map[Double, String]): Seq[Metric with Buildable[_, _]] = {
+  def createMultiClassMetrics(metrics: MulticlassMetrics,
+                              doubleToLabel: Map[Double, String],
+                              metricClass: MetricClass.Value = MetricClass.Multiclass):
+  Seq[Metric with Buildable[_, _]] = {
     val metricSeq = Seq[Metric with Buildable[_, _]](
-      new FloatMetric(MetricTypes.Precision, MetricClass.Multiclass, metrics.precision.toFloat),
-      new FloatMetric(MetricTypes.Recall, MetricClass.Multiclass, metrics.recall.toFloat),
-      new FloatMetric(MetricTypes.F1, MetricClass.Multiclass, metrics.fMeasure.toFloat),
-      new FloatMetric(MetricTypes.WeightedPrecision, MetricClass.Multiclass,
+      new FloatMetric(MetricTypes.Precision, metricClass, metrics.precision.toFloat),
+      new FloatMetric(MetricTypes.Recall, metricClass, metrics.recall.toFloat),
+      new FloatMetric(MetricTypes.F1, metricClass, metrics.fMeasure.toFloat),
+      new FloatMetric(MetricTypes.WeightedPrecision, metricClass,
         metrics.weightedPrecision.toFloat),
-      new FloatMetric(MetricTypes.WeightedRecall, MetricClass.Multiclass,
+      new FloatMetric(MetricTypes.WeightedRecall, metricClass,
         metrics.weightedRecall.toFloat),
-      new FloatMetric(MetricTypes.WeightedF1, MetricClass.Multiclass,
+      new FloatMetric(MetricTypes.WeightedF1, metricClass,
         metrics.weightedFMeasure.toFloat),
-      new FloatMetric(MetricTypes.WeightedFPR, MetricClass.Multiclass,
+      new FloatMetric(MetricTypes.WeightedFPR, metricClass,
         metrics.weightedFalsePositiveRate.toFloat)
     )
     val labelMetrics = metrics.labels.flatMap(label => {
       Seq[Metric with Buildable[_, _]](
-        new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Multiclass,
+        new LabelFloatMetric(MetricTypes.LabelPrecision, metricClass,
           doubleToLabel(label), metrics.precision(label).toFloat),
-        new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Multiclass,
+        new LabelFloatMetric(MetricTypes.LabelRecall, metricClass,
           doubleToLabel(label), metrics.recall(label).toFloat),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Multiclass,
+        new LabelFloatMetric(MetricTypes.LabelF1, metricClass,
           doubleToLabel(label), metrics.fMeasure(label).toFloat),
-        new LabelFloatMetric(MetricTypes.LabelFPR, MetricClass.Multiclass,
+        new LabelFloatMetric(MetricTypes.LabelFPR, metricClass,
           doubleToLabel(label), metrics.falsePositiveRate(label).toFloat)
       )
     })
     val labelToDouble = doubleToLabel.map(x => (x._2, x._1))
     val confusionMatrix = Seq(new ConfusionMatrixMetric(
       MetricTypes.ConfusionMatrix,
-      MetricClass.Multiclass,
+      metricClass,
       labelToDouble.flatMap(x => {
         labelToDouble.map(y => {
           (x._1, y._1, metrics.confusionMatrix(x._2.toInt, y._2.toInt).toFloat)
@@ -203,25 +205,27 @@ trait MetricHelper {
     * @return
     */
   def createMultilabelMetrics(metrics: MultilabelMetrics,
-                              doubleToLabel: Map[Double, String]): Seq[Metric with Buildable[_, _]] = {
+                              doubleToLabel: Map[Double, String],
+                              metricClass: MetricClass.Value = MetricClass.Multilabel):
+  Seq[Metric with Buildable[_, _]] = {
     val metricSeq = Seq[Metric with Buildable[_, _]](
-      new FloatMetric(MetricTypes.Precision, MetricClass.Multilabel, metrics.precision.toFloat),
-      new FloatMetric(MetricTypes.Recall, MetricClass.Multilabel, metrics.recall.toFloat),
-      new FloatMetric(MetricTypes.F1, MetricClass.Multilabel, metrics.f1Measure.toFloat),
-      new FloatMetric(MetricTypes.MicroF1, MetricClass.Multilabel, metrics.microF1Measure.toFloat),
-      new FloatMetric(MetricTypes.MicroPrecision, MetricClass.Multilabel, metrics.microPrecision.toFloat),
-      new FloatMetric(MetricTypes.MicroRecall, MetricClass.Multilabel, metrics.microRecall.toFloat),
-      new FloatMetric(MetricTypes.HammingLoss, MetricClass.Multilabel, metrics.hammingLoss.toFloat),
-      new FloatMetric(MetricTypes.SubsetAccuracy, MetricClass.Multilabel, metrics.hammingLoss.toFloat),
-      new FloatMetric(MetricTypes.Accuracy, MetricClass.Multilabel, metrics.accuracy.toFloat)
+      new FloatMetric(MetricTypes.Precision, metricClass, metrics.precision.toFloat),
+      new FloatMetric(MetricTypes.Recall, metricClass, metrics.recall.toFloat),
+      new FloatMetric(MetricTypes.F1, metricClass, metrics.f1Measure.toFloat),
+      new FloatMetric(MetricTypes.MicroF1, metricClass, metrics.microF1Measure.toFloat),
+      new FloatMetric(MetricTypes.MicroPrecision, metricClass, metrics.microPrecision.toFloat),
+      new FloatMetric(MetricTypes.MicroRecall, metricClass, metrics.microRecall.toFloat),
+      new FloatMetric(MetricTypes.HammingLoss, metricClass, metrics.hammingLoss.toFloat),
+      new FloatMetric(MetricTypes.SubsetAccuracy, metricClass, metrics.subsetAccuracy.toFloat),
+      new FloatMetric(MetricTypes.Accuracy, metricClass, metrics.accuracy.toFloat)
     )
     val labelMetrics = metrics.labels.flatMap(label => {
       Seq[Metric with Buildable[_, _]](
-        new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Multilabel,
+        new LabelFloatMetric(MetricTypes.LabelPrecision, metricClass,
           doubleToLabel(label), metrics.precision(label).toFloat),
-        new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Multilabel,
+        new LabelFloatMetric(MetricTypes.LabelRecall, metricClass,
           doubleToLabel(label), metrics.recall(label).toFloat),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Multilabel,
+        new LabelFloatMetric(MetricTypes.LabelF1, metricClass,
           doubleToLabel(label), metrics.f1Measure(label).toFloat)
       )
     })

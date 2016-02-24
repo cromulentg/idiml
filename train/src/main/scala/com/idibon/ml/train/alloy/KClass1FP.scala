@@ -2,7 +2,6 @@ package com.idibon.ml.train.alloy
 
 import java.util
 
-import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.feature.{Feature, FeaturePipeline}
 import com.idibon.ml.predict.ml.metrics.{MetricHelper}
 import com.idibon.ml.predict.ml.{TrainingSummary}
@@ -24,6 +23,8 @@ class KClass1FP(builder: KClass1FPBuilder)
     builder.dataGenBuilder.build(),
     builder.furnaceBuilder.build(builder.engine))
     with OneFeaturePipeline with StrictLogging with MetricHelper {
+
+  val skipGangMetrics = builder.skipGangeMetrics
 
   /**
     * Implements the overall algorithm for putting together the pieces required for an alloy.
@@ -64,12 +65,13 @@ class KClass1FP(builder: KClass1FPBuilder)
       })
       case None => throw new RuntimeException("Failed to create training data.")
     }
-    val gangTrainingSummary = classification_type match {
+    val gangTrainingSummary = if (skipGangMetrics) None else {
+      classification_type match {
       case "classification.single" => Some( // do multi-class
-        Seq(createMulticlassSummary("kclass1FPGang", rawData, primedPipeline, models)))
+         Seq(createMulticlassSummary("kclass1FPGang", rawData, primedPipeline, models)))
       case "classification.multiple" => Some(  // do multi-label
         Seq(createMultilabelSummary("kclass1FPGang", rawData, primedPipeline, models)))
-    }
+    }}
     logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
     // function to pass down so that the feature transforms can prune themselves.
     // i.e. if it isn't used, remove it.
@@ -79,7 +81,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     // prune unused features from global feature pipeline
     primedPipeline.prune(isNotUsed)
     // return MLModels
-    Map("kclass1fp" -> new GangModel(models.toMap, Some(primedPipeline)) with HasTrainingSummary {
+    Map("kclass1fp" -> new GangModel(models.toMap, Some(primedPipeline)) {
       override val trainingSummary = gangTrainingSummary
     })
   }
@@ -182,7 +184,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     val predictionRDDs = engine.sparkContext.parallelize(predictions)
     val metrics = new MulticlassMetrics(predictionRDDs)
     logger.info(stringifyMulticlassMetrics(metrics))
-    new TrainingSummary(identifier, createMulticlassMetrics(metrics, doubleLabelToUUIDLabel))
+    new TrainingSummary(identifier, createMultiClassMetrics(metrics, doubleLabelToUUIDLabel))
   }
 
 }

@@ -1,6 +1,5 @@
 package com.idibon.ml.train.furnace
 
-import com.idibon.ml.alloy.HasTrainingSummary
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{Buildable, FeaturePipeline}
 import com.idibon.ml.predict.Classification
@@ -54,7 +53,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
       case Some(p) => Some(p.head)
       case None => None
     }
-    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline) with HasTrainingSummary {
+    new IdibonMultiClassLRModel(labelToInt, wrapper, pipeline) {
       override val trainingSummary = Some(Seq(createTrainingSummary(label, model, data.head)))
     }
   }
@@ -77,7 +76,7 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
     })
     val metrics = new MulticlassMetrics(basicResults)
     logger.info(stringifyMulticlassMetrics(metrics))
-    val mmetrics = createMulticlassMetrics(metrics, labelToInt.map(x => (x._2.toDouble, x._1)))
+    val mmetrics = createMultiClassMetrics(metrics, labelToInt.map(x => (x._2.toDouble, x._1)))
     val intToLabel = labelToInt.map(x => (x._2, x._1))
     val dataSizes = getLabelCounts(data)
       .map({case(lab, size) => {
