@@ -209,12 +209,20 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     }
   }
 
+  def loadFeaturePipelineJson(json: String,
+    reader: Option[Alloy.Reader] = None):
+      FeaturePipeline = {
+    val loader = new FeaturePipelineLoader
+    val config = parse(json).asInstanceOf[JObject]
+    loader.load(new EmbeddedEngine,
+      reader.orElse(Some(createMockReader)),
+      Some(config))
+  }
+
   describe("save") {
     def runSaveTest(unparsed: String) {
-      val dummyReader = createMockReader
       val dummyWriter = createMockWriter
-      val json = parse(unparsed).asInstanceOf[JObject]
-      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyReader), Some(json))
+      val pipeline = loadFeaturePipelineJson(unparsed)
       val result = pipeline.save(dummyWriter)
         .map(j => compact(render(j))).getOrElse("")
       result shouldBe unparsed
@@ -234,7 +242,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   describe("load") {
     it("should call load on archivable transforms") {
       val dummyAlloy = createMockReader
-      val json = parse("""{
+      val json = """{
 "transforms":[
   {"name":"A","class":"com.idibon.ml.feature.ArchivableTransform"},
   {"name":"B","class":"com.idibon.ml.feature.ArchivableTransform",
@@ -242,9 +250,9 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 "pipeline":[
   {"name":"A","inputs":[]},
   {"name":"B","inputs":[]},
-  {"name":"$output","inputs":["A","B"]}]}""").asInstanceOf[JObject]
+  {"name":"$output","inputs":["A","B"]}]}"""
 
-      val pipeline = (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyAlloy), Some(json))
+      val pipeline = loadFeaturePipelineJson(json, Some(dummyAlloy))
       val document = parse("{}").asInstanceOf[JObject]
       pipeline(document) shouldBe
         Vectors.sparse(6,Array(0,1,2,3,4,5),Array(1.0,0.0,1.0,0.0,-1.0,0.5))
@@ -254,9 +262,16 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     }
 
+    it("should log an error if the output is not a Vector") {
+      loadFeaturePipelineJson("""{
+"transforms":[{"name":"A","class":"com.idibon.ml.feature.NonVectorTerminator"}],
+"pipeline":[{"name":"A","inputs":["$document"]},
+            {"name":"$output","inputs":["A"]}]}""")
+      loggedMessages should include regex "\\[<undefined>/A\\] - possible invalid output"
+    }
+
     it("should log a warning if a reserved name is used") {
-      val dummyAlloy = createMockReader
-      val json = parse("""{
+      loadFeaturePipelineJson("""{
 "transforms":[
   {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
   {"name":"$featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],
@@ -265,14 +280,11 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"$featureVector","inputs":["contentExtractor"]},
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
-
-      (new FeaturePipelineLoader).load(new EmbeddedEngine, Some(dummyAlloy), Some(json.asInstanceOf[JObject]))
       loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
     }
 
     it("should generate a callable graph") {
-      val dummyAlloy = createMockReader
-      val json = parse("""{
+      val pipeline = loadFeaturePipelineJson("""{
 "transforms":[
   {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
   {"name":"concatenator","class":"com.idibon.ml.feature.VectorConcatenator"},
@@ -286,8 +298,6 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"featureVector","inputs":["contentExtractor"]}]
 }""")
 
-      val pipeline = (new FeaturePipelineLoader)
-                    .load(new EmbeddedEngine, Some(dummyAlloy), Some(json.asInstanceOf[JObject]))
       loggedMessages shouldBe empty
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
@@ -356,13 +366,30 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       }
     }
 
-    it("should raise an exception if the transformer uses currying") {
+    it("should raise an exception if the outputs aren't terminable") {
       val transforms = Map(
         "curriedExtractor" -> new CurriedExtractor,
         "contentExtractor" -> new DocumentExtractor
       )
       val pipeline = List(
         new PipelineEntry("$output", List("curriedExtractor")),
+        new PipelineEntry("contentExtractor", List("$document")),
+        new PipelineEntry("curriedExtractor", List("$document", "contentExtractor"))
+      )
+      intercept[IllegalArgumentException] {
+        FeaturePipeline.bindGraph(transforms, pipeline)
+      }
+    }
+
+    it("should raise an exception if the transformer uses currying") {
+      val transforms = Map(
+        "concatenator" -> new VectorConcatenator,
+        "curriedExtractor" -> new CurriedExtractor,
+        "contentExtractor" -> new DocumentExtractor
+      )
+      val pipeline = List(
+        new PipelineEntry("$output", List("concatenator")),
+        new PipelineEntry("concatenator", List("curriedExtractor")),
         new PipelineEntry("contentExtractor", List("$document")),
         new PipelineEntry("curriedExtractor", List("$document", "contentExtractor"))
       )
@@ -384,7 +411,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
         new PipelineEntry("featureVector", List("contentExtractor"))
       )
 
-      val graph = FeaturePipeline.bindGraph(transforms, pipeline)
+      val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
       graph.size shouldBe 3
 
       val intermediates = MutableMap[String, Any]()
@@ -427,7 +454,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       )
 
       pipelines.foreach({ case (expected, pipeline) => {
-        val graph = FeaturePipeline.bindGraph(transforms, pipeline)
+        val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
         graph.size shouldBe 4
 
         val intermediates = MutableMap[String, Any]()
@@ -448,12 +475,12 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
   describe("buildDependencyChain") {
     it("should handle an empty list correctly") {
-      val chain = FeaturePipeline.sortDependencies(List[PipelineEntry]())
+      val chain = FeatureGraph.sortDependencies(List[PipelineEntry]())
       chain shouldBe empty
     }
 
     it("should sort simple pipelines in dependency order") {
-      val chain = FeaturePipeline.sortDependencies(
+      val chain = FeatureGraph.sortDependencies(
         Random.shuffle(List(
           new PipelineEntry("tokenizer", List("$document")),
           new PipelineEntry("ngrammer", List("tokenizer")),
@@ -463,7 +490,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     }
 
     it("should support diamond graphs") {
-      val chain = FeaturePipeline.sortDependencies(
+      val chain = FeatureGraph.sortDependencies(
         Random.shuffle(List(
           new PipelineEntry("tokenizer", List("$document")),
           new PipelineEntry("metadata", List("$document")),
@@ -483,7 +510,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     it("should raise an exception on cyclic graphs") {
       intercept[IllegalArgumentException] {
-        FeaturePipeline.sortDependencies(
+        FeatureGraph.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("tokenizer", List("$document")),
             new PipelineEntry("n-grams", List("tokenizer", "word-vectors")),
@@ -493,7 +520,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       }
 
       intercept[IllegalArgumentException] {
-        FeaturePipeline.sortDependencies(
+        FeatureGraph.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("tokenizer", List("$document")),
             new PipelineEntry("n-grams", List("tokenizer", "n-grams")),
@@ -504,7 +531,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     it("should raise an exception on non-existent transforms") {
       intercept[NoSuchElementException] {
-        FeaturePipeline.sortDependencies(
+        FeatureGraph.sortDependencies(
           Random.shuffle(List(
             new PipelineEntry("n-grams", List("tokenizer")),
             new PipelineEntry("$output", List("n-grams"))))
@@ -531,10 +558,25 @@ private [this] class VectorConcatenator extends FeatureTransformer with Terminab
   def freeze(): Unit = { frozen = true }
 }
 
+private [this] class NonVectorTerminator
+    extends FeatureTransformer with TerminableTransformer {
+
+  def apply(doc: JObject): Float = 1.0f
+
+  def numDimensions = Some(1)
+
+  def prune(transform: (Int) => Boolean) { }
+
+  def getFeatureByIndex(index: Int): Option[Feature[_]] = None
+
+  def freeze { }
+}
+
 /**
   * Bad vector concatenator that has incorrect dimensions.
   */
-private [this] class VectorConcatenatorBad extends FeatureTransformer with TerminableTransformer {
+private [this] class VectorConcatenatorBad
+    extends FeatureTransformer with TerminableTransformer {
   var frozen = false
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
