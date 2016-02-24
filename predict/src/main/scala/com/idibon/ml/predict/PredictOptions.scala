@@ -18,7 +18,7 @@ case class PredictOptions(significantFeatureThreshold: Float = PredictOptions.NO
 /**
   * Builder class to create a PredictOptions object.
   */
-class PredictOptionsBuilder() {
+class PredictOptionsBuilder() extends Serializable {
   private var significantFeatureThreshold = PredictOptions.NO_FEATURES
   /**
     * If invoked, will ensure that significant features are returned, and

@@ -9,7 +9,7 @@ import com.idibon.ml.alloy.Alloy
   * Implementations must be paired with an ArchiveLoader implementation that
   * load a previously-persisted instance from the Alloy.
   */
-trait Archivable[T <: Archivable[T, ArchiveLoader[T]], +U <: ArchiveLoader[T]] {
+trait Archivable[T <: Archivable[T, ArchiveLoader[T]], +U <: ArchiveLoader[T]] extends Serializable {
 
   /** Serializes the object within the Alloy
     *
