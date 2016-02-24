@@ -10,7 +10,7 @@ object App extends Tool {
     ("predict" -> Predict),
     ("train" -> Train),
     ("trainingSummary" -> GetTrainingStats),
-    ("predictDF" -> PredictDataFrames)
+    ("sparkBatchPredict" -> SparkBatchPredict)
   )
 
   def run(engine: Engine, argv: Array[String]) {

@@ -5,15 +5,7 @@ import com.idibon.ml.predict._
 
 import com.typesafe.scalalogging.StrictLogging
 import java.io.File
-import java.util.concurrent.LinkedBlockingQueue
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.SQLContext
 import org.json4s._
-import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods.{compact, render, parse}
-import scala.io.Source
 import scala.collection.JavaConverters._
 
 /** Command-line batch prediction tool with DataFrames
@@ -22,7 +14,7 @@ import scala.collection.JavaConverters._
   * Idibon JSON documents, predicts all of them and writes the
   * results to an output file
   */
-object PredictDataFrames extends Tool with StrictLogging {
+object SparkBatchPredict extends Tool with StrictLogging {
 
   private [this] def parseCommandLine(argv: Array[String]) = {
     val options = (new org.apache.commons.cli.Options)
@@ -47,7 +39,6 @@ object PredictDataFrames extends Tool with StrictLogging {
 
     val alloyName = cli.getOptionValue('a')
     val includeFeatures = !cli.hasOption('f')
-
 
     val output = new org.apache.commons.csv.CSVPrinter(
       new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8"),

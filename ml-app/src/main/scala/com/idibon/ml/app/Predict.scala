@@ -7,8 +7,6 @@ import scala.io.Source
 import scala.collection.JavaConverters._
 import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
-import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods.{compact, render, parse}
 import com.idibon.ml.alloy.JarAlloy
 import com.idibon.ml.predict._
 
@@ -95,7 +93,7 @@ object Predict extends Tool with StrictLogging {
       Source.fromFile(cli.getOptionValue('i'), "UTF-8")
         .getLines.toStream.par
         .foreach(line => {
-          val document = parse(line).extract[JObject]
+          val document = JObject(List(JField("content", JString(line))))
           val builder = new PredictOptionsBuilder
 
           if (includeFeatures) builder.showSignificantFeatures(0.1f)
