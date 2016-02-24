@@ -146,6 +146,9 @@ object BaseAlloy extends StrictLogging {
     implicit val formats = org.json4s.DefaultFormats
 
     val resource = reader.resource(MANIFEST_JSON)
+    if (resource == null)
+      throw new java.io.FileNotFoundException("Missing manifest")
+
     try {
       JsonMethods.parse(Codec.String.read(resource))
         .extract[BaseAlloyManifest]

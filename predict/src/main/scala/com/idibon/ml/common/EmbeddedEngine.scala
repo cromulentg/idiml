@@ -1,6 +1,7 @@
 package com.idibon.ml.common
 
 import org.apache.spark.{SparkConf, SparkContext}
+import com.typesafe.scalalogging.StrictLogging
 
 /** Engine implementation using an in-process, embedded SparkContext */
 class EmbeddedEngine extends Engine {
@@ -17,7 +18,7 @@ private [this] object EmbeddedEngine {
     val conf = new SparkConf().setAppName("idiml")
       .set("spark.driver.host", "localhost")
       .set("spark.ui.enabled", "false")
-      .setMaster("local[3]")
+      .setMaster("local[*]")
     new SparkContext(conf)
   }
 }

@@ -6,7 +6,7 @@ package com.idibon.ml.feature
   * InputStream and instantiate the object, so that objects may be
   * immutable.
   */
-trait Buildable[T <: Buildable[T, Builder[T]], +U <: Builder[T]] extends Serializable {
+trait Buildable[T <: Buildable[T, Builder[T]], +U <: Builder[T]] {
 
   /** Stores the data to an output stream so it may be reloaded later.
     *

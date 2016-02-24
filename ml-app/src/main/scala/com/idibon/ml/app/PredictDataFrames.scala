@@ -22,7 +22,7 @@ import scala.collection.JavaConverters._
   * Idibon JSON documents, predicts all of them and writes the
   * results to an output file
   */
-object PredictDataFrames extends Tool with StrictLogging with Serializable {
+object PredictDataFrames extends Tool with StrictLogging {
 
   private [this] def parseCommandLine(argv: Array[String]) = {
     val options = (new org.apache.commons.cli.Options)
@@ -39,82 +39,41 @@ object PredictDataFrames extends Tool with StrictLogging with Serializable {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
-    val model = JarAlloy.load[Classification](engine,
-      new File(cli.getOptionValue('a')), !cli.hasOption('v'))
 
-    logger.info(s"Loaded Alloy.")
+    /* split the document into as many partitions as there are CPU threads,
+     * to saturate all of the spark context workers */
+    val cpuThreads = Runtime.getRuntime().availableProcessors()
+    val docText = engine.sparkContext.textFile(cli.getOptionValue('i'), cpuThreads)
 
-    logger.info(s"Loading SparkContext")
-    val sqlContext = new SQLContext(engine.sparkContext)
+    val alloyName = cli.getOptionValue('a')
+    val includeFeatures = !cli.hasOption('f')
 
-    import sqlContext.implicits._
 
-    val df = sqlContext.read.text(cli.getOptionValue('i'))
-
-    /* results will be written to the output file by a consumer thread;
-     * after the last document is predicted, the main thread will post
-     * a sentinel value of None to cause the result output thread to
-     * terminate. */
-    val results = new LinkedBlockingQueue[Option[(JObject, Seq[Classification])]]
     val output = new org.apache.commons.csv.CSVPrinter(
       new java.io.PrintWriter(cli.getOptionValue('o'), "UTF-8"),
       org.apache.commons.csv.CSVFormat.RFC4180)
-    val includeFeatures = !cli.hasOption('f')
 
-    val labels = model.getLabels.asScala.sortWith(_.name < _.name)
-    val labelCols = if (includeFeatures) {
-      labels.flatMap(l => List(l.name, s"features[${l.name}]"))
-    } else {
-      labels.map(_.name)
-    }
+    output.printRecord(Seq("Content", "Label", "Probability").asJava)
 
-    output.printRecord((Seq("Name", "Content") ++ labelCols).asJava)
+    engine.sparkContext.runJob(docText, (partition: Iterator[String]) => {
+      val taskEngine = new com.idibon.ml.common.EmbeddedEngine
+      val alloy = JarAlloy.load[Classification](taskEngine, new File(alloyName), false)
+      val predictOptionsBuilder = new PredictOptionsBuilder
+      if (includeFeatures) predictOptionsBuilder.showSignificantFeatures(0.1f)
+      val options = predictOptionsBuilder.build
 
-    val resultsThread = new Thread(new Runnable() {
-      override def run {
-        Stream.continually(results.take)
-          .takeWhile(_.isDefined)
-          .foreach(_ match {
-            case Some((document, prediction)) => {
-              val predictionByLabel = prediction.map(p => (p.label, p)).toMap
-              val sortedPredictions = labels.map(l => predictionByLabel.get(l.uuid.toString))
-              val outputCols = if (includeFeatures) {
-                sortedPredictions.map(_.map(p => {
-                  List(p.probability, p.significantFeatures.map(_._1))
-                }).getOrElse(List(0.0f, List()))).reduce(_ ++ _)
-              } else {
-                sortedPredictions.map(_.map(_.probability).getOrElse(0.0f))
-              }
-
-              val row = (Seq(
-                (document \ "name").extract[Option[String]].getOrElse(""),
-                (document \ "content").extract[String]) ++ outputCols).asJava
-
-              output.printRecord(row)
-            }
-            case _ => { }
-          })
-      }
+      partition.map(content => {
+        val doc = JObject(List(JField("content", JString(content))))
+        val topPrediction = alloy.predict(doc, options).asScala.maxBy(_.probability)
+        (content, topPrediction.label, topPrediction.probability)
+      }).toList
+    }, (partitionId: Int, results: List[(String, String, Float)]) => {
+      logger.info(s"Partition ${partitionId} processed ${results.size} items")
+      results.foreach({ case (content, label, probability) => {
+        output.printRecord(Seq(content, label, probability).asJava)
+      }})
     })
-    resultsThread.start
 
-    try {
-      df.foreach(line => {
-        println(line)
-        val document = List(JField("content", JString(line.toString())))
-        val builder = new PredictOptionsBuilder
-
-        if (includeFeatures) builder.showSignificantFeatures(0.1f)
-        val result = model.predict(document, builder.build)
-        results.offer(Some((document, result.asScala)))
-
-      })
-    } finally {
-      // send the sentinel value to shut down the output thread
-      results.offer(None)
-      // wait for the output thread to finish and close the stream
-      resultsThread.join
-      output.close
-    }
+    output.close()
   }
 }

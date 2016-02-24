@@ -12,7 +12,7 @@ package com.idibon.ml.feature {
     * * (Seq[Feature[_]*) -> Seq[F]
     * * (
     */
-  trait FeatureTransformer extends Serializable {}
+  trait FeatureTransformer {}
 
   /** TerminableTransformers convert from one or more input features into
     * a representative Vector output with known dimensionality.

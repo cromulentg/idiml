@@ -8,7 +8,6 @@ import org.json4s.JsonAST;
 import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +17,7 @@ import java.util.Map;
  * Provides model, feature pipeline, and task configuration I/O to
  * the prediction and training engines.
  */
-public interface Alloy<T extends PredictResult> extends Serializable {
+public interface Alloy<T extends PredictResult> {
 
     /**
      * Operations for reading objects from an Alloy.

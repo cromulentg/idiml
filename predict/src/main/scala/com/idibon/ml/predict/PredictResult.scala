@@ -7,7 +7,7 @@ import com.idibon.ml.feature.{FeatureOutputStream, FeatureInputStream, Builder, 
   *
   * Model predictions may return any number of PredictResult objects
   */
-trait PredictResult extends Serializable {
+trait PredictResult {
   /** The label analyzed in this result */
   def label: String
   /** Evaluated probability */
