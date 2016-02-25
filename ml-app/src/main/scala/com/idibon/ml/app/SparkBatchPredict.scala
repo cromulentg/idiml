@@ -85,7 +85,9 @@ object SparkBatchPredict extends Tool with StrictLogging {
 
     output.close()
     val elapsed = System.currentTimeMillis() - start
-    logger.info(s"Processed ${ProcessingLoop.processed.get} items in ${elapsed / 1000.0f}s")
+    val rate = ProcessingLoop.processed.get / (elapsed / 1000.0f)
+    logger.info(s"Processed ${ProcessingLoop.processed.get} items in ${elapsed / 1000.0f}secs. Rate: " +
+      f"$rate%1.9f items/sec")
   }
 }
 
