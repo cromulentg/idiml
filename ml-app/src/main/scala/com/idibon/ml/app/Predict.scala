@@ -2,6 +2,7 @@ package com.idibon.ml.app
 
 import com.typesafe.scalalogging.StrictLogging
 import java.io.File
+import java.nio.channels.FileChannel
 
 import scala.io.Source
 import scala.collection.JavaConverters._
@@ -121,6 +122,18 @@ object Predict extends Tool with StrictLogging {
     resultsThread.start
 
     val loops = Math.max(1, Integer.parseInt(cli.getOptionValue('l', "1")))
+    /* in order to eliminate syscall overhead from affecting benchmark
+     * performance with (very) small batch sizes, memory-map the file once
+     * and just create input streams to wrap the data on each loop */
+    val mappedFile = if (loops > 5 && cli.hasOption('b')) {
+      val fd = FileChannel.open(new File(cli.getOptionValue('i')).toPath)
+      val mapping = fd.map(FileChannel.MapMode.READ_ONLY, 0, fd.size())
+      fd.close()
+      Some(mapping)
+    } else {
+      None
+    }
+
     val start = System.currentTimeMillis()
 
     try {
@@ -128,10 +141,15 @@ object Predict extends Tool with StrictLogging {
       if (includeFeatures) optionsBuilder.showSignificantFeatures(0.1f)
       val predictOptions = optionsBuilder.build
 
-
       (1 to loops).foreach(_ => {
-        Source.fromFile(cli.getOptionValue('i'), "UTF-8")
-          .getLines.toStream.par
+        /* either wrap an input stream (and then a source) around the memory-
+         * mapped file, if it exists, or create a source for the file */
+        val source = mappedFile.map(mapping => {
+          mapping.rewind()
+          Source.fromInputStream(new ByteBufferInputStream(mapping), "UTF-8")
+        }).getOrElse(Source.fromFile(cli.getOptionValue('i'), "UTF-8"))
+
+        source.getLines.toStream.par
           .foreach(line => {
             val document = parse(line).asInstanceOf[JObject]
             val result = model.predict(document, predictOptions)
@@ -147,5 +165,38 @@ object Predict extends Tool with StrictLogging {
       val elapsed = System.currentTimeMillis() - start
       logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}s")
     }
+  }
+
+  /** Simple InputStream for reading from a ByteBuffer */
+  private [this] class ByteBufferInputStream(buffer: java.nio.ByteBuffer)
+      extends java.io.InputStream {
+
+    override def read: Int = {
+      // convert signed bytes to unsigned ints
+      if (buffer.hasRemaining)
+        (buffer.get + 0x100) & 0xff
+      else
+        -1
+    }
+
+    override def read(b: Array[Byte], off: Int, len: Int) = {
+      val consume = Math.min(len, buffer.remaining())
+      if (consume > 0) {
+        buffer.get(b, off, consume)
+        consume
+      } else {
+        -1
+      }
+    }
+
+    override def mark(limit: Int) {
+      buffer.mark()
+    }
+
+    override def reset() {
+      buffer.reset()
+    }
+
+    override def markSupported = true
   }
 }
