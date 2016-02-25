@@ -9,7 +9,8 @@ object App extends Tool {
   private [this] val _dispatcher = Map(
     ("predict" -> Predict),
     ("train" -> Train),
-    ("trainingSummary" -> GetTrainingStats)
+    ("trainingSummary" -> GetTrainingStats),
+    ("sparkBatchPredict" -> SparkBatchPredict)
   )
 
   def run(engine: Engine, argv: Array[String]) {

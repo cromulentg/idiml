@@ -1,6 +1,7 @@
 package com.idibon.ml.common
 
 import org.apache.spark.{SparkConf, SparkContext}
+import com.typesafe.scalalogging.StrictLogging
 
 /** Engine implementation using an in-process, embedded SparkContext */
 class EmbeddedEngine extends Engine {
@@ -14,10 +15,19 @@ class EmbeddedEngine extends Engine {
   */
 private [this] object EmbeddedEngine {
   val sparkContext = {
+    /* limit the number of Spark workers to the lesser of:
+     * - the number of virtual CPUs available, OR
+     * - the number of available 200M heap allocations possible
+     * this is primarily for CircleCI, which exposes 32 virtual CPU
+     * cores but is limited to ~1.5GB of heap. */
+    val cpuCores = Runtime.getRuntime().availableProcessors()
+    val maxHeap = Runtime.getRuntime().maxMemory() / 1048576
+    val workers = Math.max(2, Math.min(cpuCores, maxHeap / 200))
+
     val conf = new SparkConf().setAppName("idiml")
       .set("spark.driver.host", "localhost")
       .set("spark.ui.enabled", "false")
-      .setMaster("local[3]")
+      .setMaster(s"local[$workers]")
     new SparkContext(conf)
   }
 }
