@@ -10,6 +10,7 @@ import org.json4s._
 import org.json4s.native.JsonMethods.parse
 import com.idibon.ml.alloy.JarAlloy
 import com.idibon.ml.predict._
+import org.json4s.native.JsonMethods.parse
 
 /** Command-line batch prediction tool
   *
@@ -24,16 +25,47 @@ object Predict extends Tool with StrictLogging {
       .addOption("i", "input", true, "Input file containing documents.")
       .addOption("o", "output", true, "Result output CSV file.")
       .addOption("a", "alloy", true, "Input alloy.")
+      .addOption("b", "benchmark", false, "Run in benchmark mode (prime the JIT")
+      .addOption("l", "loop", true, "Loop over data set N times")
       .addOption("f", "no-features", false, "Run without significant features.")
       .addOption("v", "no-validation", false, "Whether we should not validate the model.")
 
     (new org.apache.commons.cli.BasicParser).parse(options, argv)
   }
 
+  /** Run a batch of documents through the alloy to pre-warm all of the
+    * code caches for benchmark mode */
+  def prewarmJit(engine: com.idibon.ml.common.Engine,
+      cli: org.apache.commons.cli.CommandLine) {
+
+    logger.info("== Benchmark Mode == Warming JIT cache")
+
+    // read the first document from the file
+    val documents = Source.fromFile(cli.getOptionValue('i'), "UTF-8")
+      .getLines.take(1).map(line => parse(line).asInstanceOf[JObject])
+
+    val alloy = JarAlloy.load[Classification](engine,
+      new File(cli.getOptionValue('a')), !cli.hasOption('v'))
+
+    val builder = new PredictOptionsBuilder
+    if (!cli.hasOption('v')) builder.showSignificantFeatures(0.1f)
+    val predictOptions = builder.build
+
+    /* run the document through the prediction loop for 30 seconds
+     * to make sure that hot loops get a chance for JIT optimization */
+    val start = System.currentTimeMillis()
+    while (System.currentTimeMillis() - start < 30000) {
+      documents.foreach(doc => alloy.predict(doc, predictOptions))
+    }
+  }
+
   def run(engine: com.idibon.ml.common.Engine, argv: Array[String]) {
     implicit val formats = org.json4s.DefaultFormats
 
     val cli = parseCommandLine(argv)
+
+    if (cli.hasOption('b')) prewarmJit(engine, cli)
+
     val model = JarAlloy.load[Classification](engine,
       new File(cli.getOptionValue('a')), !cli.hasOption('v'))
 
@@ -88,27 +120,32 @@ object Predict extends Tool with StrictLogging {
     })
     resultsThread.start
 
+    val loops = Math.max(1, Integer.parseInt(cli.getOptionValue('l', "1")))
     val start = System.currentTimeMillis()
 
     try {
-      Source.fromFile(cli.getOptionValue('i'), "UTF-8")
-        .getLines.toStream.par
-        .foreach(line => {
-          val document = JObject(List(JField("content", JString(line))))
-          val builder = new PredictOptionsBuilder
+      val optionsBuilder = new PredictOptionsBuilder
+      if (includeFeatures) optionsBuilder.showSignificantFeatures(0.1f)
+      val predictOptions = optionsBuilder.build
 
-          if (includeFeatures) builder.showSignificantFeatures(0.1f)
-          val result = model.predict(document, builder.build)
-          results.offer(Some((document, result.asScala)))
-        })
+
+      (1 to loops).foreach(_ => {
+        Source.fromFile(cli.getOptionValue('i'), "UTF-8")
+          .getLines.toStream.par
+          .foreach(line => {
+            val document = parse(line).asInstanceOf[JObject]
+            val result = model.predict(document, predictOptions)
+            results.offer(Some((document, result.asScala)))
+          })
+      })
     } finally {
       // send the sentinel value to shut down the output thread
       results.offer(None)
       // wait for the output thread to finish and close the stream
       resultsThread.join
+      output.close
       val elapsed = System.currentTimeMillis() - start
       logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}s")
-      output.close
     }
   }
 }
