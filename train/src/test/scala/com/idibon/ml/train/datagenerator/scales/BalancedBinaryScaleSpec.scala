@@ -27,8 +27,8 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
       val negatives = (0 until 10).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(x.toFloat, 1.0, 1.0))))
       val positives = (0 until 2).map(x => LabeledPoint(1.0, Vectors.sparse(5, Array(1, 2, 3), Array(x.toFloat, 1.0, 1.0))))
       val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives))
-      actual.count() shouldBe 4
-      actual.filter(l => l.label == 0.0).count() shouldBe 2
+      actual.count() shouldBe 5
+      actual.filter(l => l.label == 0.0).count() shouldBe 3
       actual.filter(l => l.label == 1.0).count() shouldBe 2
     }
 
@@ -37,9 +37,9 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
       val negatives = (0 until 2).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
       val positives = (0 until 10).map(x => LabeledPoint(1.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
       val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives))
-      actual.count() shouldBe 4
+      actual.count() shouldBe 5
       actual.filter(l => l.label == 0.0).count() shouldBe 2
-      actual.filter(l => l.label == 1.0).count() shouldBe 2
+      actual.filter(l => l.label == 1.0).count() shouldBe 3
     }
 
     it("should not do anything to a dataset with ratio inside threshold") {
