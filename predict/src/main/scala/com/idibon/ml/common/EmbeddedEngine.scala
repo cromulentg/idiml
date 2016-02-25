@@ -18,7 +18,7 @@ private [this] object EmbeddedEngine {
     val conf = new SparkConf().setAppName("idiml")
       .set("spark.driver.host", "localhost")
       .set("spark.ui.enabled", "false")
-      .setMaster("local[*]")
+      .setMaster("local[*]") // Asterisk means use as many as it can
     new SparkContext(conf)
   }
 }

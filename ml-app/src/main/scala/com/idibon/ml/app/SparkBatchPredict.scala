@@ -6,7 +6,9 @@ import com.idibon.ml.predict._
 import com.typesafe.scalalogging.StrictLogging
 import java.io.File
 import org.json4s._
+import org.json4s.native.JsonMethods._
 import scala.collection.JavaConverters._
+import scala.io.Source
 
 /** Command-line batch prediction tool with DataFrames
   *
@@ -32,10 +34,18 @@ object SparkBatchPredict extends Tool with StrictLogging {
 
     val cli = parseCommandLine(argv)
 
+    // Do json parsing first, since the libraries are not Serializable
+    val docJson = scala.collection.mutable.ListBuffer.empty[JObject]
+    Source.fromFile(cli.getOptionValue('i'), "UTF-8")
+      .getLines
+      .foreach(line => {
+        docJson += parse(line).extract[JObject]
+      })
+
     /* split the document into as many partitions as there are CPU threads,
      * to saturate all of the spark context workers */
     val cpuThreads = Runtime.getRuntime().availableProcessors()
-    val docText = engine.sparkContext.textFile(cli.getOptionValue('i'), cpuThreads)
+    val docJsonRDD = engine.sparkContext.parallelize(docJson, cpuThreads)
 
     val alloyName = cli.getOptionValue('a')
     val includeFeatures = !cli.hasOption('f')
@@ -49,7 +59,7 @@ object SparkBatchPredict extends Tool with StrictLogging {
     val start = System.currentTimeMillis()
     val processed = new java.util.concurrent.atomic.AtomicLong(0)
 
-    engine.sparkContext.runJob(docText, (partition: Iterator[String]) => {
+    engine.sparkContext.runJob(docJsonRDD, (partition: Iterator[JObject]) => {
       val taskEngine = new com.idibon.ml.common.EmbeddedEngine
       val alloy = JarAlloy.load[Classification](taskEngine, new File(alloyName), false)
       val predictOptionsBuilder = new PredictOptionsBuilder
@@ -57,11 +67,10 @@ object SparkBatchPredict extends Tool with StrictLogging {
       val options = predictOptionsBuilder.build
 
       partition.map(content => {
-        val doc = JObject(List(JField("content", JString(content))))
-        val topPrediction = alloy.predict(doc, options).asScala.maxBy(_.probability)
+        val topPrediction = alloy.predict(content, options).asScala.maxBy(_.probability)
         (content, topPrediction.label, topPrediction.probability)
       }).toList
-    }, (partitionId: Int, results: List[(String, String, Float)]) => {
+    }, (partitionId: Int, results: List[(JObject, String, Float)]) => {
       logger.info(s"Partition ${partitionId} processed ${results.size} items")
       processed.addAndGet(results.size)
       results.foreach({ case (content, label, probability) => {

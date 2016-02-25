@@ -7,6 +7,7 @@ import scala.io.Source
 import scala.collection.JavaConverters._
 import java.util.concurrent.LinkedBlockingQueue
 import org.json4s._
+import org.json4s.native.JsonMethods.parse
 import com.idibon.ml.alloy.JarAlloy
 import com.idibon.ml.predict._
 
