@@ -5,6 +5,7 @@ import java.net.URI
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.feature._
+import com.idibon.ml.feature.bagofwords.Word
 
 import org.apache.spark._
 import org.apache.spark.mllib.feature.Word2VecModel
@@ -23,14 +24,15 @@ import scala.util.Try
   * @param uri URI for the directory where the model is stored (a String)
   */
 class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val uri: URI) extends FeatureTransformer
-  with Archivable[Word2VecTransformer,Word2VecTransformerLoader] {
+  with Archivable[Word2VecTransformer,Word2VecTransformerLoader]
+  with TerminableTransformer {
 
   val vectors = model.getVectors
   private val (_, firstVector) = vectors.head
   val vectorSize = firstVector.size
 
   /**
-    * Transform a sequence of strings to a vector representing the sequence. The transform
+    * Transform a sequence of words to a vector representing the sequence. The transform
     * is performed by averaging all word vectors in the sequence
     *
     * This is based on the transform method in org.apache.spark.ml.feature.Word2Vec. That method
@@ -38,13 +40,13 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
     *
     * OOV words return a vector of zeros.
     *
-    * @param words a sequence of strings
+    * @param words a sequence of words
     * @return average of vectors for all words in the sequence
     */
-  def apply(words: Seq[String]): Vector = {
+  def apply(words: Seq[Feature[Word]]): Vector = {
     words.foldLeft(Vectors.zeros(vectorSize))({ case (accum, word) => {
       Try({
-        IdibonBLAS.axpy(1.0, model.transform(word), accum)
+        IdibonBLAS.axpy(1.0, model.transform(word.get.word), accum)
         accum
       }).getOrElse(accum)
     }})
@@ -62,6 +64,51 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
   def save(writer: Alloy.Writer): Option[JObject] = {
     Some(JObject(JField("uri", JString(uri.toString()))))
   }
+
+  /**
+    * Returns the dimensions of the vectors.
+    *
+    * Implementation of TerminableTransformer method
+    *
+    * @return
+    */
+  def numDimensions = Some(vectorSize)
+
+  /**
+    * Transformers should implement an idempotent freeze. Meaning if it's
+    * called multiple times, it wont change from its initial frozen state.
+    *
+    * Implementation of TerminableTransformer method
+    *
+    */
+  def freeze(): Unit = { }
+
+  /**
+    * Function to capture feature selection essentially. A predicate function
+    * is passed in to inform feature transforms what should not be kept.
+    *
+    * Implementation of TerminableTransformer method
+    *
+    * @param transform
+    */
+  def prune(transform: (Int) => Boolean): Unit = { }
+
+  /** Returns the original feature corresponding to a dimension index
+    *
+    * For TerminableTransformer implementations where unique features are
+    * mapped to specific dimensions in the output feature vector, this method
+    * should perform the inverse transformation, returning the original
+    * Feature for a specific dimension. This can be used to perform model
+    * introspection and report the significant predictive features for a
+    * predictive operation.
+    *
+    * Returns None if it is not possible to determine the Feature for the
+    * provided index.
+    *
+    * @param index index of a dimension in the output vector to invert
+    * @return the Feature corresponding to that index, or None
+    */
+  def getFeatureByIndex(index: Int): Option[Feature[_]] = None
 
 }
 

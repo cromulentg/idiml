@@ -1,7 +1,10 @@
 package com.idibon.ml.feature.word2vec
 
+
 import scala.collection.mutable.HashMap
 
+import com.idibon.ml.feature.{Feature, StringFeature}
+import com.idibon.ml.feature.bagofwords.{Word}
 import com.idibon.ml.alloy.{MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.common.EmbeddedEngine
 import org.apache.spark.mllib.linalg._
@@ -44,11 +47,11 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
       val zeroVector = Vectors.sparse(100, Array.empty[Int], Array.empty[Double])
 
       it("should return an empty sparse vector of size 100 on empty input with type "+modelType) {
-        transform(Seq[String]()) shouldBe zeroVector
+        transform(Seq[Feature[Word]]()) shouldBe zeroVector
       }
 
       it("should return a vector of non-zero floats with a single word input with type "+modelType) {
-        val oneWordSeq = Seq[String]("anarchist")
+        val oneWordSeq = Seq(Word("anarchist"))
         val outputVector = transform(oneWordSeq)
         outputVector should have size 100
         for (elem <- outputVector.toArray)
@@ -56,7 +59,7 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
       }
 
       it("should return a vector of non-zero floats with a multi-word input with type "+modelType) {
-        val multiwordSeq = Seq[String]("kropotkin", "is", "considered", "an", "anarchist")
+        val multiwordSeq = Seq[Feature[Word]](Word("kropotkin"),Word("is"),Word("considered"),Word("an"),Word("anarchist"))
         val outputVector = transform(multiwordSeq).toArray
         outputVector should have size 100
         for (elem <- outputVector.toArray) {
@@ -65,7 +68,7 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
       }
 
       it("should return an empty sparse vector on out-of-vocabulary input with type "+modelType) {
-        val OOVSeq = Seq[String]("batman")
+        val OOVSeq = Seq[Feature[Word]](Word("batman"))
         transform(OOVSeq) shouldBe zeroVector
       }
     }
