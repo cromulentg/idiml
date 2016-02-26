@@ -163,7 +163,8 @@ object Predict extends Tool with StrictLogging {
       resultsThread.join
       output.close
       val elapsed = System.currentTimeMillis() - start
-      logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}s")
+      val rate = processed.get / (elapsed / 1000.0f)
+      logger.info(s"Processed ${processed.get} items in ${elapsed / 1000.0f}secs. Rate: " + f"$rate%1.9f items/sec")
     }
   }
 
