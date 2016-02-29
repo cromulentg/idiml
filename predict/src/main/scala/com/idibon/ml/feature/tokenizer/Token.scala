@@ -65,7 +65,9 @@ package com.idibon.ml.feature.tokenizer {
       Codec.VLuint.write(output, length)
     }
 
-    def getAsString: Option[String] = ???
+    def getAsString: Option[String] = {
+      Some(s"${this.content} (${this.offset}, ${this.length})")
+    }
   }
 
   class TokenBuilder extends Builder[Token] {

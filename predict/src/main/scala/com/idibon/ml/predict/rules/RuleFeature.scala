@@ -6,5 +6,5 @@ import com.idibon.ml.feature.Feature
 case class RuleFeature(phrase: String) extends Feature[String] {
   def get = phrase
 
-  def getAsString: Option[String] = ???
+  def getAsString: Option[String] = Some(this.get)
 }
