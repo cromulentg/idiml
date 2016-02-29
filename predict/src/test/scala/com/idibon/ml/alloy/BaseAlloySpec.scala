@@ -1,19 +1,21 @@
 package com.idibon.ml.alloy
 
 import java.io._
+import java.util.UUID
 import com.idibon.ml.predict._
 import com.idibon.ml.common._
-import com.idibon.ml.feature.{Buildable, FeatureInputStream, FeatureOutputStream}
+import com.idibon.ml.feature.{Feature, Buildable, FeatureInputStream, FeatureOutputStream}
 import com.idibon.ml.feature.bagofwords.Word
-import com.idibon.ml.predict.ml.TrainingSummary
+import com.idibon.ml.predict.ml.{MLModel, TrainingSummary}
 import com.idibon.ml.predict.ml.metrics._
+import org.apache.spark.mllib.linalg
 
 import org.scalatest._
 import org.json4s._
 import org.json4s.JsonDSL._
 import scala.collection.mutable.HashMap
 
-class BaseAlloySpec extends FunSpec with Matchers {
+class BaseAlloySpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe(".load") {
 
@@ -140,6 +142,62 @@ class BaseAlloySpec extends FunSpec with Matchers {
       archive.get(HasTrainingSummary.TRAINING_SUMMARY_RESOURCE) shouldBe None
       val reader = new MemoryAlloyReader(archive.toMap)
       HasTrainingSummary.get(reader) shouldBe Seq()
+    }
+  }
+
+  describe("Get suggestedThresholds tests") {
+    var labels = Seq[Label]()
+    before {
+      labels = Seq(
+        new Label(UUID.randomUUID(), "test1"),
+        new Label(UUID.randomUUID(), "test2")
+      )
+    }
+
+    it("works on empty models") {
+      val ba = new BaseAlloy[Classification]("test", labels, Map())
+      val actual = ba.getSuggestedThresholds()
+      actual.isEmpty() shouldBe true
+    }
+
+    it("works on models with empty training summaries") {
+      val models = Map(labels.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null),
+        labels.tail.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null))
+
+      val ba = new BaseAlloy[Classification]("test", labels, models)
+      val actual = ba.getSuggestedThresholds()
+      actual.isEmpty() shouldBe true
+    }
+
+    it("handles partial f1 thresholds being provided") {
+      val models = Map(labels.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null) {
+        override val trainingSummary = Some(Seq(new TrainingSummary(labels.head.uuid.toString(),
+          Seq(new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, 0.4f)))))
+      }, labels.tail.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null) {
+        override val trainingSummary = Some(Seq(new TrainingSummary(labels.tail.head.uuid.toString(),
+          Seq(new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.2f)))))
+      })
+      val ba = new BaseAlloy[Classification]("test", labels, models)
+      val actual = ba.getSuggestedThresholds()
+      actual.size() shouldBe 1
+      actual.get(labels.head) shouldBe 0.4f
+    }
+
+    it("it handles all f1 thresholds being provided") {
+      val models = Map(labels.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null) {
+        override val trainingSummary = Some(Seq(new TrainingSummary(labels.head.uuid.toString(),
+          Seq(new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, 0.4f),
+            new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.5f)))))
+      }, labels.tail.head.uuid.toString() -> new DummyClassificationModel(null, 0.0f, null) {
+        override val trainingSummary = Some(Seq(new TrainingSummary(labels.tail.head.uuid.toString(),
+          Seq(new FloatMetric(MetricTypes.BestF1Threshold, MetricClass.Binary, 0.23f),
+            new FloatMetric(MetricTypes.Accuracy, MetricClass.Binary, 0.2f)))))
+      })
+      val ba = new BaseAlloy[Classification]("test", labels, models)
+      val actual = ba.getSuggestedThresholds()
+      actual.size() shouldBe 2
+      actual.get(labels.head) shouldBe 0.4f
+      actual.get(labels.tail.head) shouldBe 0.23f
     }
   }
 
