@@ -13,7 +13,7 @@ class FeatureSpec extends FunSpec with Matchers {
 
     sFeatureHello.get shouldBe "hello"
     sFeatureWorld.get shouldBe "world"
-    sFeatureHello.getAsString shouldBe Some("hello")
-    sFeatureWorld.getAsString shouldBe Some("world")
+    sFeatureHello.getHumanReadableString shouldBe Some("hello")
+    sFeatureWorld.getHumanReadableString shouldBe Some("world")
   }
 }

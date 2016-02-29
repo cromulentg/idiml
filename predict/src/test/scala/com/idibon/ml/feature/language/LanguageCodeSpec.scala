@@ -13,12 +13,12 @@ class LanguageCodeSpec extends FunSpec with Matchers with BeforeAndAfter {
       languageCodeDeu.get shouldBe LanguageCode(Some("deu"))
     }
 
-    it("LanguageCode.getAsString should output human-readable strings") {
+    it("LanguageCode.getHumanReadableString should output human-readable strings") {
       val languageCodeEng = new LanguageCode(Some("eng"))
       val languageCodeDeu = new LanguageCode(Some("deu"))
 
-      languageCodeEng.getAsString shouldBe Some("eng")
-      languageCodeDeu.getAsString shouldBe Some("deu")
+      languageCodeEng.getHumanReadableString shouldBe Some("eng")
+      languageCodeDeu.getHumanReadableString shouldBe Some("deu")
     }
   }
 }

@@ -103,7 +103,7 @@ object Predict extends Tool with StrictLogging {
               val outputCols = if (includeFeatures) {
                 sortedPredictions.map(_.map(p => {
                   List(p.probability, p.significantFeatures.map(f => {
-                    f._1.getAsString match {
+                    f._1.getHumanReadableString match {
                       case Some(feat) => feat
                       case None => ""
                     }

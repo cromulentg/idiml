@@ -23,13 +23,8 @@ case class ContentType(code: ContentTypeCode.Value) extends Feature[ContentType]
     Codec.VLuint.write(output, code.id)
   }
 
-  def getAsString: Option[String] = {
-    val contentTypeCodeString = this.code match {
-      case ContentTypeCode.HTML => "HTML"
-      case ContentTypeCode.PlainText => "PlainText"
-      case ContentTypeCode.XML => "XML"
-    }
-    Some(contentTypeCodeString)
+  def getHumanReadableString: Option[String] = {
+    Some(this.code.toString())
   }
 }
 

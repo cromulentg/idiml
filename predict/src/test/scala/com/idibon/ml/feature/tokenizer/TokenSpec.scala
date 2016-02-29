@@ -46,12 +46,12 @@ class TokenSpec extends FunSpec with Matchers {
       tokenWorld.get shouldBe Token("World", Tag.Word, 0, 0)
     }
 
-    it("Token.getAsString should output human-readable strings") {
+    it("Token.getHumanReadableString should output human-readable strings") {
       val tokenHello = new Token("Hello", Tag.Word, 0, 0)
       val tokenWorld = new Token("World", Tag.Word, 0, 0)
 
-      tokenHello.getAsString shouldBe Some("Hello (0, 0)")
-      tokenWorld.getAsString shouldBe Some("World (0, 0)")
+      tokenHello.getHumanReadableString shouldBe Some("Hello (0, 0)")
+      tokenWorld.getHumanReadableString shouldBe Some("World (0, 0)")
     }
   }
 }

@@ -280,12 +280,12 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       ruleFeatureWorld.get shouldBe "World"
     }
 
-    it("RuleFeature.getAsString should output human-readable strings") {
+    it("RuleFeature.getHumanReadableString should output human-readable strings") {
       val ruleFeatureHello = new RuleFeature("Hello")
       val ruleFeatureWorld = new RuleFeature("World")
 
-      ruleFeatureHello.getAsString shouldBe Some("Hello")
-      ruleFeatureWorld.getAsString shouldBe Some("World")
+      ruleFeatureHello.getHumanReadableString shouldBe Some("Hello")
+      ruleFeatureWorld.getHumanReadableString shouldBe Some("World")
     }
   }
 

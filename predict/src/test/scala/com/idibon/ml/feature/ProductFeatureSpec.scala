@@ -17,7 +17,7 @@ class ProductFeatureSpec extends FunSpec with Matchers {
       new StringFeature("furiously"))
     val pFeature = new ProductFeature(features)
 
-    pFeature.getAsString shouldBe Some("colorless green ideas sleep furiously")
+    pFeature.getHumanReadableString shouldBe Some("colorless green ideas sleep furiously")
   }
 
   it("should return None if any feature is None") {
@@ -26,6 +26,6 @@ class ProductFeatureSpec extends FunSpec with Matchers {
       new StringFeature("ideas"), Shape("Cc"), new StringFeature("furiously"))
     val pFeature = new ProductFeature(featureList)
 
-    pFeature.getAsString shouldBe None
+    pFeature.getHumanReadableString shouldBe None
   }
 }

@@ -13,12 +13,12 @@ class WordSpec extends FunSpec with Matchers with BeforeAndAfter {
       wordFeatureWorld.get shouldBe Word("world!")
     }
 
-    it("Word.getAsString should output human-readable strings") {
+    it("Word.getHumanReadableString should output human-readable strings") {
       val wordFeatureHello = new Word("Hello")
       val wordFeatureWorld = new Word("world!")
 
-      wordFeatureHello.getAsString shouldBe Some("Hello")
-      wordFeatureWorld.getAsString shouldBe Some("world!")
+      wordFeatureHello.getHumanReadableString shouldBe Some("Hello")
+      wordFeatureWorld.getHumanReadableString shouldBe Some("world!")
     }
   }
 }

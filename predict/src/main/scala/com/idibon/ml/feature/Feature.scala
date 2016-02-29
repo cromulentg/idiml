@@ -22,7 +22,7 @@ trait Feature[T] {
   def get: T
 
   /** Returns a human-readable version of the significant features **/
-  def getAsString: Option[String]
+  def getHumanReadableString: Option[String]
 }
 
 /** Simple feature representing raw string text.
@@ -39,7 +39,7 @@ case class StringFeature(value: String) extends Feature[String]
     Codec.String.write(output, value)
   }
 
-  def getAsString : Option[String] = {
+  def getHumanReadableString : Option[String] = {
     value match {
       case null => None
       case s => Some(s)

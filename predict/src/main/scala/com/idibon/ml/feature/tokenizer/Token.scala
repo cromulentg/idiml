@@ -65,7 +65,7 @@ package com.idibon.ml.feature.tokenizer {
       Codec.VLuint.write(output, length)
     }
 
-    def getAsString: Option[String] = {
+    def getHumanReadableString: Option[String] = {
       Some(s"${this.content} (${this.offset}, ${this.length})")
     }
   }

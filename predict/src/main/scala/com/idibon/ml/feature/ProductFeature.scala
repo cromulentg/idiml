@@ -24,11 +24,11 @@ case class ProductFeature(features: Seq[Feature[_]])
     })
   }
 
-  def getAsString: Option[String] = {
+  def getHumanReadableString: Option[String] = {
     val buf = new StringBuilder
     var noneFlag : Boolean = false
 
-    this.features.foreach(f => f.getAsString match {
+    this.features.foreach(f => f.getHumanReadableString match {
       case Some(featureString) => {
         // Separate from previous feature with a space
         if (buf.length > 0)
