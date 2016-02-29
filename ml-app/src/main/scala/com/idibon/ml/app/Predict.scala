@@ -102,7 +102,12 @@ object Predict extends Tool with StrictLogging {
               val sortedPredictions = labels.map(l => predictionByLabel.get(l.uuid.toString))
               val outputCols = if (includeFeatures) {
                 sortedPredictions.map(_.map(p => {
-                  List(p.probability, p.significantFeatures.map(_._1))
+                  List(p.probability, p.significantFeatures.map(f => {
+                    f._1.getHumanReadableString match {
+                      case Some(feat) => feat
+                      case None => ""
+                    }
+                  }))
                 }).getOrElse(List(0.0f, List()))).reduce(_ ++ _)
               } else {
                 sortedPredictions.map(_.map(_.probability).getOrElse(0.0f))

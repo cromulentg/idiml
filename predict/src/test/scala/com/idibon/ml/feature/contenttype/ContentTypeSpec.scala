@@ -28,4 +28,27 @@ class ContentTypeSpec extends FunSpec with Matchers {
       builder.build(inputStream(arr)) shouldBe ContentType(ContentTypeCode.XML)
     }
   }
+
+  describe("get") {
+
+    it("ContentType.get should output the full feature") {
+      val contentTypeHTML = new ContentType(ContentTypeCode.HTML)
+      val contentTypePlainText = new ContentType(ContentTypeCode.PlainText)
+      val contentTypeXML = new ContentType(ContentTypeCode.XML)
+
+      contentTypeHTML.get shouldBe ContentType(ContentTypeCode.HTML)
+      contentTypePlainText.get shouldBe ContentType(ContentTypeCode.PlainText)
+      contentTypeXML.get shouldBe ContentType(ContentTypeCode.XML)
+    }
+
+    it("ContentType.getHumanReadableString should output human-readable strings") {
+      val contentTypeHTML = new ContentType(ContentTypeCode.HTML)
+      val contentTypePlainText = new ContentType(ContentTypeCode.PlainText)
+      val contentTypeXML = new ContentType(ContentTypeCode.XML)
+
+      contentTypeHTML.getHumanReadableString shouldBe Some("HTML")
+      contentTypePlainText.getHumanReadableString shouldBe Some("PlainText")
+      contentTypeXML.getHumanReadableString shouldBe Some("XML")
+    }
+  }
 }

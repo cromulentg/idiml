@@ -24,6 +24,8 @@ case class LanguageCode(iso_639_2: Option[String])
     Codec.String.write(output, iso_639_2.getOrElse(""))
   }
 
+  def getHumanReadableString: Option[String] = this.iso_639_2
+
   /** An ICU4J ULocale representation of the language code */
   val icuLocale: Option[ULocale] = iso_639_2.map(code => {
     val locale = ULocale.forLanguageTag(code)

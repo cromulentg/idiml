@@ -15,6 +15,8 @@ case class Shape(shape: String) extends Feature[Shape]
   override def save(output: FeatureOutputStream): Unit = {
     Codec.String.write(output, shape)
   }
+
+  def getHumanReadableString: Option[String] = None
 }
 
 class ShapeBuilder extends Builder[Shape] {

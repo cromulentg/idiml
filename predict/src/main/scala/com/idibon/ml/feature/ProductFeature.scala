@@ -23,6 +23,29 @@ case class ProductFeature(features: Seq[Feature[_]])
       }
     })
   }
+
+  def getHumanReadableString: Option[String] = {
+    val buf = new StringBuilder
+    var noneFlag : Boolean = false
+
+    this.features.foreach(f => f.getHumanReadableString match {
+      case Some(featureString) => {
+        // Separate from previous feature with a space
+        if (buf.length > 0)
+          buf += ' '
+
+        buf ++= featureString
+      }
+      case None => noneFlag = true
+    })
+
+    if (noneFlag)
+      None
+    else if (buf.length > 0)
+      Some(buf.toString())
+    else
+      None
+  }
 }
 
 object ProductFeature {

@@ -64,6 +64,10 @@ package com.idibon.ml.feature.tokenizer {
       Codec.VLuint.write(output, offset)
       Codec.VLuint.write(output, length)
     }
+
+    def getHumanReadableString: Option[String] = {
+      Some(s"${this.content} (${this.offset}, ${this.length})")
+    }
   }
 
   class TokenBuilder extends Builder[Token] {

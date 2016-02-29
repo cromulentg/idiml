@@ -271,4 +271,22 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
   }
 
+  describe("get") {
+    it("RuleFeature.get should output the rule string") {
+      val ruleFeatureHello = new RuleFeature("Hello")
+      val ruleFeatureWorld = new RuleFeature("World")
+
+      ruleFeatureHello.get shouldBe "Hello"
+      ruleFeatureWorld.get shouldBe "World"
+    }
+
+    it("RuleFeature.getHumanReadableString should output human-readable strings") {
+      val ruleFeatureHello = new RuleFeature("Hello")
+      val ruleFeatureWorld = new RuleFeature("World")
+
+      ruleFeatureHello.getHumanReadableString shouldBe Some("Hello")
+      ruleFeatureWorld.getHumanReadableString shouldBe Some("World")
+    }
+  }
+
 }
