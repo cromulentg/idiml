@@ -20,23 +20,33 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
 
   val engine = new EmbeddedEngine
 
+  /**
+    * Uses numSlices = 4 to always partition the data into four sets.
+    * This is needed because by default, when run locally, it defaults
+    * to partitioning to the number of cores. The sample method, as I
+    * understand, samples on a per partition basis. Since testing
+    * and the like happens on various machines, it would result in a
+    * different amount of partitions (since the number of cores isn't
+    * fixed) and so, with fluctuating partitions, you will get different
+    * results and hence failing tests; therefore we hard code it.
+    */
   describe("BalancedBinaryScale") {
 
-    ignore("should balance a dataset with too many negatives") {
+    it("should balance a dataset with too many negatives") {
       val gen = new BalancedBinaryScaleBuilder(seed = 1L).build()
       val negatives = (0 until 10).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(x.toFloat, 1.0, 1.0))))
       val positives = (0 until 2).map(x => LabeledPoint(1.0, Vectors.sparse(5, Array(1, 2, 3), Array(x.toFloat, 1.0, 1.0))))
-      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives))
+      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives, numSlices = 4))
       actual.count() shouldBe 5
       actual.filter(l => l.label == 0.0).count() shouldBe 3
       actual.filter(l => l.label == 1.0).count() shouldBe 2
     }
 
-    ignore("should balance a dataset with too many positives") {
+    it("should balance a dataset with too many positives") {
       val gen = new BalancedBinaryScaleBuilder(seed = 1L).build()
       val negatives = (0 until 2).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
       val positives = (0 until 10).map(x => LabeledPoint(1.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
-      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives))
+      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives, numSlices = 4))
       actual.count() shouldBe 5
       actual.filter(l => l.label == 0.0).count() shouldBe 2
       actual.filter(l => l.label == 1.0).count() shouldBe 3
@@ -46,7 +56,7 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
       val gen = new BalancedBinaryScaleBuilder(seed = 1L).build()
       val negatives = (0 until 10).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
       val positives = (0 until 7).map(x => LabeledPoint(1.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
-      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives))
+      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives ++ positives, numSlices = 4))
       actual.count() shouldBe 17
       actual.filter(l => l.label == 0.0).count() shouldBe 10
       actual.filter(l => l.label == 1.0).count() shouldBe 7
@@ -55,7 +65,7 @@ class BalancedBinaryScaleSpec extends FunSpec with Matchers
     it("should not do anything to a dataset with wrong number of `classes`") {
       val gen = new BalancedBinaryScaleBuilder(seed = 1L).build()
       val negatives = (0 until 10).map(x => LabeledPoint(0.0, Vectors.sparse(5, Array(1, 2, 3), Array(1.0, 1.0, 1.0))))
-      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives))
+      val actual = gen.balance("testLabel", engine.sparkContext.parallelize(negatives, numSlices = 4))
       actual.count() shouldBe 10
       actual.filter(l => l.label == 0.0).count() shouldBe 10
     }
