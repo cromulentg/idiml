@@ -243,6 +243,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     it("should call load on archivable transforms") {
       val dummyAlloy = createMockReader
       val json = """{
+"version":"0.0.1",
 "transforms":[
   {"name":"A","class":"com.idibon.ml.feature.ArchivableTransform"},
   {"name":"B","class":"com.idibon.ml.feature.ArchivableTransform",
@@ -264,14 +265,17 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     it("should log an error if the output is not a Vector") {
       loadFeaturePipelineJson("""{
+"version":"0.0.1",
 "transforms":[{"name":"A","class":"com.idibon.ml.feature.NonVectorTerminator"}],
 "pipeline":[{"name":"A","inputs":["$document"]},
             {"name":"$output","inputs":["A"]}]}""")
       loggedMessages should include regex "\\[<undefined>/A\\] - possible invalid output"
     }
 
-    it("should log a warning if a reserved name is used") {
-      loadFeaturePipelineJson("""{
+    it("should raise an exception if a reserved name is used") {
+      intercept[IllegalArgumentException] {
+        loadFeaturePipelineJson("""{
+"version":"0.0.1",
 "transforms":[
   {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
   {"name":"$featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],
@@ -280,7 +284,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"$featureVector","inputs":["contentExtractor"]},
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
-      loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
+      }
     }
 
     it("should generate a callable graph") {

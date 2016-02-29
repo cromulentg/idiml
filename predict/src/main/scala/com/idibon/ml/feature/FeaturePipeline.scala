@@ -76,7 +76,7 @@ class FeaturePipeline(
     /* the intermediate data passed between pipeline stages; initialize
          * with the document under the reserved name "$document" */
     val intermediates = mutable.Map[String, Any](
-      FeaturePipeline.DocumentInput -> document
+      FeatureGraph.DocumentInput -> document
     )
     this.state.graph(intermediates)
   }
@@ -91,7 +91,7 @@ class FeaturePipeline(
     // apply the feature pipeline to the document
     val computedVectors = applyFeatureGraph(document)
     // get vectors that have been output by the output stage.
-    val vec = computedVectors(FeaturePipeline.OutputStage).asInstanceOf[Seq[Vector]]
+    val vec = computedVectors(FeatureGraph.OutputStage).asInstanceOf[Seq[Vector]]
     // Need to create a sparse vector which is a concatenation of all output vectors
     concatenateVectors(vec)
   }
@@ -147,28 +147,7 @@ class FeaturePipeline(
     * See {@link com.idibon.ml.common.Archivable}
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
-    Some(JObject(List(
-      JField("version", JString(FeaturePipeline.SchemaVersion)),
-      JField("transforms",
-        JArray(this.state.transforms.map({ case (name, xf) => {
-          // create the serialized TransformEntry representation
-          JObject(List(
-            JField("name", JString(name)),
-            JField("class", JString(xf.getClass.getName)),
-            JField("config",
-              Archivable.save(xf, writer.within(name)).getOrElse(JNothing))
-          ))
-        }
-        }).toList)),
-      JField("pipeline",
-        JArray(this.state.pipeline.map(pipe => {
-          // construct an entry in the "pipeline" array for each PipelineEntry
-          JObject(List(
-            JField("name", JString(pipe.name)),
-            JField("inputs", JArray(pipe.inputs.map(i => JString(i))))
-          ))
-        }).toList))
-    )))
+    FeatureGraph.saveGraph(writer, this.state.transforms, this.state.pipeline)
   }
 
   /**
@@ -266,7 +245,9 @@ class FeaturePipeline(
 }
 
 /** Paired loader class for FeaturePipeline instances */
-class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
+class FeaturePipelineLoader
+    extends ArchiveLoader[FeaturePipeline]
+    with FeatureGraphLoader {
   /** Load the FeaturePipeline from the Alloy
     *
     * See {@link com.idibon.ml.feature.FeaturePipeline}
@@ -278,22 +259,10 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
     * @return this
     */
   def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): FeaturePipeline = {
-    // configure format converters for json4s
-    implicit val formats = DefaultFormats
-
     FeaturePipeline.logger.trace(s"[$this] loading")
 
-    val xfJson = (config.get \ "transforms").extract[List[TransformEntry]]
-    val pipeJson = (config.get \ "pipeline").extract[List[PipelineEntry]]
-
-    /* instantiate all of the transformers and pass any configuration data
-     * to them, generating a map of the transform name to the reified
-     * transformer object. */
-    val transforms = xfJson.map(obj => {
-      FeaturePipeline.checkTransformerName(obj.name)
-      val resourceReader = if (reader.isDefined) Some(reader.get.within(obj.name)) else None
-      (obj.name -> reify(engine, resourceReader, obj))
-    }).toMap
+    val transforms = loadTransformers(engine, reader, config)
+    val pipeJson = loadPipelineEntries(config)
 
     val pipeline = FeaturePipeline.bind(transforms, pipeJson)
     reader match {
@@ -303,34 +272,10 @@ class FeaturePipelineLoader extends ArchiveLoader[FeaturePipeline] {
       case None => pipeline
     }
   }
-
-
-  /** Reifies a single FeatureTransformer
-    *
-    * Instantiates and, for Archivable objects, loads, the FeatureTransformer
-    * represented by transformDef.
-    *
-    * @param reader        an Alloy.Reader configured for loading all of the
-    *                      resources for this FeatureTransformer
-    * @param entry  the instance information for this transform -
-    *               name, class and optional configuration information.
-    * @return   tuple of the transformer name and the reified object
-    */
-  private def reify(engine: Engine, reader: Option[Alloy.Reader], entry: TransformEntry):
-  FeatureTransformer = {
-
-    val transformClass = Class.forName(entry.`class`)
-    ArchiveLoader
-      .reify[FeatureTransformer](transformClass, engine, reader, entry.config)
-      .getOrElse(transformClass.newInstance.asInstanceOf[FeatureTransformer])
-  }
 }
 
 private[feature] object FeaturePipeline {
-  val OutputStage = "$output"
-  val DocumentInput = "$document"
   val DefaultName = "<undefined>"
-  val SchemaVersion = "0.0.1"
 
   val logger = Logger(org.slf4j.LoggerFactory
     .getLogger(classOf[FeaturePipeline]))
@@ -352,16 +297,6 @@ private[feature] object FeaturePipeline {
     new FeaturePipeline(new LoadState(graph, pipeline, transforms), None)
   }
 
-
-  /** Tests if a user-provided name uses a reserved sequence.
-    *
-    * @param name string to check
-    * @return true if the name uses reserved characters, otherwise false
-    */
-  def checkTransformerName(name: String, pipelineName: String = DefaultName) {
-    if (name.charAt(0) == '$')
-      logger.warn(s"[$pipelineName/$name] - using reserved name")
-  }
 
   /** Validates and generates a bound, callable feature pipeline
     *
@@ -394,7 +329,7 @@ private[feature] object FeaturePipeline {
     entries: Seq[PipelineEntry]):
       Seq[(String, FeatureTransformer)] = {
 
-    entries.find(_.name == FeaturePipeline.OutputStage)
+    entries.find(_.name == FeatureGraph.OutputStage)
       .get.inputs.map(name => (name, transforms(name)))
   }
 
@@ -405,13 +340,6 @@ private[this] case class LoadState(graph: FeatureGraph,
   pipeline: Seq[PipelineEntry],
   transforms: Map[String, FeatureTransformer])
 
-
-// Schema for each entry within the transforms JSON array
-private[feature] case class TransformEntry(name: String, `class`: String,
-                                           config: Option[JObject])
-
-// Schema for each entry within the pipeline JSON array
-private[feature] case class PipelineEntry(name: String, inputs: List[String])
 
 // Schema for a single entry within the pipeline JSON array
 private[feature] case class SinglePipeline(pipeline: Seq[PipelineEntry], transform: Seq[TransformEntry])
