@@ -68,7 +68,7 @@ class FeatureInputStream(in: InputStream) extends DataInputStream(in) {
 
   private[this] val _classNameCache = HashMap[Int, Builder[Buildable[_, _]]]()
 
-  def readBuildable: Buildable[_, _] = {
+  def readBuildable(): Buildable[_, _] = {
     val builder = readByte match {
       case cached if cached < 0 => _classNameCache(128 + cached)
       case uncached => {
@@ -88,7 +88,7 @@ class FeatureInputStream(in: InputStream) extends DataInputStream(in) {
     *
     * @return - the loaded feature
     */
-  def readFeature: Feature[_] = {
+  def readFeature(): Feature[_] = {
     this.readBuildable.asInstanceOf[Feature[_]]
   }
 }

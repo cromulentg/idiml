@@ -21,7 +21,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
   var transform: IndexTransformer = null
 
   before {
-    transform = new IndexTransformer(0)
+    transform = new IndexTransformer(new MutableVocabulary())
   }
 
   describe("Indexer") {
@@ -123,7 +123,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       val transform2 = (new IndexTransformLoader).load(
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
 
-      transform.getFeatureIndex shouldBe transform2.getFeatureIndex
+      transform.vocabulary shouldBe transform2.vocabulary
     }
 
     it("should give the same result after applying twice") {
@@ -183,7 +183,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
     it("should work on empty index") {
       transform.prune(predicate1)
-      transform.getFeatureIndex.isEmpty shouldBe true
+      transform.vocabulary.assigned shouldBe 0
     }
     it("should work on non-empty index where they are used and thus should not be removed") {
       val fiveTokens = Seq[Feature[Token]](
@@ -192,7 +192,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("furiously", Tag.Word, 1, 1))
       transform.apply(fiveTokens)
       transform.prune(predicate1)
-      transform.getFeatureIndex.size shouldBe 5
+      transform.vocabulary.assigned shouldBe 5
     }
     it("should work on non-empty index where some indexes are not used and thus should be removed") {
       val fiveTokens = Seq[Feature[Token]](
@@ -202,9 +202,9 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.apply(fiveTokens)
       transform.numDimensions shouldBe Some(5)
       transform.prune(predicate2)
-      transform.numDimensions shouldBe Some(1)
-      transform.getFeatureIndex.size shouldBe 1
-      transform.getFeatureIndex.getOrElse(fiveTokens(4), 0) shouldBe 4
+      transform.numDimensions shouldBe Some(5)
+      transform.vocabulary.assigned shouldBe 1
+      transform.vocabulary(fiveTokens(4)) shouldBe 4
     }
     it("should keep the original size once frozen and then pruned") {
       val fiveTokens = Seq[Feature[Token]](
@@ -216,8 +216,8 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       transform.freeze()
       transform.prune(predicate2)
       transform.numDimensions shouldBe Some(5)
-      transform.getFeatureIndex.size shouldBe 1
-      transform.getFeatureIndex.getOrElse(fiveTokens(4), 0) shouldBe 4
+      transform.vocabulary.assigned shouldBe 1
+      transform.vocabulary(fiveTokens(4)) shouldBe 4
       transform.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
@@ -239,7 +239,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       val transform2 = (new IndexTransformLoader).load(
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.numDimensions shouldBe Some(5)
-      transform.getFeatureIndex shouldBe transform2.getFeatureIndex
+      transform.vocabulary shouldBe transform2.vocabulary
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
@@ -262,7 +262,7 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.freeze()
       transform2.numDimensions shouldBe Some(5)
-      transform.getFeatureIndex shouldBe transform2.getFeatureIndex
+      transform.vocabulary shouldBe transform2.vocabulary
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
@@ -314,7 +314,9 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe("with minimum observations = 2") {
     it ("should require at least 2 observations before adding to vocabulary") {
-      val index = new IndexTransformer(2)
+      val vocab = new MutableVocabulary()
+      vocab.minimumObservations = 2
+      val index = new IndexTransformer(vocab)
       val initial = index(Seq(Word("foo"), Word("bar"), Word("hello"), Word("world")))
       initial shouldBe Vectors.zeros(0)
       val repeated = index(Seq(Word("bar"), Word("foobar"), Word("foobar"),
@@ -323,7 +325,6 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       index.getFeatureByIndex(0) shouldBe Some(Word("bar"))
       index.getFeatureByIndex(1) shouldBe Some(Word("foobar"))
       index.getFeatureByIndex(2) shouldBe Some(Word("world"))
-      index.observations shouldBe Map(Word("foo") -> 1, Word("hello") -> 1)
     }
   }
 }
