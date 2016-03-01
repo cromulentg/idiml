@@ -20,7 +20,7 @@ package com.idibon.ml.feature {
     def :=(outputNames: String*): FeaturePipeline = {
       val transforms = _entries.map(e => (e.name -> e.transformer)).toMap
       val pipeline = (_entries.map(e => new PipelineEntry(e.name, e.inputs))
-        :+ (new PipelineEntry(FeaturePipeline.OutputStage, outputNames.toList)))
+        :+ (new PipelineEntry(FeatureGraph.OutputStage, outputNames.toList)))
 
       FeaturePipeline.bind(transforms, pipeline)
     }

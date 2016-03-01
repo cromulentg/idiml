@@ -4,8 +4,10 @@ import scala.collection.mutable
 import scala.reflect.runtime.universe.{MethodMirror, Type, typeOf, TypeTag}
 
 import com.idibon.ml.common.Reflect._
+import com.idibon.ml.common.{Archivable, Engine}
+import com.idibon.ml.alloy.Alloy
 
-import org.json4s.JObject
+import org.json4s._
 
 /** Bound, callable graph of feature transformers
   *
@@ -44,6 +46,17 @@ private[feature] class FeatureGraph(val name: String,
   */
 private[feature] object FeatureGraph {
 
+  /** Schema used for feature graphs in initial release. */
+  val SchemaVersion_001 = "0.0.1"
+  /** Current version of the graph JSON and alloy schema */
+  val SchemaVersion = SchemaVersion_001
+  /** Stage name for the results of the graph transformation */
+  val OutputStage = "$output"
+  /** Reserved name for the input document, must be of type JObject */
+  val DocumentInput = "$document"
+  /** Reserved name for the tokenized sequence, of type Chain[Token] */
+  val SequenceInput = "$sequence"
+
   // borrow the FeaturePipeline's logger, rather than creating yet another
   private [this] val logger = FeaturePipeline.logger
 
@@ -75,7 +88,7 @@ private[feature] object FeatureGraph {
 
     /* for "$output", return a function that concatenates the named
      * inputs into a Seq */
-    case FeaturePipeline.OutputStage => {
+    case OutputStage => {
       /* at least one input to the $output stage must exist for the
        * pipeline to validate. */
       if (inputNames.isEmpty) {
@@ -149,17 +162,20 @@ private[feature] object FeatureGraph {
     * @param graphName the name of the feature graph
     * @param transforms all of the named transforms in the graph
     * @param entries unordered list of dependencies for each transform
+    * @param initialInputs list of the inputs provided to transforms initially
+    * @return bound FeatureGraph
     */
   def apply[T: TypeTag](graphName: String,
     transforms: Map[String, FeatureTransformer],
-    entries: Seq[PipelineEntry]):
+    entries: Seq[PipelineEntry],
+    initialInputs: Seq[String]):
       FeatureGraph = {
 
     // create a map of transform name to required inputs
     val dependency = entries.map(obj => (obj.name -> obj.inputs)).toMap
 
     // an output stage must be defined
-    if (entries.find(_.name == FeaturePipeline.OutputStage).isEmpty) {
+    if (entries.find(_.name == OutputStage).isEmpty) {
       logger.error(s"[$graphName/$$output]: $$output missing")
       throw new NoSuchElementException("No $output")
     }
@@ -193,10 +209,10 @@ private[feature] object FeatureGraph {
     }
 
     /* track all of the live intermediate values at each stage (initially
-     * seeded by the document itself). this will be compared against the
-     * future needs to produce a set of intermediate values that should
-     * be killed at each processing stage. */
-    val liveList = mutable.Set(FeaturePipeline.DocumentInput)
+     * seeded by the pipeline / sequence generator). this will be compared
+     * against the future needs to produce a set of intermediate values that
+     * should be killed at each processing stage. */
+    val liveList = mutable.Set(initialInputs: _*)
 
     // convert the dependency graph into PipelineStage instances
     val boundGraph = (sortedDependencies zip futureNeeds).map(
@@ -218,8 +234,12 @@ private[feature] object FeatureGraph {
            * expected to be used. inputs named "$input" will just take a JSON
            * object of the document. */
           val inputTypes = inputNames.map(_ match {
-            case FeaturePipeline.DocumentInput => typeOf[JObject]
-            case otherXformer => applyMirrors(otherXformer).symbol.returnType
+            case DocumentInput if initialInputs.contains(DocumentInput) =>
+              typeOf[JObject]
+            case SequenceInput if initialInputs.contains(SequenceInput) =>
+              typeOf[Chain[tokenizer.Token]]
+            case otherXformer =>
+              applyMirrors(otherXformer).symbol.returnType
           })
 
           val bindFunction = thunk[T](graphName, current,
@@ -293,8 +313,8 @@ private[feature] object FeatureGraph {
         }) match {
           // return an immutable copy of the node's transitive dependencies
           case Some(x) => x.toSet
-          // base case handling for initial document input
-          case None if name == FeaturePipeline.DocumentInput => Set()
+          // base case handling for initial document / sequence input
+          case None if name == DocumentInput || name == SequenceInput => Set()
           // or throw an exception if the node doesn't exist
           case _ => throw new NoSuchElementException(name)
         }
@@ -329,5 +349,39 @@ private[feature] object FeatureGraph {
     // add the final stage (should be $output, in well-formed graphs)
     if (!currentStage.isEmpty) stages += currentStage.toList
     stages.toList
+  }
+
+  /** Saves a feature graph to an alloy using the default schema
+    *
+    * @param writer writer interface for this graph's namespace
+    * @param transforms all of the transforms in the feature graph
+    * @param pipeline the edges connecting transforms
+    */
+  private[feature] def saveGraph(writer: Alloy.Writer,
+    transforms: Map[String, FeatureTransformer],
+    pipeline: Seq[PipelineEntry]):
+      Option[JObject] = {
+    Some(JObject(List(
+      JField("version", JString(SchemaVersion)),
+      JField("transforms",
+        JArray(transforms.map({ case (name, xf) => {
+          // create the serialized TransformEntry representation
+          JObject(List(
+            JField("name", JString(name)),
+            JField("class", JString(xf.getClass.getName)),
+            JField("config",
+              Archivable.save(xf, writer.within(name)).getOrElse(JNothing))
+          ))
+        }
+        }).toList)),
+      JField("pipeline",
+        JArray(pipeline.map(pipe => {
+          // construct an entry in the "pipeline" array for each PipelineEntry
+          JObject(List(
+            JField("name", JString(pipe.name)),
+            JField("inputs", JArray(pipe.inputs.map(i => JString(i))))
+          ))
+        }).toList))
+    )))
   }
 }

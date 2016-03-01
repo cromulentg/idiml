@@ -29,64 +29,28 @@ import org.json4s._
     * @param frozenSize the frozen size - needed incase the index is pruned
     *   once frozen.
     */
-  class IndexTransformer(minimumObservations: Int,
-    private var frozen: Boolean = false,
-    private var frozenSize: Int = 0) extends FeatureTransformer
+  class IndexTransformer(private[indexer] val vocabulary: Vocabulary)
+      extends FeatureTransformer
       with Archivable[IndexTransformer, IndexTransformLoader]
       with TerminableTransformer
       with StrictLogging {
 
-    logger.trace(s"event=new;minimumObservations=$minimumObservations,frozen=$frozen,frozenSize=$frozenSize")
-
-    private[indexer] val featureIndex = scala.collection.mutable.Map[Feature[_], Int]()
-    private[indexer] val observations = scala.collection.mutable.Map[Feature[_], Int]()
-    private[indexer] val inverseIndex = scala.collection.mutable.Map[Int, Feature[_]]()
-
-    def getFeatureIndex = featureIndex
+    def this() {
+      this(new MutableVocabulary())
+    }
 
     def save(writer: Alloy.Writer) = {
       val fos = new FeatureOutputStream(
         writer.resource(IndexTransformer.INDEX_RESOURCE_NAME))
+
       try {
-        // write boolean for frozen
-        fos.writeBoolean(frozen)
-        /* save the dimensionality of the feature index, so that if frozen,
-         * we can create properly sized vectors */
-        Codec.VLuint.write(fos, frozenSize)
-        /* sort the features in order of increasing index, so that we can
-         * delta-encode the indices in the file to take advantage of space
-         * savings from the VLuint data type. if any non-buildable features
-         * are in the index, log an error since these can't be saved */
-        val vocabulary = featureIndex.toSeq
-          .filter(_._1.isInstanceOf[Buildable[_, _]])
-          .map({ case (f, i) => (f.asInstanceOf[Feature[_] with Buildable[_, _]], i) })
-          .sortWith(_._2 < _._2)
-
-        val unsaveable = featureIndex.keys
-          .filter(!_.isInstanceOf[Buildable[_, _]])
-          .map(_.getClass).toList
-          .distinct
-
-        if (!unsaveable.isEmpty)
-          logger.error(s"Unable to save features: ${unsaveable.mkString(", ")}")
-
-        /* Save the size of the vocabulary so we know how many items to read
-         * at load time */
-        Codec.VLuint.write(fos, vocabulary.size)
-        /* store the difference in index value between adjacent indices in the
-         * vocabulary, to bias stored values to smaller values that take better
-         * advantage of the VLuint encoding */
-        var lastIndex = 0
-        vocabulary.foreach({ case (feature, index) => {
-          fos.writeFeature(feature)
-          Codec.VLuint.write(fos, index - lastIndex)
-          lastIndex = index
-        }})
+        vocabulary.save(fos)
       } finally {
         fos.close()
       }
 
-      Some(JObject(List(JField("minimumObservations", JInt(minimumObservations)))))
+      Some(JObject(List(JField("minimumObservations",
+        JInt(vocabulary.minimumObservations)))))
     }
 
     /**
@@ -100,36 +64,8 @@ import org.json4s._
       * @return the current vocabulary size and the index of each feature
       */
     private[indexer] def mapFeaturesToIndices(features: Seq[Feature[_]]): (Int, Seq[Int]) = {
-
-      if (frozen) {
-        (numDimensions.get, features.map(f => featureIndex.getOrElse(f, -1)))
-      } else {
-        // perform all possibly-mutative operations inside a critical section
-        featureIndex.synchronized {
-          /* NB: if a feature transitions from "too few observations" to
-           * "just enough observations" within this loop, we may return
-           * different indices for the same feature in the sequence. this
-           * should be fine, since observation thresholding is a priming-time
-           * operation, anyway */
-          val indices = features.map(f => {
-            if (!featureIndex.contains(f)) {
-              val observed = observations.get(f).getOrElse(0) + 1
-              if (observed >= minimumObservations) {
-                /* the feature has appeared enough times to add to the vocabulary.
-                 * look deep within its soul and assign it a name based on the order
-                 * in which it joined */
-                featureIndex += (f -> featureIndex.size)
-                // no need to remember how many times it's been observed now
-                observations.remove(f)
-              } else {
-                observations += (f -> observed)
-              }
-            }
-            featureIndex.getOrElse(f, -1)
-          })
-          (numDimensions.get, indices)
-        }
-      }
+      val indices = features.map(f => vocabulary(f))
+      (vocabulary.size, indices)
     }
 
     /**
@@ -158,7 +94,7 @@ import org.json4s._
       val newValues = Array.fill[Double](indexValues.length)(0.0)
       var lastIndex = 0
       // skip OOV features
-      var i = indexValues.indexWhere(_ > -1, 0)
+      var i = indexValues.indexWhere(_ > Vocabulary.OOV, 0)
       logger.debug(s"OOV/Pruned features were $i from ${indexValues.length}")
       var j = 0
       // traverse the sorted array of feature index values -- if i == -1 then we're all OOV so skip.
@@ -181,18 +117,14 @@ import org.json4s._
     def apply(features: Seq[Feature[_]]*): Vector = {
       val allFeatures = features.flatten
       if (allFeatures.length < 1)
-        Vectors.zeros(numDimensions.get).toSparse
+        Vectors.zeros(vocabulary.size).toSparse
       else
         getFeatureVector(allFeatures)
     }
 
-    def numDimensions = if (frozen) Some(frozenSize) else Some(featureIndex.size)
+    def numDimensions = Some(vocabulary.size)
 
-    def prune(transform: (Int) => Boolean): Unit = {
-      featureIndex.map(x => {
-        if (transform(x._2)) featureIndex.remove(x._1)
-      })
-    }
+    def prune(transform: (Int) => Boolean) = vocabulary.prune(transform)
 
     /** Retrieves a feature from its index
       *
@@ -200,60 +132,41 @@ import org.json4s._
       * significant features. If no feature exists for the provided
       * index, returns None.
       */
-    def getFeatureByIndex(i: Int): Option[Feature[_]] = {
-      if (inverseIndex.isEmpty)
-        featureIndex.find(_._2 == i).map(_._1)
-      else
-        inverseIndex.get(i)
-    }
+    def getFeatureByIndex(i: Int): Option[Feature[_]] = vocabulary.invert(i)
 
-    def freeze(): Unit = {
-      if (!frozen) {
-        featureIndex.synchronized {
-          frozenSize = featureIndex.size
-          observations.clear
-          frozen = true
-        }
-      }
-    }
+    def freeze() = vocabulary.freeze
   }
 
   /** Paired loader class for IndexTransformer */
   class IndexTransformLoader extends ArchiveLoader[IndexTransformer] {
 
     /** Loads the IndexTransformer from an Alloy */
-    def load(engine: Engine, reader: Option[Alloy.Reader], config: Option[JObject]): IndexTransformer = {
+    def load(engine: Engine, reader: Option[Alloy.Reader],
+      config: Option[JObject]): IndexTransformer = {
+
       val observations = config.map(_ \ "minimumObservations")
         .map(_.asInstanceOf[JInt].num.intValue)
         .getOrElse(0)
 
-      reader match {
-        case None => new IndexTransformer(observations)
+      val vocabulary = reader match {
+        case None => {
+          // when no reader exists, create an empty, mutable vocabulary
+          new MutableVocabulary
+        }
         case Some(reader) => {
+          // otherwise, reload the vocabulary from the alloy
           val fis = new FeatureInputStream(
             reader.resource(IndexTransformer.INDEX_RESOURCE_NAME))
-
-          // read boolean for frozen
-          val frozen = fis.readBoolean()
-          // read int for frozen size
-          val frozenSize = Codec.VLuint.read(fis)
-
-          // Retrieve the number of elements in the featureIndex map
-          val size = Codec.VLuint.read(fis)
-
-          val transformer = new IndexTransformer(observations, frozen, frozenSize)
-
-          var indexValue = 0
-          1 to size foreach { _ =>
-            val feature = fis.readFeature
-            val delta = Codec.VLuint.read(fis)
-            indexValue += delta
-            transformer.featureIndex += (feature -> indexValue)
-            transformer.inverseIndex += (indexValue -> feature)
+          try {
+            Vocabulary.load(fis)
+          } finally {
+            fis.close()
           }
-          transformer
         }
       }
+
+      vocabulary.minimumObservations = observations
+      new IndexTransformer(vocabulary)
     }
   }
 

@@ -38,7 +38,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
   before {
     // Define a pipeline that generates feature vectors
     pipeline = (FeaturePipelineBuilder.named("IntentPipeline")
-      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer(0), "convertToTokens"))
+      += (FeaturePipelineBuilder.entry("convertToIndex", new IndexTransformer, "convertToTokens"))
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))

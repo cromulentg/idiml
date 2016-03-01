@@ -243,6 +243,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
     it("should call load on archivable transforms") {
       val dummyAlloy = createMockReader
       val json = """{
+"version":"0.0.1",
 "transforms":[
   {"name":"A","class":"com.idibon.ml.feature.ArchivableTransform"},
   {"name":"B","class":"com.idibon.ml.feature.ArchivableTransform",
@@ -264,14 +265,17 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
     it("should log an error if the output is not a Vector") {
       loadFeaturePipelineJson("""{
+"version":"0.0.1",
 "transforms":[{"name":"A","class":"com.idibon.ml.feature.NonVectorTerminator"}],
 "pipeline":[{"name":"A","inputs":["$document"]},
             {"name":"$output","inputs":["A"]}]}""")
       loggedMessages should include regex "\\[<undefined>/A\\] - possible invalid output"
     }
 
-    it("should log a warning if a reserved name is used") {
-      loadFeaturePipelineJson("""{
+    it("should raise an exception if a reserved name is used") {
+      intercept[IllegalArgumentException] {
+        loadFeaturePipelineJson("""{
+"version":"0.0.1",
 "transforms":[
   {"name":"contentExtractor","class":"com.idibon.ml.feature.DocumentExtractor"},
   {"name":"$featureVector","class":"com.idibon.ml.feature.FeatureVectors"}],
@@ -280,7 +284,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
   {"name":"$featureVector","inputs":["contentExtractor"]},
   {"name":"contentExtractor","inputs":["$document"]}]
 }""")
-      loggedMessages should include regex "\\[<undefined>/\\$featureVector\\] - using reserved name"
+      }
     }
 
     it("should generate a callable graph") {
@@ -411,7 +415,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
         new PipelineEntry("featureVector", List("contentExtractor"))
       )
 
-      val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
+      val graph = FeatureGraph[Vector]("test", transforms, pipeline,
+        Seq(FeatureGraph.DocumentInput)).graph
       graph.size shouldBe 3
 
       val intermediates = MutableMap[String, Any]()
@@ -427,6 +432,17 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
       intermediates.get("$output") shouldBe
         Some(List(Vectors.dense(11.0), Vectors.dense(3.14159265)))
+    }
+
+    it("should not bind pipelines if initial inputs aren't available") {
+      val transforms = Map("metadata" -> new MetadataNumberExtractor)
+      val pipeline = List(
+        new PipelineEntry("$output", List("metadata")),
+        new PipelineEntry("metadata", List("$document"))
+      )
+      intercept[NoSuchElementException] {
+        FeatureGraph[Vector]("test", transforms, pipeline, Seq())
+      }
     }
 
     it("should support variadic arguments in pipelines") {
@@ -454,7 +470,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       )
 
       pipelines.foreach({ case (expected, pipeline) => {
-        val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
+        val graph = FeatureGraph[Vector]("test", transforms, pipeline,
+          Seq(FeatureGraph.DocumentInput)).graph
         graph.size shouldBe 4
 
         val intermediates = MutableMap[String, Any]()
