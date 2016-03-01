@@ -55,8 +55,8 @@ class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
     // create alloys: fold -> Map(portion -> alloy)
     val foldAlloys = createFoldAlloys(labelsAndRules, config, foldToDataset)
     val defaultThreshold = taskType match {
-      case "classification.single" => 0.5f
-      case "classification.multiple" => 1.0f/labels.size.toFloat
+      case "classification.single" => 1.0f/labels.size.toFloat // this will be multinomial or k-binary
+      case "classification.multiple" => 0.5f // this will be k-binary always
     }
     // perform predictions
     val foldPredictions = getFoldPortionPredictions(foldAlloys, defaultThreshold)
