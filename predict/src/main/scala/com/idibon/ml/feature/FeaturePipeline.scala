@@ -320,7 +320,8 @@ private[feature] object FeaturePipeline {
       throw new IllegalArgumentException("Non-terminable output transform")
     }
 
-    FeatureGraph[Vector](pipelineName, transforms, entries)
+    FeatureGraph[Vector](pipelineName, transforms, entries,
+      Seq(FeatureGraph.DocumentInput))
   }
 
   /* Returns the name and transform of each FeatureTransformer output */

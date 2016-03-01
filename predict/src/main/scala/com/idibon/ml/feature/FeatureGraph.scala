@@ -54,7 +54,8 @@ private[feature] object FeatureGraph {
   val OutputStage = "$output"
   /** Reserved name for the input document, must be of type JObject */
   val DocumentInput = "$document"
-
+  /** Reserved name for the tokenized sequence, of type Chain[Token] */
+  val SequenceInput = "$sequence"
 
   // borrow the FeaturePipeline's logger, rather than creating yet another
   private [this] val logger = FeaturePipeline.logger
@@ -161,10 +162,13 @@ private[feature] object FeatureGraph {
     * @param graphName the name of the feature graph
     * @param transforms all of the named transforms in the graph
     * @param entries unordered list of dependencies for each transform
+    * @param initialInputs list of the inputs provided to transforms initially
+    * @return bound FeatureGraph
     */
   def apply[T: TypeTag](graphName: String,
     transforms: Map[String, FeatureTransformer],
-    entries: Seq[PipelineEntry]):
+    entries: Seq[PipelineEntry],
+    initialInputs: Seq[String]):
       FeatureGraph = {
 
     // create a map of transform name to required inputs
@@ -205,10 +209,10 @@ private[feature] object FeatureGraph {
     }
 
     /* track all of the live intermediate values at each stage (initially
-     * seeded by the document itself). this will be compared against the
-     * future needs to produce a set of intermediate values that should
-     * be killed at each processing stage. */
-    val liveList = mutable.Set(DocumentInput)
+     * seeded by the pipeline / sequence generator). this will be compared
+     * against the future needs to produce a set of intermediate values that
+     * should be killed at each processing stage. */
+    val liveList = mutable.Set(initialInputs: _*)
 
     // convert the dependency graph into PipelineStage instances
     val boundGraph = (sortedDependencies zip futureNeeds).map(
@@ -230,8 +234,12 @@ private[feature] object FeatureGraph {
            * expected to be used. inputs named "$input" will just take a JSON
            * object of the document. */
           val inputTypes = inputNames.map(_ match {
-            case DocumentInput => typeOf[JObject]
-            case otherXformer => applyMirrors(otherXformer).symbol.returnType
+            case DocumentInput if initialInputs.contains(DocumentInput) =>
+              typeOf[JObject]
+            case SequenceInput if initialInputs.contains(SequenceInput) =>
+              typeOf[Chain[tokenizer.Token]]
+            case otherXformer =>
+              applyMirrors(otherXformer).symbol.returnType
           })
 
           val bindFunction = thunk[T](graphName, current,
@@ -305,8 +313,8 @@ private[feature] object FeatureGraph {
         }) match {
           // return an immutable copy of the node's transitive dependencies
           case Some(x) => x.toSet
-          // base case handling for initial document input
-          case None if name == DocumentInput => Set()
+          // base case handling for initial document / sequence input
+          case None if name == DocumentInput || name == SequenceInput => Set()
           // or throw an exception if the node doesn't exist
           case _ => throw new NoSuchElementException(name)
         }

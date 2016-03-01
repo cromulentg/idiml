@@ -415,7 +415,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
         new PipelineEntry("featureVector", List("contentExtractor"))
       )
 
-      val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
+      val graph = FeatureGraph[Vector]("test", transforms, pipeline,
+        Seq(FeatureGraph.DocumentInput)).graph
       graph.size shouldBe 3
 
       val intermediates = MutableMap[String, Any]()
@@ -431,6 +432,17 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
       intermediates.get("$output") shouldBe
         Some(List(Vectors.dense(11.0), Vectors.dense(3.14159265)))
+    }
+
+    it("should not bind pipelines if initial inputs aren't available") {
+      val transforms = Map("metadata" -> new MetadataNumberExtractor)
+      val pipeline = List(
+        new PipelineEntry("$output", List("metadata")),
+        new PipelineEntry("metadata", List("$document"))
+      )
+      intercept[NoSuchElementException] {
+        FeatureGraph[Vector]("test", transforms, pipeline, Seq())
+      }
     }
 
     it("should support variadic arguments in pipelines") {
@@ -458,7 +470,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       )
 
       pipelines.foreach({ case (expected, pipeline) => {
-        val graph = FeatureGraph[Vector]("test", transforms, pipeline).graph
+        val graph = FeatureGraph[Vector]("test", transforms, pipeline,
+          Seq(FeatureGraph.DocumentInput)).graph
         graph.size shouldBe 4
 
         val intermediates = MutableMap[String, Any]()
