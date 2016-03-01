@@ -20,6 +20,11 @@ trait Metric {
   val metricClass: MetricClass.Value
 }
 
+/**
+  * Base metric class that enforces that the metric type matches the data type we expect.
+  * @param metricType
+  * @param metricClass
+  */
 abstract class RawMetric(override val metricType: MetricTypes,
                          override val metricClass: MetricClass.Value) extends Metric {
   if (this.getClass != metricType.dataType)
@@ -48,6 +53,19 @@ class FloatMetricBuilder extends Builder[FloatMetric] {
     val mClass = Codec.String.read(input)
     val float = input.readFloat()
     new FloatMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), float)
+  }
+}
+object FloatMetric {
+  /**
+    * Averages a sequence of float metrics.
+    * Assumes they are all the same class and type.
+    * @param metrics the metrics to average.
+    * @return a single averaged float metric
+    */
+  def average(metrics: Seq[FloatMetric]): FloatMetric = {
+    val total = metrics.map(m => m.float).sum
+    val avg = total / metrics.size.toFloat
+    new FloatMetric(metrics.head.mType, metrics.head.mClass, avg)
   }
 }
 
@@ -79,6 +97,22 @@ class LabelFloatMetricBuilder extends Builder[LabelFloatMetric] {
     new LabelFloatMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, float)
   }
 }
+object LabelFloatMetric {
+  /**
+    * Averages a sequence of label float metrics based on label.
+    * Assumes they are all the same class and type.
+    * @param metrics the metrics to average.
+    * @return a sequence of averaged label float metrics, one for each label.
+    */
+  def average(metrics: Seq[LabelFloatMetric]): Seq[LabelFloatMetric] = {
+    val byLabel = metrics.groupBy(m => m.label)
+    byLabel.map({case (label, labelMetrics) =>
+      val total = labelMetrics.map(m => m.float).sum
+      val avg = total / labelMetrics.size.toFloat
+      new LabelFloatMetric(labelMetrics.head.mType, labelMetrics.head.mClass, labelMetrics.head.label, avg)
+    }).toSeq
+  }
+}
 
 /**
   * Creates metrics that are around an integer value.
@@ -106,6 +140,22 @@ class LabelIntMetricBuilder extends Builder[LabelIntMetric] {
     val label = Codec.String.read(input)
     val int = Codec.VLuint.read(input)
     new LabelIntMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, int)
+  }
+}
+object LabelIntMetric {
+  /**
+    * Averages a sequence of label int metrics by label.
+    * Assumes they are all the same class and type.
+    * @param metrics the metrics to average.
+    * @return a sequence of label int metrics, one per label.
+    */
+  def average(metrics: Seq[LabelIntMetric]): Seq[LabelIntMetric] = {
+    val byLabel = metrics.groupBy(m => m.label)
+    byLabel.map({case (label, labelMetrics) =>
+      val total = labelMetrics.map(m => m.int).sum
+      val avg = total.toFloat / labelMetrics.size.toFloat
+      new LabelIntMetric(labelMetrics.head.mType, labelMetrics.head.mClass, labelMetrics.head.label, avg.toInt)
+    }).toSeq
   }
 }
 
@@ -138,6 +188,23 @@ class PointsMetricBuilder extends Builder[PointsMetric] {
       (input.readFloat(), input.readFloat())
     })
     new PointsMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), points)
+  }
+}
+object PointsMetric {
+  /**
+    * Averages a sequence of points metrics.
+    * Assumes they are all the same class and type and have the same X values.
+    * @param metrics the metrics to average.
+    * @return a single averaged points metric
+    */
+  def average(metrics: Seq[PointsMetric]): PointsMetric = {
+    val byX = metrics.flatMap(x => x.points).groupBy(x => x._1)
+    val points = byX.map({case (x, yMetrics) =>
+      val total = yMetrics.map({case (xs, ys) => ys}).sum
+      val avg = total / yMetrics.size.toFloat
+      (x, avg)
+    }).toSeq
+    new PointsMetric(metrics.head.mType, metrics.head.mClass, points)
   }
 }
 
@@ -174,6 +241,26 @@ class LabelPointsMetricBuilder extends Builder[LabelPointsMetric] {
       (input.readFloat(), input.readFloat())
     })
     new LabelPointsMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, points)
+  }
+}
+object LabelPointsMetric {
+  /**
+    * Averages a sequence of label points metrics by label.
+    * Assumes they are all the same class and type and each label has the same X values.
+    * @param metrics the metrics to average.
+    * @return a sequence of averaged label points metrics, one for each label
+    */
+  def average(metrics: Seq[LabelPointsMetric]): Seq[LabelPointsMetric] = {
+    val byLabel = metrics.groupBy(m => m.label)
+    byLabel.map({case (label, labelMetrics) =>
+      val byX = labelMetrics.flatMap(x => x.points).groupBy(x => x._1)
+      val points = byX.map({case (x, yMetrics) =>
+        val total = yMetrics.map({case (xs, ys) => ys}).sum
+        val avg = total / yMetrics.size.toFloat
+        (x, avg)
+      }).toSeq
+      new LabelPointsMetric(labelMetrics.head.mType, labelMetrics.head.mClass, labelMetrics.head.label, points)
+    }).toSeq
   }
 }
 
@@ -246,5 +333,54 @@ class ConfusionMatrixMetricBuilder extends Builder[ConfusionMatrixMetric] {
     new ConfusionMatrixMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), points)
   }
 }
+object ConfusionMatrixMetric {
+  /**
+    * Averages a sequence of confusion matrix metrics.
+    * Assumes they are all the same class and type and have the same X, Y values.
+    * @param metrics the metrics to average.
+    * @return a single averaged confusion matrix metric.
+    */
+  def average(metrics: Seq[ConfusionMatrixMetric]): ConfusionMatrixMetric = {
+    val byXY = metrics.flatMap(x => x.points).groupBy(x => (x._1, x._2))
+    val points = byXY.map({case ((x, y), zMetrics) =>
+      val total = zMetrics.map({case (xs, ys, zs) => zs}).sum
+      val avg = total / zMetrics.size.toFloat
+      (x, y, avg)
+    }).toSeq
+    new ConfusionMatrixMetric(metrics.head.mType, metrics.head.mClass, points)
+  }
+}
 
+object Metric {
+  /**
+    * Static function to average a sequence of homogeneous metrics.
+    *
+    * Returns a sequence since some per label metrics will return an averaged metric per label.
+    *
+    * Throws assertion errors if the sequence is not homogeneous:
+    *  - they need to be of the same RawMetric subclass
+    *  - the same metric type
+    *  - the same metric class
+    *
+    * @param metrics homogeneous metrics to average.
+    * @return a sequence of averaged metrics.
+    */
+  def average(metrics: Seq[Metric with Buildable[_, _]]): Seq[Metric with Buildable[_, _]] = {
+    val headMetricSubclass = metrics.head.getClass.getName
+    val headMetricType = metrics.head.metricType
+    val headMetricClass = metrics.head.metricClass
+    assert(metrics.forall(x => x.getClass.getName.equals(headMetricSubclass)), "all metrics must be of same raw metric sub class")
+    assert(metrics.forall(x => x.metricType == headMetricType), "all metrics must be of same metric type")
+    assert(metrics.forall(x => x.metricClass == headMetricClass), "all metrics must be of same metric class")
 
+    metrics.head match {
+      case m: FloatMetric => Seq(FloatMetric.average(metrics.asInstanceOf[Seq[FloatMetric]]))
+      case m: LabelFloatMetric => LabelFloatMetric.average(metrics.asInstanceOf[Seq[LabelFloatMetric]])
+      case m: LabelIntMetric => LabelIntMetric.average(metrics.asInstanceOf[Seq[LabelIntMetric]])
+      case m: PointsMetric => Seq(PointsMetric.average(metrics.asInstanceOf[Seq[PointsMetric]]))
+      case m: LabelPointsMetric => LabelPointsMetric.average(metrics.asInstanceOf[Seq[LabelPointsMetric]])
+      case m: PropertyMetric => metrics // no average defined
+      case m: ConfusionMatrixMetric => Seq(ConfusionMatrixMetric.average(metrics.asInstanceOf[Seq[ConfusionMatrixMetric]]))
+    }
+  }
+}
