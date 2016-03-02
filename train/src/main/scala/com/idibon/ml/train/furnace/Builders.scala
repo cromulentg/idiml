@@ -30,7 +30,8 @@ object BuilderDefaults {
     classOf[SimpleLogisticRegressionFurnaceBuilder],
     classOf[XValLogisticRegressionFurnaceBuilder],
     classOf[HoldOutSetLogisticRegressionFurnaceBuilder],
-    classOf[PerLabelFurnaceBuilder])
+    classOf[PerLabelFurnaceBuilder],
+    classOf[XValWithFPLogisticRegressionFurnaceBuilder])
   /* This enables us to not do Reflection Foo when trying to create a builder from JSON.
        The only requirement is that has a 'jsonClass' field with one of the names of the classes
        below.*/

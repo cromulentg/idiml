@@ -6,7 +6,7 @@
     },
     "furnaceBuilder": {
       "jsonClass": "XValWithFPLogisticRegressionFurnaceBuilder",
-      "maxIterations": 100,
+      "maxIterations": 1,
       "regParam": [
         0.1
       ],
