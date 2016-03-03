@@ -67,9 +67,9 @@ class KClass1FP(builder: KClass1FPBuilder)
     }
     val gangTrainingSummary = if (skipGangMetrics) None else {
       classification_type match {
-      case "classification.single" => Some( // do multi-class
+      case AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE => Some( // do multi-class
          Seq(createMulticlassSummary("kclass1FPGang", rawData, primedPipeline, models)))
-      case "classification.multiple" => Some(  // do multi-label
+      case AlloyTrainer.DOCUMENT_MULTI_LABEL => Some(  // do multi-label
         Seq(createMultilabelSummary("kclass1FPGang", rawData, primedPipeline, models)))
     }}
     logger.info(s"Fitted models, ${featuresUsed.size()} features used.")

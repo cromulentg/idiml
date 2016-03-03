@@ -101,6 +101,11 @@ trait AlloyTrainer {
   }
 }
 
+object AlloyTrainer {
+  val DOCUMENT_MUTUALLY_EXCLUSIVE = "classification.single"
+  val DOCUMENT_MULTI_LABEL = "classification.multiple"
+}
+
 object BaseTrainer {
   val DEFAULT_NUMBER_VALIDATION_EXAMPLES = 30
   val PIPELINE_CONFIG = "pipelineConfig"
@@ -206,7 +211,8 @@ abstract class BaseTrainer(protected val engine: Engine,
   def melt(rawData: () => TraversableOnce[JObject],
            dataGen: SparkDataGenerator,
            pipelineConfig: Option[JObject],
-           classification_type: String = "classification.single"): Map[String, PredictModel[Classification]]
+           classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE):
+  Map[String, PredictModel[Classification]]
 
 }
 
