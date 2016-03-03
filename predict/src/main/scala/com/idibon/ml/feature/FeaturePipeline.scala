@@ -20,6 +20,7 @@ class FeaturePipeline(
   state: LoadState,
   outputDimensions: Option[Seq[(TerminableTransformer, Int)]] = None)
     extends Archivable[FeaturePipeline, FeaturePipelineLoader]
+    with Freezable[FeaturePipeline]
     with Function1[JObject, Vector]
     with StrictLogging {
 
@@ -40,10 +41,11 @@ class FeaturePipeline(
     * @param documents
     */
   def prime(documents: TraversableOnce[JObject]): FeaturePipeline = {
+    if (isFrozen) throw new IllegalStateException("Pipeline is frozen")
     for (document <- documents) {
       applyFeatureGraph(document)
     }
-    freezePipeline()
+    freeze()
   }
 
   /**
@@ -52,14 +54,26 @@ class FeaturePipeline(
     * It saves the outputStage to a list, as well as the total dimensions and
     * the size of each outputStage's dimensions.
     */
-  private[feature] def freezePipeline(): FeaturePipeline = {
+  def freeze(): FeaturePipeline = {
+    if (isFrozen) return this
+
+    /* freeze all of the freezable transforms, updating the transforms map
+     * with the modified version */
+    val frozen = this.state.transforms.map(_ match {
+      case (n, x: Freezable[_]) => (n -> x.freeze.asInstanceOf[FeatureTransformer])
+      case other => other
+    }).toMap
+
+    // re-bind the graph with the frozen transforms
+    val frozenGraph = FeaturePipeline.bindGraph(frozen, this.state.pipeline)
+
+    // and compute the dimensionality of each output
     val terminables = FeaturePipeline
-      .collectOutputs(this.state.transforms, this.state.pipeline)
+      .collectOutputs(frozen, this.state.pipeline)
       .map({ case (_, xf) => xf.asInstanceOf[TerminableTransformer] })
 
-    terminables.foreach(_.freeze)
-
-    new FeaturePipeline(this.state,
+    new FeaturePipeline(
+      new LoadState(frozenGraph, this.state.pipeline, frozen),
       Some(terminables.map(t => {
         (t, t.numDimensions
           .getOrElse(throw new IllegalStateException("Invalid dimensions")))
@@ -267,7 +281,7 @@ class FeaturePipelineLoader
     val pipeline = FeaturePipeline.bind(transforms, pipeJson)
     reader match {
       case Some(reader) => {
-        pipeline.freezePipeline()
+        pipeline.freeze()
       }
       case None => pipeline
     }

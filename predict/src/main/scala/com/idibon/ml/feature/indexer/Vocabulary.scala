@@ -13,7 +13,9 @@ import com.typesafe.scalalogging.StrictLogging
   * value. Some implementations support dynamic assigment of dimensions
   * to of out-of-domain Features.
   */
-private[indexer] trait Vocabulary extends Function1[Feature[_], Int] {
+private[indexer] trait Vocabulary
+    extends Function1[Feature[_], Int]
+    with Freezable[Vocabulary] {
   /** Returns the dimension index for the feature, if assigned
     *
     * If the feature is known to the vocabulary, this method returns
@@ -56,7 +58,7 @@ private[indexer] trait Vocabulary extends Function1[Feature[_], Int] {
     * included in the Vocabulary (or any feature removed from a call to
     * prune) will be treated as out-of-vocabulary.
     */
-  def freeze: Unit
+  def freeze: Vocabulary
 
   /** Total size in dimensions of the vocabulary. */
   def size: Int
@@ -205,7 +207,7 @@ private[indexer] class ImmutableVocabulary(
   }
 
   /** No-op methods because the vocaubulary is immutable */
-  def freeze {}
+  def freeze: Vocabulary = this
   def prune(p: (Int) => Boolean) {}
   def minimumObservations = 0
   def minimumObservations_=(o: Int) {}
@@ -338,10 +340,11 @@ private[indexer] class MutableVocabulary extends Vocabulary {
   }
 
   /** Prevents new features from growing the domain */
-  def freeze {
+  def freeze: Vocabulary = {
     this.synchronized {
       frozen = true
       observations.clear()
     }
+    this
   }
 }

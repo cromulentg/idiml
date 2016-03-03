@@ -109,9 +109,40 @@ case class Classification(override val label: String,
   }
 }
 
-/**
-  * Class for saving classification results to a stream.
+/** Trait for predictive results which only affect a region of the document */
+trait HasRegion {
+  /** Start of the affected region, in UTF-16 code units. */
+  val offset: Int
+  /** Length of the affected region, in UTF-16 code units */
+  val length: Int
+}
+
+/** Basic PredictResult for span extraction
+  *
+  * @param label assigned label name
+  * @param probability predictive confidence
+  * @param flags prediction flags
+  * @param offset start of the span, in UTF-16 code units
+  * @param length length of the span, in UTF-16 code units
   */
+case class Span(override val label: String,
+  override val probability: Float, override val flags: Int,
+  val offset: Int, val length: Int)
+    extends PredictResult with HasRegion
+    with Buildable[Span, SpanBuilder] {
+
+  override val matchCount = 1
+
+  def save(output: FeatureOutputStream) {
+    Codec.String.write(output, label)
+    output.writeFloat(probability)
+    Codec.VLuint.write(output, flags)
+    Codec.VLuint.write(output, offset)
+    Codec.VLuint.write(output, length)
+  }
+}
+
+/** Paired builder class for Classification */
 class ClassificationBuilder extends Builder[Classification] {
   /** Instantiates and loads an object from an input stream
     *
@@ -129,6 +160,23 @@ class ClassificationBuilder extends Builder[Classification] {
       (feature, value)
     })
     new Classification(label, prob, matchCount, flags, sigFeats)
+  }
+}
+
+/** Paired builder class for Span */
+class SpanBuilder extends Builder[Span] {
+
+  /** Read and instantiate a Span from the input stream
+    *
+    * @param input Data stream where object was previously saved
+    */
+  def build(input: FeatureInputStream): Span = {
+    val label = Codec.String.read(input)
+    val prob = input.readFloat()
+    val flags = Codec.VLuint.read(input)
+    val offset = Codec.VLuint.read(input)
+    val length = Codec.VLuint.read(input)
+    Span(label, prob, flags, offset, length)
   }
 }
 

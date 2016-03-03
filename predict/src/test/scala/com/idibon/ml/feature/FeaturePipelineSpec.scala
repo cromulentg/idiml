@@ -214,9 +214,7 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
       FeaturePipeline = {
     val loader = new FeaturePipelineLoader
     val config = parse(json).asInstanceOf[JObject]
-    loader.load(new EmbeddedEngine,
-      reader.orElse(Some(createMockReader)),
-      Some(config))
+    loader.load(new EmbeddedEngine, reader, Some(config))
   }
 
   describe("save") {
@@ -306,6 +304,8 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
       val doc = parse("""{"content":"A document!","metadata":{"number":3.14159265}}""").asInstanceOf[JObject]
       val fp = pipeline.prime(List(doc))
+      fp.isFrozen shouldBe true
+      fp.totalDimensions shouldBe Some(2)
       fp(doc) shouldBe Vectors.sparse(2, Array(0, 1), Array(3.14159265, 11.0))
     }
   }
@@ -560,7 +560,6 @@ class FeaturePipelineSpec extends FunSpec with Matchers with MockitoSugar
 
 private [this] class VectorConcatenator extends FeatureTransformer with TerminableTransformer {
   var length = 0
-  var frozen = false
   def apply(inputs: Vector*): Vector = {
     val v = Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
     length = v.size
@@ -571,8 +570,6 @@ private [this] class VectorConcatenator extends FeatureTransformer with Terminab
   def prune(transform: (Int) => Boolean): Unit = ???
 
   def getFeatureByIndex(index: Int) = None
-
-  def freeze(): Unit = { frozen = true }
 }
 
 private [this] class NonVectorTerminator
@@ -585,8 +582,6 @@ private [this] class NonVectorTerminator
   def prune(transform: (Int) => Boolean) { }
 
   def getFeatureByIndex(index: Int): Option[Feature[_]] = None
-
-  def freeze { }
 }
 
 /**
@@ -594,7 +589,6 @@ private [this] class NonVectorTerminator
   */
 private [this] class VectorConcatenatorBad
     extends FeatureTransformer with TerminableTransformer {
-  var frozen = false
   def apply(inputs: Vector*): Vector = {
     Vectors.dense(inputs.foldLeft(Array[Double]())(_ ++ _.toArray))
   }
@@ -604,8 +598,6 @@ private [this] class VectorConcatenatorBad
   def prune(transform: (Int) => Boolean): Unit = ???
 
   def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
-
-  override def freeze(): Unit = { frozen = true }
 }
 
 private [this] class CurriedExtractor extends FeatureTransformer {
@@ -630,8 +622,6 @@ private [this] class FeatureVectors extends FeatureTransformer with TerminableTr
   def prune(transform: (Int) => Boolean): Unit = ???
 
   def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
-
-  def freeze(): Unit = {}
 }
 
 private [this] class MetadataNumberExtractor
@@ -641,8 +631,6 @@ private [this] class MetadataNumberExtractor
     Vectors.dense((document \ "metadata" \ "number").asInstanceOf[JDouble].num)
   }
   var pruned = false
-
-  def freeze(): Unit = {}
 
   def getFeatureByIndex(index: Int) = index match {
     case 0 => Some(StringFeature("meta-number1"))
@@ -662,8 +650,6 @@ private [this] class MetadataNumberExtractor2
   }
 
   var pruned = false
-
-  def freeze(): Unit = {}
 
   def getFeatureByIndex(index: Int) = index match {
     case 0 => Some(StringFeature("meta-number2"))
@@ -704,8 +690,6 @@ private [this] case class ArchivableTransform(suppliedConfig: Option[JObject])
   def prune(transform: (Int) => Boolean): Unit = ???
 
   def getFeatureByIndex(index: Int): Option[Feature[_]] = ???
-
-  def freeze(): Unit = {}
 }
 
 private [this] class ArchivableTransformLoader

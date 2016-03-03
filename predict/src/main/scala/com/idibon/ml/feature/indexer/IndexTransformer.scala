@@ -33,7 +33,8 @@ import org.json4s._
       extends FeatureTransformer
       with Archivable[IndexTransformer, IndexTransformLoader]
       with TerminableTransformer
-      with StrictLogging {
+      with StrictLogging
+      with Freezable[IndexTransformer] {
 
     def this() {
       this(new MutableVocabulary())
@@ -134,7 +135,7 @@ import org.json4s._
       */
     def getFeatureByIndex(i: Int): Option[Feature[_]] = vocabulary.invert(i)
 
-    def freeze() = vocabulary.freeze
+    def freeze(): IndexTransformer = new IndexTransformer(vocabulary.freeze)
   }
 
   /** Paired loader class for IndexTransformer */
