@@ -1,5 +1,6 @@
 package com.idibon.ml.train.alloy
 
+import com.idibon.ml.predict.Label
 import org.json4s.JsonAST.JObject
 
 import scala.util.Random
@@ -46,6 +47,35 @@ trait KFoldDataSetCreator {
         )
       }
       new Fold(fold, holdout, trainingStreams)
+    }
+    folds.toSeq
+  }
+
+  /**
+    * Creates a data set for X folds where the training set is the passed in portion.
+    *
+    * @param docs
+    * @param numFolds
+    * @param portion
+    * @param foldSeed
+    * @param labelToDouble
+    * @return
+    */
+  def createFoldDataSets(docs: () => TraversableOnce[JObject],
+                         numFolds: Int,
+                         portion: Double,
+                         foldSeed: Long,
+                         labelToDouble: Map[Label, Double]): Seq[TrainingDataSet] = {
+    // create random mapping of training examples to fold on examples that pertain to this uuid label
+    val validationFoldMapping = createValidationFoldMapping(docs().toStream, numFolds, foldSeed)
+    // create "folds"
+    val folds = (0 until numFolds).map { fold: Int =>
+      val testSet = getKthItems(docs().toStream, validationFoldMapping.toStream, fold)
+      val trainingSet = getPortion(
+        getAllButKthItems(docs().toStream, validationFoldMapping.toStream, fold),
+        portion)
+      val dataSetInfo = new DataSetInfo(fold, portion, labelToDouble)
+      new TrainingDataSet(dataSetInfo, () => trainingSet, () => testSet)
     }
     folds.toSeq
   }

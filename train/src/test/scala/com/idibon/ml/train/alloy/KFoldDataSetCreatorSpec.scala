@@ -61,6 +61,19 @@ class KFoldDataSetCreatorSpec extends FunSpec
       val actual = trainer.getPortion(docs().toStream, 0.4)
       actual.size shouldBe 4
     }
+
+    it("creates training data set objects correctly") {
+      val actual = trainer.createFoldDataSets(docs, 2, 0.5, 1L, Map())
+      actual.size shouldBe 2
+      actual(0).info.fold shouldBe 0
+      actual(0).info.portion shouldBe 0.5
+      actual(1).info.fold shouldBe 1
+      actual(1).info.portion shouldBe 0.5
+      actual.foreach(ds => {
+        ds.test().size shouldBe 5
+        ds.train().size shouldBe 2
+      })
+    }
   }
 }
 
