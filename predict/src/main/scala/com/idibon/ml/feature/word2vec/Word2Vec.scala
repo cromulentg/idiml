@@ -75,15 +75,6 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
   def numDimensions = Some(vectorSize)
 
   /**
-    * Transformers should implement an idempotent freeze. Meaning if it's
-    * called multiple times, it wont change from its initial frozen state.
-    *
-    * Implementation of TerminableTransformer method
-    *
-    */
-  def freeze(): Unit = { }
-
-  /**
     * Function to capture feature selection essentially. A predicate function
     * is passed in to inform feature transforms what should not be kept.
     *
