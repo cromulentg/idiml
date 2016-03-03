@@ -46,6 +46,9 @@ case class FloatMetric(mType: MetricTypes,
     Codec.String.write(output, metricClass.toString)
     output.writeFloat(float)
   }
+  override def toString: String = {
+    s"[$mClass, $mType, $float]"
+  }
 }
 class FloatMetricBuilder extends Builder[FloatMetric] {
   override def build(input: FeatureInputStream): FloatMetric = {
@@ -86,6 +89,9 @@ case class LabelFloatMetric(mType: MetricTypes,
     Codec.String.write(output, metricClass.toString)
     Codec.String.write(output, label)
     output.writeFloat(float)
+  }
+  override def toString: String = {
+    s"[$mClass, $mType, $label, $float]"
   }
 }
 class LabelFloatMetricBuilder extends Builder[LabelFloatMetric] {
@@ -131,6 +137,9 @@ case class LabelIntMetric(mType: MetricTypes,
     Codec.String.write(output, metricClass.toString)
     Codec.String.write(output, label)
     Codec.VLuint.write(output, int)
+  }
+  override def toString: String = {
+    s"[$mClass, $mType, $label, $int]"
   }
 }
 class LabelIntMetricBuilder extends Builder[LabelIntMetric] {
@@ -287,6 +296,9 @@ case class PropertyMetric(mType: MetricTypes,
       Codec.String.write(output, y)
     }}
   }
+  override def toString: String = {
+    s"[$mClass, $mType, $properties]"
+  }
 }
 class PropertyMetricBuilder extends Builder[PropertyMetric] {
   override def build(input: FeatureInputStream): PropertyMetric = {
@@ -320,6 +332,17 @@ case class ConfusionMatrixMetric(mType: MetricTypes,
       Codec.String.write(output, y)
       output.writeFloat(z)
     }}
+  }
+  override def toString: String = {
+    val pointString = points
+      .sortBy(p => (p._1, p._2))
+      .groupBy(x => x._1).map({case (x, grouped) =>
+        val row = grouped
+          .sortBy(g => (g._1, g._2))
+          .map({ case (x, y, v) => s"($y, $v)"}).reduce(_ + _)
+        s"$x - $row\n"
+      }).reduce(_ + _)
+    s"[$mClass, $mType \n$pointString]"
   }
 }
 class ConfusionMatrixMetricBuilder extends Builder[ConfusionMatrixMetric] {

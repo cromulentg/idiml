@@ -21,6 +21,14 @@ case class TrainingSummary(identifier: String, metrics: Seq[Metric with Buildabl
     Codec.VLuint.write(output, metrics.size)
     metrics.foreach { m => output.writeBuildable(m) }
   }
+
+  override def toString: String = {
+    val sb = new StringBuilder(s"----- Training summary for $identifier ---- Total = ${metrics.size}\n")
+    metrics.sortBy(m => (m.metricType, m.metricClass)).foreach(m => {
+      sb.append(m.toString()).append("\n")
+    })
+    sb.mkString
+  }
 }
 
 /**
