@@ -14,7 +14,13 @@ import org.json4s.native.Serialization._
   * Static object to house global defaults for Alloy Trainer builders.
   */
 object BuilderDefaults {
-  val classHints = List(classOf[KClass1FPBuilder], classOf[KClassKFPBuilder], classOf[MultiClass1FPBuilder], classOf[LearningCurveTrainerBuilder])
+  val classHints = List(
+    classOf[KClass1FPBuilder],
+    classOf[KClassKFPBuilder],
+    classOf[MultiClass1FPBuilder],
+    classOf[LearningCurveTrainerBuilder],
+    classOf[CompetitiveAlloyTrainerBuilder],
+    classOf[CrossValidatingAlloyTrainerBuilder])
   // we need to connect all the different possible classes underneath so we can
   // create a single JSON config that gets split into the respective builders.
   implicit val formats = Serialization.formats(ShortTypeHints(classHints ++
@@ -106,7 +112,6 @@ case class MultiClass1FPBuilder(private[alloy] var dataGenBuilder: SparkDataGene
   }
 }
 
-
 /**
   * Builder for creating learning curves from k-class tasks that are mutually exclusive.
   *
@@ -125,5 +130,51 @@ case class LearningCurveTrainerBuilder(private[alloy] var trainerBuilder: AlloyT
   override def build(engine: Engine): LearningCurveTrainer = {
     this.engine = engine
     new LearningCurveTrainer(this)
+  }
+}
+
+/**
+  * Builder for cross validating an alloy & averaging the results & also training an alloy
+  * over all the data.
+  *
+  * We cross validate to get an estimate of performance on unseen data.
+  *
+  * @param trainerBuilder
+  * @param numFolds
+  * @param portion
+  * @param foldSeed
+  */
+case class CrossValidatingAlloyTrainerBuilder(private[alloy] var trainerBuilder: AlloyTrainerBuilder = new MultiClass1FPBuilder(),
+                                              private[alloy] var numFolds: Int = 5,
+                                              private[alloy] var portion: Double = 1.0,
+                                              private[alloy] var foldSeed: Long = new Random().nextLong()) extends AlloyTrainerBuilder {
+  private[alloy] var engine: Engine = null
+
+  override def build(engine: Engine): CrossValidatingAlloyTrainer = {
+    this.engine = engine
+    new CrossValidatingAlloyTrainer(this)
+  }
+}
+
+/**
+  * Uses the cross validating alloy trainer to choose between the passed in alloy trainers.
+  *
+  * Currently hardcode to use the F1 metric.
+  *
+  * @param trainerBuilders
+  * @param numFolds
+  * @param foldSeed
+  */
+case class CompetitiveAlloyTrainerBuilder(private[alloy] var trainerBuilders: Map[String, AlloyTrainerBuilder] = Map(
+  "Alloy1" -> new MultiClass1FPBuilder(furnaceBuilder=new MultiClassLRFurnaceBuilder(regParam=Array(0.001))),
+  "Alloy2" -> new MultiClass1FPBuilder(furnaceBuilder=new MultiClassLRFurnaceBuilder(regParam=Array(0.1)))),
+                                          private[alloy] var numFolds: Int = 5,
+                                          private[alloy] var foldSeed: Long = new Random().nextLong())
+  extends AlloyTrainerBuilder {
+  private[alloy] var engine: Engine = null
+
+  override def build(engine: Engine): CompetitiveAlloyTrainer = {
+    this.engine = engine
+    new CompetitiveAlloyTrainer(this)
   }
 }
