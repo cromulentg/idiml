@@ -164,15 +164,7 @@ object HasTrainingSummary {
     */
   def save[T <: PredictResult with Buildable[T, Builder[T]]](
       writer: Alloy.Writer, alloy: BaseAlloy[T] with HasTrainingSummary): Unit = {
-    val modelNames = alloy.models.keys
-    // get summaries
-    val summaries = alloy.getTrainingSummaries match {
-      case None => {
-        modelNames.map(n => {alloy.models(n).getTrainingSummary()})
-          .collect { case Some(summary) => summary }.flatten
-      }
-      case Some(summaries) => summaries
-    }
+    val summaries = getSummaries(alloy)
     // only save if we have some
     if (summaries.size < 1) return
     val resource = new FeatureOutputStream(writer.resource(TRAINING_SUMMARY_RESOURCE))
@@ -182,6 +174,26 @@ object HasTrainingSummary {
     } finally {
       resource.close()
     }
-
   }
+
+  /**
+    * Helper method to get training summaries from an alloy.
+    * @param alloy
+    * @tparam T
+    * @return
+    */
+  def getSummaries[T <: PredictResult with Buildable[T, Builder[T]]](
+      alloy: BaseAlloy[T] with HasTrainingSummary): Seq[TrainingSummary] = {
+    val modelNames = alloy.models.keys
+    // get summaries
+    val summaries = alloy.getTrainingSummaries match {
+      case None => {
+        modelNames.map(n => {alloy.models(n).getTrainingSummary()})
+          .collect { case Some(summary) => summary }.flatten
+      }
+      case Some(summaries) => summaries
+    }
+    summaries.toSeq
+  }
+
 }
