@@ -78,7 +78,8 @@ case class IdibonMultiClassLRModel(labelToInt: Map[String, Int],
     results.zipWithIndex.map({ case (probability, labelIndex) => {
       Classification(intToLabel(labelIndex), probability.toFloat,
         1, PredictResultFlag.NO_FLAGS,
-        significantFeatures.get(labelIndex).getOrElse(Seq[(Feature[_], Float)]())
+        significantFeatures.get(labelIndex).getOrElse(Seq[(Feature[_], Float)]()),
+        PredictTypeFlag.MODEL
       )
     }}).sortWith(_.probability > _.probability)
   }

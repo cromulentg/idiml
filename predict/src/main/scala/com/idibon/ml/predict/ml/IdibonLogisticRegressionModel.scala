@@ -53,7 +53,7 @@ case class IdibonLogisticRegressionModel(label: String,
 
     // FIXME: return number of matched features in matchCount, not 1
     Seq(Classification(this.label, probability,
-      1, PredictResultFlag.NO_FLAGS, significantFeatures))
+      1, PredictResultFlag.NO_FLAGS, significantFeatures, PredictTypeFlag.MODEL))
   }
 
   /**

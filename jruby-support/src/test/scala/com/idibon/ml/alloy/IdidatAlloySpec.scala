@@ -36,7 +36,7 @@ class IdidatAlloySpec extends FunSpec with Matchers {
           "bar" -> num(0.0f)).asJava).asJava, false)
 
       val results = alloy.predict("content" -> "foobar", PredictOptions.DEFAULT)
-      results shouldBe Seq(Classification(labelFoo.uuid.toString, 0.5f, 2, 1, Seq())).asJava
+      results shouldBe Seq(Classification(labelFoo.uuid.toString, 0.5f, 2, 1, Seq(),PredictTypeFlag.COMBINED)).asJava
     }
 
     it("should replace existing rules models at the top level") {
@@ -49,9 +49,9 @@ class IdidatAlloySpec extends FunSpec with Matchers {
         Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
-      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava
+      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq(),PredictTypeFlag.COMBINED)).asJava
       val r2 = updatedAlloy.predict("content" -> "hello world", PredictOptions.DEFAULT)
-      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq())).asJava
+      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq(),PredictTypeFlag.COMBINED)).asJava
     }
 
     it("should replace rules models within gang models") {
@@ -66,9 +66,9 @@ class IdidatAlloySpec extends FunSpec with Matchers {
         Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
-      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava
+      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq(),PredictTypeFlag.COMBINED)).asJava
       val r2 = updatedAlloy.predict("content" -> "hello world", PredictOptions.DEFAULT)
-      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq())).asJava
+      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq(),PredictTypeFlag.COMBINED)).asJava
     }
 
     it("should keep other classification models") {
@@ -80,7 +80,7 @@ class IdidatAlloySpec extends FunSpec with Matchers {
       val outerGang = new GangModel(Map("outer" -> innerGang), Some(pipeline))
       val alloy = new BaseAlloy("testing", Seq(labelFoo), Map("gang" -> outerGang))
       val r1 = alloy.predict("content" -> "beta", PredictOptions.DEFAULT)
-      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.25f, 1, 0, Seq())).asJava
+      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.25f, 1, 0, Seq(),PredictTypeFlag.COMBINED)).asJava
       val archive = scala.collection.mutable.HashMap[String, Array[Byte]]()
       alloy.save(new MemoryAlloyWriter(archive))
 
@@ -119,7 +119,7 @@ class VClassificationModel(label: String)
 
   def predict(document: Document, options: PredictOptions) = {
     document.transformed.map({ case (vector, sigFeatFn) => {
-      Seq(Classification(label, vector(0).toFloat, 1, 0, Seq()))
+      Seq(Classification(label, vector(0).toFloat, 1, 0, Seq(),PredictTypeFlag.COMBINED))
     }}).getOrElse({
       throw new UnsupportedOperationException("No pipeline")
     })

@@ -170,8 +170,8 @@ class BaseAlloySpec extends FunSpec with Matchers {
       reload shouldBe alloy
 
       reload.predict("content" -> "foo", PredictOptions.DEFAULT) should contain theSameElementsAs Seq(
-        Classification("00000000-0000-0000-0000-000000000000", 0.75f, 1, 0, Seq(Word("hello") -> 1.0f)),
-        Classification("00000000-0000-0000-0000-000000000001", 0.25f, 1, 0, Seq(Word("world") -> 1.0f)))
+        Classification("00000000-0000-0000-0000-000000000000", 0.75f, 1, 0, Seq(Word("hello") -> 1.0f),PredictTypeFlag.MODEL),
+        Classification("00000000-0000-0000-0000-000000000001", 0.25f, 1, 0, Seq(Word("world") -> 1.0f),PredictTypeFlag.MODEL))
     }
 
     it("saves training configuration data if present") {
@@ -193,7 +193,7 @@ class LengthClassificationModel extends PredictModel[Classification] {
 
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
     val content = (document.json \ "content").asInstanceOf[JString].s
-    Seq(Classification("00000000-0000-0000-0000-000000000000", 1.0f / content.length, 1, 0, Seq()))
+    Seq(Classification("00000000-0000-0000-0000-000000000000", 1.0f / content.length, 1, 0, Seq(),PredictTypeFlag.MODEL))
   }
 
   def getFeaturesUsed: org.apache.spark.mllib.linalg.Vector = ???
@@ -233,7 +233,7 @@ case class DummyClassificationModel(label: String, confidence: Float, feature: W
   override def getEvaluationMetric(): Double = ???
 
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq(feature -> 1.0f)))
+    Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq(feature -> 1.0f),PredictTypeFlag.MODEL))
   }
 }
 
@@ -263,7 +263,7 @@ case class FailsValidationModel(label: String, confidence: Float)
   override def getEvaluationMetric(): Double = ???
 
   def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq()))
+    Seq(Classification(label, confidence, 1, PredictResultFlag.NO_FLAGS, Seq(),PredictTypeFlag.MODEL))
   }
 }
 
