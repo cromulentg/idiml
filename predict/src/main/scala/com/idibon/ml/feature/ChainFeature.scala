@@ -10,14 +10,14 @@ import com.idibon.ml.alloy.Codec
   * @param offset relative distance between links
   * @param feature the feature to capture from the neighboring link
   */
-case class ChainFeature(offset: Byte, feature: Feature[_])
-    extends Feature[Feature[_]]
-    with Buildable[ChainFeature, ChainFeatureBuilder] {
+case class ChainFeature[+T <: Feature[_]](offset: Byte, feature: T)
+    extends Feature[ChainFeature[T]]
+    with Buildable[ChainFeature[_], ChainFeatureBuilder] {
 
   if (!feature.isInstanceOf[Buildable[_, _]])
     throw new IllegalArgumentException("Non-buildable feature")
 
-  def get = this.feature
+  def get = this
 
   def getHumanReadableString = feature.getHumanReadableString
 
@@ -29,7 +29,7 @@ case class ChainFeature(offset: Byte, feature: Feature[_])
 }
 
 /** Paired builder to re-load saved ChainFeature objects */
-class ChainFeatureBuilder extends Builder[ChainFeature] {
+class ChainFeatureBuilder extends Builder[ChainFeature[_]] {
   def build(input: FeatureInputStream) = {
     val offset = input.readByte()
     ChainFeature(offset, input.readFeature)

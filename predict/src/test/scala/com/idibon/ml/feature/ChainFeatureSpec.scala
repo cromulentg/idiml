@@ -17,4 +17,9 @@ class ChainFeatureSpec extends FunSpec with Matchers {
       reload shouldBe feature
     })
   }
+
+  it("should upcast sensibly") {
+    val f: ChainFeature[Feature[String]] = ChainFeature(0, StringFeature("foobar"))
+    f.feature.get shouldBe "foobar"
+  }
 }

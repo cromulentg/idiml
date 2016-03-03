@@ -17,7 +17,7 @@ import com.idibon.ml.alloy.Codec
   * Feature implementations may optionally be extended by the Built trait to
   * support data persistence.
   */
-trait Feature[T] {
+trait Feature[+T] {
   /** Returns the internal representation of this feature. */
   def get: T
 
