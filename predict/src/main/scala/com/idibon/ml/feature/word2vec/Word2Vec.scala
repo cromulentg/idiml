@@ -12,6 +12,7 @@ import org.apache.spark.mllib.feature.Word2VecModel
 import org.apache.spark.mllib.linalg._
 
 import org.json4s._
+import org.json4s.JsonDSL._
 
 import scala.collection.JavaConversions.mapAsScalaMap
 import scala.util.Try
@@ -22,8 +23,12 @@ import scala.util.Try
   * @param sc SparkContext object
   * @param model Word2VecModel model object
   * @param uri URI for the directory where the model is stored (a String)
+  * @param modelType model type enumerant
   */
-class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val uri: URI) extends FeatureTransformer
+class Word2VecTransformer(val sc: SparkContext,
+    val model: Word2VecModel,
+    val uri: URI,
+    val modelType: String) extends FeatureTransformer
   with Archivable[Word2VecTransformer,Word2VecTransformerLoader]
   with TerminableTransformer {
 
@@ -62,7 +67,7 @@ class Word2VecTransformer(val sc: SparkContext, val model: Word2VecModel, val ur
     *   to reload the object. None if no configuration is needed
     */
   def save(writer: Alloy.Writer): Option[JObject] = {
-    Some(JObject(JField("uri", JString(uri.toString()))))
+    Some(("uri" -> uri.toString) ~ ("type" -> modelType))
   }
 
   /**
@@ -133,7 +138,7 @@ class Word2VecTransformerLoader extends ArchiveLoader[Word2VecTransformer] {
       }
     }
 
-    new Word2VecTransformer(engine.sparkContext, model, uri)
+    new Word2VecTransformer(engine.sparkContext, model, uri, modelType)
   }
 }
 

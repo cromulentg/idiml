@@ -77,13 +77,27 @@ trait Word2VecTransformerBehaviors {this: FunSpec with Matchers =>
 
 class Word2VecSpec extends FunSpec with Matchers with Word2VecTransformerBehaviors {
 
+  val sparkModel = getClass().getClassLoader().getResource("fixtures/sparkWord2VecModel/model")
+  val binModel = getClass().getClassLoader().getResource("fixtures/word2vec-test-vectors.bin.gz")
+
   describe("Word2VecTransformer") {
-    val baseURI = "file://" + System.getProperty("user.dir")
-    val sparkModelURI = baseURI + "/src/test/resources/fixtures/sparkWord2VecModel/model"
-    val binModelURI = baseURI + "/src/test/resources/fixtures/word2vec-test-vectors.bin.gz"
+    it should behave like aWord2VecTransformer(sparkModel.toString(), "spark", 433)
+    it should behave like aWord2VecTransformer(binModel.toString(), "bin", 434)
 
-    it should behave like aWord2VecTransformer(sparkModelURI, "spark", 433)
-    it should behave like aWord2VecTransformer(binModelURI, "bin", 434)
+  }
 
+  describe("save / load") {
+    it("should be able to load models after saving them") {
+      val archive = collection.mutable.HashMap[String, Array[Byte]]()
+      val config = loadModel(binModel.toString(), "bin").save(new MemoryAlloyWriter(archive))
+      val loader = new Word2VecTransformerLoader()
+      val transform = loader.load(new EmbeddedEngine,
+        Some(new MemoryAlloyReader(archive.toMap)), config)
+
+      val outputVector = transform(Seq(Word("anarchist")))
+      outputVector should have size 100
+      for (elem <- outputVector.toArray)
+        elem should (be > -1.0 and be < 1.0 and not be 0)
+    }
   }
 }
