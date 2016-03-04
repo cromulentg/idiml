@@ -1,6 +1,6 @@
 package com.idibon.ml.feature.wordshapes
 
-import com.idibon.ml.feature.{Feature,FeatureTransformer}
+import com.idibon.ml.feature.{Chain, Feature, FeatureTransformer}
 import com.idibon.ml.feature.tokenizer.Token
 
 /** WordShape FeatureTransformer
@@ -10,7 +10,7 @@ import com.idibon.ml.feature.tokenizer.Token
   * Preserves the order of token sequence.
   *
   * */
-class WordShapesTransformer extends FeatureTransformer {
+class WordShapesTransformer extends FeatureTransformer with ToShape {
 
   /** Produces a sequence of shapes from a sequence of Tokens.
     *
@@ -18,11 +18,20 @@ class WordShapesTransformer extends FeatureTransformer {
     * @return wordshapes represented as a sequence of Shape features.
     */
   def apply(tokens: Seq[Feature[Token]]): Seq[Shape] = {
-
     //return the sequence of tokens translated to shapes (in the same order)
     tokens.map(token => new Shape(toShape(token.get.content)))
   }
+}
 
+/** WordShapesTransformer for sequence classifiers */
+class ChainWordShapesTransformer extends FeatureTransformer with ToShape {
+  def apply(tokens: Chain[Feature[Token]]): Chain[Shape] = {
+    tokens.map(link => Shape(toShape(link.value.get.content)))
+  }
+}
+
+/** Mixin trait for generating word "shapes" */
+trait ToShape {
   /** Produces a word shape representation string from a token
     *
     * @param token
@@ -40,4 +49,5 @@ class WordShapesTransformer extends FeatureTransformer {
 
     return shape
   }
+
 }

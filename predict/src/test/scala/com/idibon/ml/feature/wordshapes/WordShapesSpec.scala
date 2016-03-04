@@ -1,10 +1,17 @@
 package com.idibon.ml.feature.wordshapes
 
-import com.idibon.ml.feature.Feature
+import com.idibon.ml.feature.{Chain, Feature}
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
 
 class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
+
+  describe("ChainOfWordShapes") {
+    it("should generate chains") {
+      val xf = new ChainWordShapesTransformer()
+      xf(Chain(Token("hi", Tag.Word, 0, 2), Token("!", Tag.Punctuation, 3, 1))) shouldBe Chain(Shape("cc"), Shape("p"))
+    }
+  }
 
   describe("WordShapes") {
 
