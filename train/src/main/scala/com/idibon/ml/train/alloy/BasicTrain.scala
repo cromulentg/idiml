@@ -48,7 +48,6 @@ object BasicTrain {
     * @param trainingDataFile A file containing JSON training data
     * @param taskConfigFile A JSON file containing label and rule configuration
     * @param alloyConfigFile A JSON file containing the trainer parameters
-    * @param alloyOutputFile The path where the JAR alloy should be saved
     */
   def trainFromFiles(engine: Engine,
     alloyName: String,

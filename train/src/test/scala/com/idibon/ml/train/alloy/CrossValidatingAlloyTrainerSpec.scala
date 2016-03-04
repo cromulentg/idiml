@@ -51,9 +51,9 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
       val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
       val actual = trainer.averageMetrics("testsummary", trainingSummaries)
       val expected = new TrainingSummary("testsummary", Seq(
-        new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.99f),
-        new FloatMetric(MetricTypes.Precision, MetricClass.Binary, 0.99f),
-        new FloatMetric(MetricTypes.Recall, MetricClass.Binary, 0.99f)
+        new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.99f),
+        new FloatMetric(MetricTypes.Precision, MetricClass.Alloy, 0.99f),
+        new FloatMetric(MetricTypes.Recall, MetricClass.Alloy, 0.99f)
       ))
       actual.identifier shouldBe expected.identifier
       actual.metrics.sortBy(m => m.metricType) shouldBe expected.metrics.sortBy(m => m.metricType)

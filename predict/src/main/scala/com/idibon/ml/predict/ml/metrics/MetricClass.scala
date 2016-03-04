@@ -13,7 +13,8 @@ package com.idibon.ml.predict.ml.metrics
   */
 object MetricClass extends Enumeration {
   type MetricClass = Value
-  val Binary,
+  val Alloy,
+      Binary,
       Multiclass,
       Multilabel,
       Hyperparameter

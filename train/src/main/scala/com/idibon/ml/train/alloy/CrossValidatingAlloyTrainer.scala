@@ -4,7 +4,7 @@ import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
-import com.idibon.ml.predict.ml.metrics.Metric
+import com.idibon.ml.predict.ml.metrics.{MetricClass, Metric}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 
@@ -161,7 +161,7 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     val allMetrics = trainingSummaries.flatMap(ts => ts.metrics)
     val groupedMetrics = allMetrics.groupBy(m => m.metricType)
     val averagedMetrics = groupedMetrics.flatMap({ case (metricType, metrics) =>
-      Metric.average(metrics)
+      Metric.average(metrics, Some(MetricClass.Alloy))
     }).toSeq
     new TrainingSummary(summaryName, averagedMetrics)
   }
