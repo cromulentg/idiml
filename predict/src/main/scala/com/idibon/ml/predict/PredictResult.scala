@@ -16,8 +16,6 @@ trait PredictResult {
   def matchCount: Int
   /** Bitmask of PredictResultFlag.Values identified for this result */
   def flags: Int
-  /** Int (id) for type of prediction this came from (model, rule, combined)*/
-  def modelType: PredictTypeFlag.Value
 
   /** True if the result is FORCED */
   def isForced = ((flags & (1 << PredictResultFlag.FORCED.id)) != 0)
@@ -33,7 +31,6 @@ trait PredictResult {
       this.matchCount == other.matchCount &&
       this.flags == other.flags &&
       this.isForced == other.isForced &&
-      this.modelType == other.modelType &&
       PredictResult.floatIsCloseEnough(this.probability, other.probability)
   }
 }
@@ -68,11 +65,6 @@ object PredictResultFlag extends Enumeration {
   }
 }
 
-/** Flags for the type of prediction */
-object PredictTypeFlag extends Enumeration {
-  val MODEL,RULE,COMBINED=Value
-}
-
 /** Optional trait for PredictResult objects that report significant features */
 trait HasSignificantFeatures {
   /** Extracted document features that significantly influence the result */
@@ -93,8 +85,7 @@ case class Classification(override val label: String,
                           override val probability: Float,
                           override val matchCount: Int,
                           override val flags: Int,
-                          override val significantFeatures: Seq[(Feature[_], Float)],
-                          override val modelType: PredictTypeFlag.Value)
+                          override val significantFeatures: Seq[(Feature[_], Float)])
   extends PredictResult with HasSignificantFeatures with Buildable[Classification, ClassificationBuilder]{
   /** Stores the data to an output stream so it may be reloaded later.
     *
@@ -106,7 +97,6 @@ case class Classification(override val label: String,
     Codec.VLuint.write(output, matchCount)
     Codec.VLuint.write(output, flags)
     Codec.VLuint.write(output, significantFeatures.size)
-    Codec.String.write(output, modelType.toString())
     significantFeatures.foreach{case (feat, value) => {
       feat match {
         case f: Feature[_] with Buildable[_, _] => {
@@ -133,14 +123,12 @@ class ClassificationBuilder extends Builder[Classification] {
     val matchCount = Codec.VLuint.read(input)
     val flags = Codec.VLuint.read(input)
     val sigFeatSize = Codec.VLuint.read(input)
-    val modelType = Codec.String.read(input)
-
     val sigFeats = (0 until sigFeatSize).map(_ => {
       val feature = input.readFeature
       val value = input.readFloat()
       (feature, value)
     })
-    new Classification(label, prob, matchCount, flags, sigFeats, PredictTypeFlag.withName(modelType))
+    new Classification(label, prob, matchCount, flags, sigFeats)
   }
 }
 
@@ -155,15 +143,14 @@ object Classification extends PredictResultReduction[Classification] {
     components.filter(_.isForced) match {
       case Nil => {
         // no FORCED entries, just average over all items
-        harmonic_mean(components, (c: Classification) => c.matchCount)
+        average(components, (c: Classification) => c.matchCount)
       }
       case forced => {
         // FORCED items exist, only average those
-        harmonic_mean(forced, (c: Classification) => c.matchCount)
+        average(forced, (c: Classification) => c.matchCount)
       }
     }
   }
-
   /** Performs a weighted-average to combine multiple classifications
     *
     * The weighting for each component is provided by a caller-provided
@@ -171,6 +158,9 @@ object Classification extends PredictResultReduction[Classification] {
     */
   def average(components: Seq[Classification], fn: (Classification) => Int) = {
     val sumMatches = components.foldLeft(0)((sum, c) => sum + fn(c))
+
+    if (components.tail.exists(_.label != components.head.label))
+      throw new IllegalArgumentException("can not combine across labels")
 
     // perform a weighted average of the prediction probability
     val probability = if (sumMatches <= 0) 0.0f else {
@@ -182,42 +172,6 @@ object Classification extends PredictResultReduction[Classification] {
      * across all partial models */
     Classification(components.head.label, probability, sumMatches,
       components.foldLeft(0)((mask, c) => mask | c.flags),
-      components.flatMap(_.significantFeatures), PredictTypeFlag.COMBINED)
-  }
-
-  /** Calculates a harmonic mean of averages of classifications
-    *
-    * The averages are calculated for each PredictType of classification,
-    * then the harmonic mean is taken of those results to get the final
-    * combined probability.
-    */
-  def harmonic_mean(components: Seq[Classification], fn: (Classification) => Int) = {
-    if (components.tail.exists(_.label != components.head.label))
-      throw new IllegalArgumentException("can not combine across labels")
-
-    //1. separate the components base on type (no reason to keep the type)
-    val separated = components.groupBy(c => c.modelType).values
-
-    //2. get the averages of each type
-    val weighted_probabilities = separated.map(x => {
-     average(x, fn)
-    })
-
-    //3. return the harmonic mean of this set of averages
-    //h = n / (∑ 1/m)
-    val harmonic_mean = divide_or_zero(weighted_probabilities.size,
-      weighted_probabilities.foldLeft(0.0f)((sum, p) => sum + divide_or_zero(1.0f, p.probability)))
-
-    /*return the union of enabled flags and significant features
-    * across all partial models */
-    Classification(components.head.label, harmonic_mean,
-      weighted_probabilities.foldLeft(0)((sum, c) => sum + fn(c)),
-      components.foldLeft(0)((mask, c) => mask | c.flags),
-      components.flatMap(_.significantFeatures),PredictTypeFlag.COMBINED)
-  }
-
-  //Divide n/d, return zero if d <= 0
-  def divide_or_zero(n: Float, d: Float): Float = {
-    if (d <= 0) 0.0f else n/d
+      components.flatMap(_.significantFeatures))
   }
 }

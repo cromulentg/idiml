@@ -214,7 +214,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
       val actual = gang1.predict(Document.document(doc), PredictOptions.DEFAULT)
       actual.map(_.label) shouldBe List("blabel", "alabel")
       actual.map(_.matchCount) shouldBe List(3, 1)
-      actual.map(_.probability) shouldEqual List(0.3f, 0.2f)
+      actual.map(_.probability) shouldEqual List(0.4666667f, 0.2f)
       actual.map(_.significantFeatures) shouldEqual List(List(), List())
     }
     it("works as intended with white list & black list trigger in per label models") {
@@ -246,7 +246,7 @@ class GangModelSpec extends FunSpec with Matchers with BeforeAndAfter {
         new PredictOptionsBuilder().showSignificantFeatures(0.4f).build())
       actual.map(_.label) shouldBe List("blabel", "alabel")
       actual.map(_.matchCount) shouldBe List(3, 3)
-      actual.map(_.probability) shouldEqual List(0.3f, 0.29333332f)
+      actual.map(_.probability) shouldEqual List(0.4666667f, 0.43333337f)
       actual match {
         case primary :: secondary :: Nil => {
           primary.significantFeatures should contain theSameElementsAs List(
@@ -276,10 +276,10 @@ case class FakeMCModel(labels: List[String])
       options: PredictOptions): Seq[Classification] = {
     labels.map(label => label match {
       case "alabel" if options.includeSignificantFeatures => {
-        Classification(label, 0.2f, 1, 0, Seq(Word("monkey") -> 0.6f),PredictTypeFlag.COMBINED)
+        Classification(label, 0.2f, 1, 0, Seq(Word("monkey") -> 0.6f))
       }
       case _ => {
-        Classification(label, 0.2f, 1, 0, Seq(), PredictTypeFlag.COMBINED)
+        Classification(label, 0.2f, 1, 0, Seq())
       }
     })
   }

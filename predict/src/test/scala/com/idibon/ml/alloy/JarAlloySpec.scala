@@ -229,7 +229,7 @@ private class DummyPredictModel1 extends PredictModel[Classification] {
   val reifiedType = classOf[DummyPredictModel1]
 
   override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(new Classification("test1", 0.25f, 2, 2, Seq(),PredictTypeFlag.COMBINED), new Classification("test2", 0.22343f, 2, 2, Seq(),PredictTypeFlag.COMBINED))
+    Seq(new Classification("test1", 0.25f, 2, 2, Seq()), new Classification("test2", 0.22343f, 2, 2, Seq()))
   }
   override def getFeaturesUsed(): org.apache.spark.mllib.linalg.Vector = ???
   override def getEvaluationMetric(): Double = ???
@@ -239,7 +239,7 @@ private class DummyPredictModel2 extends PredictModel[Classification] {
   val reifiedType = classOf[DummyPredictModel2]
 
   override def predict(document: Document, options: PredictOptions): Seq[Classification] = {
-    Seq(new Classification("test3", 0.33f, 2, 2, Seq(),PredictTypeFlag.COMBINED), new Classification("test4", 0.523f, 2, 2, Seq(),PredictTypeFlag.COMBINED))
+    Seq(new Classification("test3", 0.33f, 2, 2, Seq()), new Classification("test4", 0.523f, 2, 2, Seq()))
   }
   override def getFeaturesUsed(): org.apache.spark.mllib.linalg.Vector = ???
   override def getEvaluationMetric(): Double = ???

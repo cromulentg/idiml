@@ -132,10 +132,10 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
 
     if (whiteOrBlackRule) {
       Classification(this.label, pseudoProb, totalCount,
-        PredictResultFlag.mask(PredictResultFlag.FORCED), sigFeatures, PredictTypeFlag.RULE)
+        PredictResultFlag.mask(PredictResultFlag.FORCED), sigFeatures)
     } else {
       Classification(this.label, pseudoProb, totalCount,
-        PredictResultFlag.NO_FLAGS, sigFeatures, PredictTypeFlag.RULE)
+        PredictResultFlag.NO_FLAGS, sigFeatures)
     }
   }
 
