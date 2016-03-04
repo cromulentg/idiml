@@ -159,11 +159,8 @@ object Classification extends PredictResultReduction[Classification] {
     * The weighting for each component is provided by a caller-provided
     * method. All partial results must be for the same label.
     */
-  def average(components: Seq[Classification], fn: (Classification) => Int) = {
+  def weighted_average(components: Seq[Classification], fn: (Classification) => Int) = {
     val sumMatches = components.foldLeft(0)((sum, c) => sum + fn(c))
-
-    if (components.tail.exists(_.label != components.head.label))
-      throw new IllegalArgumentException("can not combine across labels")
 
     // perform a weighted average of the prediction probability
     val probability = if (sumMatches <= 0) 0.0f else {
@@ -176,5 +173,47 @@ object Classification extends PredictResultReduction[Classification] {
     Classification(components.head.label, probability, sumMatches,
       components.foldLeft(0)((mask, c) => mask | c.flags),
       components.flatMap(_.significantFeatures))
+  }
+  /** Calculates the average of multiple classifications grouped by
+    * model or rule.
+    *
+    * The weighted averages of the two groups are calculated, then
+    * combined with a harmonic mean to get a true average.
+    */
+  def average(components: Seq[Classification], fn: (Classification) => Int) = {
+    if (components.tail.exists(_.label != components.head.label))
+      throw new IllegalArgumentException("can not combine across labels")
+
+    //1. separate the components into rules and not rules
+    val models_and_rules = components.groupBy(c => c.isRule).values
+
+    //2. get the averages of each type
+    val weighted_probabilities = models_and_rules.map(x => {
+      weighted_average(x, fn)
+    })
+
+    val n = weighted_probabilities.size
+
+    //all rules, or all ml models
+    if (n == 1) {
+      Classification(components.head.label, weighted_probabilities.head.probability,
+        components.foldLeft(0)((sum, c) => sum + fn(c)),
+        components.foldLeft(0)((mask, c) => mask | c.flags),
+        components.flatMap(_.significantFeatures))
+    } else {
+      //harmonic mean of two values = 2*(a*b)/a+b
+      val harmonic_mean = 2.0f * divide_or_zero(
+        weighted_probabilities.foldLeft(1.0f)((prod, c) => prod * c.probability),
+        weighted_probabilities.foldLeft(0.0f)((sum, c) => sum + c.probability))
+
+      Classification(components.head.label, harmonic_mean,
+        components.foldLeft(0)((sum, c) => sum + fn(c)),
+        components.foldLeft(0)((mask, c) => mask | c.flags),
+        components.flatMap(_.significantFeatures))
+    }
+  }
+  /** Divide n/d, return zero if d <= 0 */
+  def divide_or_zero(n: Float, d: Float): Float = {
+    if (d <= 0) 0.0f else n/d
   }
 }
