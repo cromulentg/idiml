@@ -31,7 +31,8 @@ class KClassKFP(builder: KClassKFPBuilder)
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
                     pipelineConfig: Option[JObject],
-                    classification_type: String = "classification.single"): Map[String, PredictModel[Classification]] = {
+                    classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE):
+  Map[String, PredictModel[Classification]] = {
 
     // 1. Create feature pipelines
     val rawPipelines = pipelineConfig match {

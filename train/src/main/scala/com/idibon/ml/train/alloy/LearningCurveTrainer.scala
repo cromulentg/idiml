@@ -21,7 +21,7 @@ import scala.util.Random
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 2/16/16.
   */
 class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
-  extends AlloyTrainer with MetricHelper with StrictLogging {
+  extends AlloyTrainer with KFoldDataSetCreator with MetricHelper with StrictLogging {
   val engine: Engine = builder.engine
   val trainer: AlloyTrainer = builder.trainerBuilder.build(builder.engine)
   val numFolds: Int = builder.numFolds
@@ -51,12 +51,12 @@ class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
     val labels = uuidToLabelGenerator(uuidTolabel)
     //FIXME: handle small data sets, e.g. if not many positive/neg then possibility for single polarity in data set is possible.
     // create map of fold -> (holdout, [(portion, trainingSet)])
-    val foldToDataset = createFoldDatasets(docs, numFolds, portions, foldSeed)
+    val foldToDataset = createFoldDataSets(docs, numFolds, portions, foldSeed)
     // create alloys: fold -> Map(portion -> alloy)
     val foldAlloys = createFoldAlloys(labelsAndRules, config, foldToDataset)
     val defaultThreshold = taskType match {
-      case "classification.single" => 0.5f
-      case "classification.multiple" => 1.0f/labels.size.toFloat
+      case AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE => 1.0f/labels.size.toFloat // this will be multinomial or k-binary
+      case AlloyTrainer.DOCUMENT_MULTI_LABEL => 0.5f // this will be k-binary always
     }
     // perform predictions
     val foldPredictions = getFoldPortionPredictions(foldAlloys, defaultThreshold)
@@ -106,7 +106,7 @@ class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
   }
 
   /**
-    * Averages across folds -- i.e. grouped by lable, portion and metric, averages the values.
+    * Averages across folds -- i.e. grouped by label, portion and metric, averages the values.
     *
     * @param perLabelPortionMetricValues
     * @return
@@ -359,120 +359,6 @@ class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
       (fold, portionAlloys)
     }}.toList.toSeq
   }
-
-  /**
-    * Creates the datasets for each fold.
-    *
-    * The idea is that we first go by label, and place those datapoints nicely in each fold. We then
-    * combine all the folds & portions together. That way, all label data is distributed as naturally
-    * across the folds and portions as in real life.
-    *
-    * @param docs
-    * @return
-    */
-  def createFoldDatasets(docs: () => TraversableOnce[JObject],
-                         numFolds: Int,
-                         portions: Array[Double],
-                         foldSeed: Long): Seq[Fold] = {
-    // create random mapping of training examples to fold on examples that pertain to this uuid label
-    val validationFoldMapping = createValidationFoldMapping(docs().toStream, numFolds, foldSeed)
-    // create "folds"
-    val folds = (0 until numFolds).map { fold: Int =>
-      val holdout = getKthItems(docs().toStream, validationFoldMapping.toStream, fold)
-      val trainingStreams = portions.map { portion =>
-        new PortionStream(portion, getPortion(getAllButKthItems(docs().toStream, validationFoldMapping.toStream, fold), portion))
-      }
-      new Fold(fold, holdout, trainingStreams)
-    }
-    folds.toSeq
-  }
-
-  /**
-    * Helper method to create the mapping of training item to fold.
-    *
-    * This method takes a stream of training data, which is assumed to be filtered to the
-    * corresponding examples we want already, and maps a fold number to it in a giant array.
-    * The array is then shuffled to get a random ordering (so we don't have to
-    * assume anything about the order of the stream). I.e. the initial mapping makes sure
-    * we correctly distribute fold allocations, and then the shuffle randomizes it all.
-    *
-    * What's returned is an array of shorts (since folds are small numbers) that you can
-    * then sequentially take from to map an example to a fold.
-    *
-    * @param docs stream of training data already prefiltered to what we want to map to.
-    * @param numFolds the number of folds we are producing.
-    * @param seed the value we use to base the shuffle off of. Using the same value means we
-    *             can recreate the same folds with the same data.
-    * @return an array of shorts, where the value is a random fold assignment.
-    */
-  def createValidationFoldMapping(docs: Stream[JObject], numFolds: Int, seed: Long): Array[Short] = {
-    val validationFoldMapping = new Array[Short](docs.size)
-    validationFoldMapping.zipWithIndex.foreach { case (_, index) =>
-      validationFoldMapping(index) = (index % numFolds).toShort
-    }
-    val r = new Random(seed)
-    r.shuffle(validationFoldMapping.toList).toArray
-  }
-
-  /**
-    * Helper method to filter the stream to only items that map to this particular fold.
-    *
-    * This zips the document stream with the assigned fold stream, and then filters
-    * based on the fold stream and then maps it back to just documents.
-    *
-    * This is used to create the hold out set.
-    *
-    * @param docs stream of documents to filter.
-    * @param assignedFolds stream of assignments that will be mapped sequentially with documents.
-    * @param k the fold to restrict returned documents to.
-    * @return filtered stream of documents corresponding to K.
-    */
-  def getKthItems(docs: Stream[JObject], assignedFolds: Stream[Short], k: Int): Stream[JObject] = {
-    docs.zip(assignedFolds).filter(_._2 == k).map(_._1)
-  }
-
-  /**
-    * Helper method to filter the stream to only items that don't map to this particular fold.
-    *
-    * This zips the document stream with the assigned fold stream, and then filters
-    * based on the fold stream and then maps it back to just documents.
-    *
-    * This is used to create the training set.
-    *
-    * @param docs stream of documents to filter.
-    * @param assignedFolds stream of assignments that will be mapped sequentially with documents.
-    * @param k the fold to not restrict returned documents to.
-    * @return filtered stream of documents corresponding to all folds apart from K.
-    */
-  def getAllButKthItems(docs: Stream[JObject], assignedFolds: Stream[Short], k: Int): Stream[JObject] = {
-    docs.zip(assignedFolds).filter(_._2 != k).map(_._1)
-  }
-
-  /**
-    * Given a stream, takes the first portion of it.
-    *
-    * @param docs stream of documents to take from.
-    * @param portion double between (0.0, 1.0] representing % to take from stream.
-    * @return a stream limited to portion of original stream.
-    */
-  def getPortion(docs: Stream[JObject], portion: Double): Stream[JObject] = {
-    val numToTake = docs.size.toDouble * portion
-    docs.take(numToTake.toInt)
-  }
-
-
-  /*
-  XValidation:
-   For each label
-    - Create N Folds
-   Combine all label folds
-   For each fold:
-    - save 1 fold for evaluation
-    - merge N-1 folds and train (using Z_i = 1.0)
-    - evaluate model on eval set
-   Average results from each fold for the single split z
-   */
-
 }
 
 /**
@@ -504,14 +390,6 @@ private[alloy] case class LabelPortionMetricTuple(label: String,
                                                   value: Float)
 
 /**
-  * Portion stream holds a training stream for a portion.
-  *
-  * @param portion
-  * @param stream
-  */
-private[alloy] case class PortionStream(portion: Double, stream: Stream[JObject])
-
-/**
   * Holds a prediction for a label.
   *
   * @param label
@@ -527,12 +405,3 @@ private[alloy] case class Prediction(label: String, predicted: Boolean, gold: Bo
   * @param predictions
   */
 private[alloy] case class PortionPredictions(portion: Double, predictions: Seq[Prediction])
-
-/**
-  * Object representing a fold, a hold out set and a sequence of training streams for each portion.
-  *
-  * @param fold
-  * @param holdout
-  * @param trainingStreams
-  */
-private[alloy] case class Fold(fold: Int, holdout: Stream[JObject], trainingStreams: Seq[PortionStream])
