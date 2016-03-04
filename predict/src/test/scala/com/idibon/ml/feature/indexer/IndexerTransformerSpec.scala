@@ -144,13 +144,13 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
       val expected = Vectors.sparse(5, Seq((0, 1.0), (1, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)))
       transform.apply(fiveTokens) shouldBe expected
       transform.numDimensions shouldBe Some(5)
-      transform.freeze()
+      val frozenTransform = transform.freeze()
       val threeTokens = Seq[Feature[Token]](
         new Token("colorlessness", Tag.Word, 0, 1), new Token("greenless", Tag.Word, 1, 1),
         new Token("ideas", Tag.Word, 0, 1))
       val expected2 = Vectors.sparse(5, Array(2), Array(1.0))
-      transform.apply(threeTokens) shouldBe expected2
-      transform.numDimensions shouldBe Some(5)
+      frozenTransform.apply(threeTokens) shouldBe expected2
+      frozenTransform.numDimensions shouldBe Some(5)
     }
 
     it("it should continually add new tokens when not frozen") {
@@ -213,12 +213,12 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("furiously", Tag.Word, 1, 1))
       transform.apply(fiveTokens)
       transform.numDimensions shouldBe Some(5)
-      transform.freeze()
-      transform.prune(predicate2)
-      transform.numDimensions shouldBe Some(5)
-      transform.vocabulary.assigned shouldBe 1
-      transform.vocabulary(fiveTokens(4)) shouldBe 4
-      transform.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
+      val frozenTransform = transform.freeze()
+      frozenTransform.prune(predicate2)
+      frozenTransform.numDimensions shouldBe Some(5)
+      frozenTransform.vocabulary.assigned shouldBe 1
+      frozenTransform.vocabulary(fiveTokens(4)) shouldBe 4
+      frozenTransform.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
     it("should create, freeze, prune, save & load as expected") {
@@ -228,18 +228,18 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("sleep", Tag.Word, 0, 0), new Token("furiously", Tag.Word, 0, 0),
         new Token("green", Tag.Word, 0, 0))
       transform.apply(fiveTokens)
-      transform.freeze()
-      transform.numDimensions shouldBe Some(5)
-      transform.prune(predicate2)
+      val frozenTransform = transform.freeze()
+      frozenTransform.numDimensions shouldBe Some(5)
+      frozenTransform.prune(predicate2)
       // Save the results
       val archive = HashMap[String, Array[Byte]]()
-      transform.save(new MemoryAlloyWriter(archive))
+      frozenTransform.save(new MemoryAlloyWriter(archive))
 
       // Load the results
       val transform2 = (new IndexTransformLoader).load(
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.numDimensions shouldBe Some(5)
-      transform.vocabulary shouldBe transform2.vocabulary
+      frozenTransform.vocabulary shouldBe transform2.vocabulary
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
@@ -250,19 +250,19 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("sleep", Tag.Word, 0, 0), new Token("furiously", Tag.Word, 0, 0),
         new Token("green", Tag.Word, 0, 0))
       transform.apply(fiveTokens)
-      transform.freeze()
-      transform.numDimensions shouldBe Some(5)
-      transform.prune(predicate2)
+      val frozenTransform = transform.freeze()
+      frozenTransform.numDimensions shouldBe Some(5)
+      frozenTransform.prune(predicate2)
       // Save the results
       val archive = HashMap[String, Array[Byte]]()
-      transform.save(new MemoryAlloyWriter(archive))
+      frozenTransform.save(new MemoryAlloyWriter(archive))
 
       // Load the results
       val transform2 = (new IndexTransformLoader).load(
         new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), None)
       transform2.freeze()
       transform2.numDimensions shouldBe Some(5)
-      transform.vocabulary shouldBe transform2.vocabulary
+      frozenTransform.vocabulary shouldBe transform2.vocabulary
       transform2.apply(fiveTokens) shouldBe Vectors.sparse(5, Array(4), Array(1.0))
     }
 
@@ -273,15 +273,15 @@ class IndexerTransformerSpec extends FunSpec with Matchers with BeforeAndAfter {
         new Token("furiously", Tag.Word, 1, 1))
       val expected = Vectors.sparse(5, Seq((0, 1.0), (1, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)))
       transform.apply(fiveTokens) shouldBe expected
-      transform.freeze()
-      transform.prune(predicate3)
-      transform.numDimensions shouldBe Some(5)
+      val frozenTransform = transform.freeze()
+      frozenTransform.prune(predicate3)
+      frozenTransform.numDimensions shouldBe Some(5)
       val threeTokens = Seq[Feature[Token]](
         new Token("colorless", Tag.Word, 0, 1), new Token("green", Tag.Word, 1, 1),
         new Token("ideas", Tag.Word, 0, 1))
       val expected2 = Vectors.sparse(5, Array(), Array())
-      transform.apply(threeTokens) shouldBe expected2
-      transform.numDimensions shouldBe Some(5)
+      frozenTransform.apply(threeTokens) shouldBe expected2
+      frozenTransform.numDimensions shouldBe Some(5)
     }
   }
 
