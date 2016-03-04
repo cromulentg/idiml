@@ -41,6 +41,8 @@ sealed class ChainLink[T](chain: Chain[T], index: Int) {
     else
       None
   }
+
+  override def toString(): String = value.toString
 }
 
 /** Chain companion object */
