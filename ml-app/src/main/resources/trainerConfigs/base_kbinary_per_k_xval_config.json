@@ -8,7 +8,7 @@
       "jsonClass":"PerLabelFurnaceBuilder",
       "labelFurances":{
         "04e81ce9-cf48-59cd-ba0a-c3b42d5cb0df":{
-          "jsonClass":"XValLogisticRegressionBuilder",
+          "jsonClass":"XValLogisticRegressionFurnaceBuilder",
           "maxIterations":100,
           "regParam":[
             0.1
@@ -22,7 +22,7 @@
           "numFolds":10
         },
         "350c8753-3e64-5380-8a2e-54182a48f369":{
-          "jsonClass":"SimpleLogisticRegressionBuilder",
+          "jsonClass":"SimpleLogisticRegressionFurnaceBuilder",
           "maxIterations":100,
           "regParam":[
             0.001
