@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 /** Immutable, ordered collection of links of type T, traversable as a
   * doubly-linked list of ChainLinks
   */
-class Chain[T](private[feature] val nodes: IndexedSeq[T])
+case class Chain[T](nodes: IndexedSeq[T])
     extends Traversable[ChainLink[T]] {
 
   override def foreach[U](f: (ChainLink[T]) => U) {
