@@ -19,6 +19,7 @@ trait PredictResult {
 
   /** True if the result is FORCED */
   def isForced = ((flags & (1 << PredictResultFlag.FORCED.id)) != 0)
+  def isRule = ((flags & (1 << PredictResultFlag.RULE.id)) != 0)
 
   /**
     * Method to use to check whether two prediction results are close enough.
@@ -31,6 +32,7 @@ trait PredictResult {
       this.matchCount == other.matchCount &&
       this.flags == other.flags &&
       this.isForced == other.isForced &&
+      this.isRule == other.isRule &&
       PredictResult.floatIsCloseEnough(this.probability, other.probability)
   }
 }
@@ -53,8 +55,9 @@ object PredictResult {
 
 /** Flags for special properties affecting the prediction result */
 object PredictResultFlag extends Enumeration {
-  /** The result was affected by (e.g.) a blacklist or whitelist rule */
-  val FORCED = Value
+  /** Forced: the result was affected by (e.g.) a blacklist or whitelist rule */
+  /** Rule: this is the result of a rule, not an ML model */
+  val FORCED,RULE = Value
 
   /** constant bitmask for no special flags */
   val NO_FLAGS = 0
