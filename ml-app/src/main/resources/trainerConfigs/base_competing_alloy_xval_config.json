@@ -42,7 +42,6 @@
       }
     },
     "numFolds":5,
-    "portion":1.0,
     "foldSeed":3035129093919035612
   },
   "pipelineConfig": {

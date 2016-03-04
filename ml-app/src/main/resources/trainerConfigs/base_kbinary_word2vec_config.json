@@ -5,7 +5,7 @@
       "jsonClass": "KClassDataFrameGeneratorBuilder"
     },
     "furnaceBuilder": {
-      "jsonClass": "SimpleLogisticRegressionBuilder",
+      "jsonClass": "SimpleLogisticRegressionFurnaceBuilder",
       "maxIterations":100,
       "regParam":[
         0.001
