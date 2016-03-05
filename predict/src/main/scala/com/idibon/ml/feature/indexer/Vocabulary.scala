@@ -236,6 +236,7 @@ private[indexer] class MutableVocabulary extends Vocabulary {
   private[indexer] def this(m: Map[Feature[_], Int], s: Int) {
     this()
     m.foreach(entry => domain += entry)
+    m.foreach({case (feature, index) => inverse.put(index, feature)})
     _size = s
   }
 
@@ -342,9 +343,9 @@ private[indexer] class MutableVocabulary extends Vocabulary {
   /** Prevents new features from growing the domain */
   def freeze: Vocabulary = {
     this.synchronized {
-      frozen = true
-      observations.clear()
+      val newMutableVocab = new MutableVocabulary(domain.toMap, domain.size)
+      newMutableVocab.frozen = true
+      newMutableVocab
     }
-    this
   }
 }

@@ -48,7 +48,7 @@ class AlloyTrainerSpec extends FunSpec
   }
 
   describe("KClassKFP tests") {
-    before {
+    it("makes predictions") {
       // Import pipeline config from file
       val configFileStream = new java.io.InputStreamReader(getClass.getClassLoader.getResourceAsStream(configFile))
       trainerConfigJObject = parse(configFileStream).extract[JObject]
@@ -78,9 +78,6 @@ class AlloyTrainerSpec extends FunSpec
 
       alloy shouldBe an[Alloy[_]]
 
-    }
-
-    it("makes predictions") {
       val minPrediction : Float = 0.0f
       val maxPrediction : Float = 1.0f
 

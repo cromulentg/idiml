@@ -3,7 +3,7 @@ package com.idibon.ml.train.alloy
 import java.util
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{Classification, PredictModel}
+import com.idibon.ml.predict.{Label, Classification, PredictModel}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.predict.ml.MLModel
 import com.idibon.ml.predict.rules.DocumentRules
@@ -46,7 +46,8 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
                     pipelineConfig: Option[JObject],
-                    classification_type: String):
+                    classification_type: String,
+                    labels: Seq[Label]):
   Map[String, PredictModel[Classification]] = {
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {
