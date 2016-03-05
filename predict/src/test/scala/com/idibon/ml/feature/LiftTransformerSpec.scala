@@ -1,13 +1,13 @@
 package com.idibon.ml.feature
 
+import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.feature.wordshapes.Shape
-import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers, BeforeAndAfter}
+import org.scalatest.{FunSpec, Matchers}
 
 /**
   * Tests the LiftTransformer
   */
-class LiftTransformerSpec extends FunSpec with Matchers
-  with BeforeAndAfter with BeforeAndAfterAll {
+class LiftTransformerSpec extends FunSpec with Matchers {
 
   describe("it works as intended") {
 
@@ -25,5 +25,17 @@ class LiftTransformerSpec extends FunSpec with Matchers
     it("works with no features") {
       transform.apply() shouldBe Seq()
     }
+  }
+}
+
+class ChainLiftTransformerSpec extends FunSpec with Matchers {
+
+  it("should perform component-wise concatenation") {
+    val lift = new ChainLiftTransformer()
+    val a = Chain(Word("a"), Word("B"))
+    val b = Chain(Shape("c"), Shape("C"))
+    lift(a, b) shouldBe Chain(
+      Seq[Feature[_]](Shape("c"), Word("a")),
+      Seq[Feature[_]](Shape("C"), Word("B")))
   }
 }
