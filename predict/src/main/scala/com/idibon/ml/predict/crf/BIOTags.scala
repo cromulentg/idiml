@@ -17,7 +17,7 @@ trait BIOTag {
   val bio: BIOType.Value
 }
 
-object BIOTag {
+object BIOTag extends Function1[String, BIOTag] {
 
   /** Parses a string representation of a BIOTag back to the original object */
   def apply(s: String): BIOTag = s.charAt(0) match {
