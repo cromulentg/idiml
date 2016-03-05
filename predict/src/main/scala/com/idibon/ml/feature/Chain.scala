@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 /** Immutable, ordered collection of links of type T, traversable as a
   * doubly-linked list of ChainLinks
   */
-class Chain[T](private[feature] val nodes: IndexedSeq[T])
+case class Chain[+T](nodes: IndexedSeq[T])
     extends Traversable[ChainLink[T]] {
 
   override def foreach[U](f: (ChainLink[T]) => U) {
@@ -21,7 +21,7 @@ class Chain[T](private[feature] val nodes: IndexedSeq[T])
   * Provides an indirect accessor to the original item, and methods to
   * scan to adjacent items.
   */
-sealed class ChainLink[T](chain: Chain[T], index: Int) {
+sealed class ChainLink[+T](chain: Chain[T], index: Int) {
 
   /** Returns the item at the current link */
   def value = chain.nodes(index)
@@ -41,6 +41,8 @@ sealed class ChainLink[T](chain: Chain[T], index: Int) {
     else
       None
   }
+
+  override def toString(): String = value.toString
 }
 
 /** Chain companion object */

@@ -8,15 +8,6 @@ import com.idibon.ml.alloy.Alloy
 import org.json4s._
 import org.json4s.JsonDSL._
 
-import com.ibm.icu.lang.UCharacter
-
-object CaseTransform extends Enumeration {
-  // TODO: add more case fold choices here
-  val ToLower,  /* convert all words to lower case */
-    ToUpper,    /* convert all words to upper case */
-    None        /* no change in case */ = Value
-}
-
 /** BagOfWords FeatureTransformer
   *
   * Produces a bag of words. i.e. a Word Feature for each token, optionally
@@ -26,7 +17,8 @@ object CaseTransform extends Enumeration {
   * @param transform - a case folding operation to apply
   */
 class BagOfWordsTransformer(accept: Seq[Tag.Value],
-  transform: CaseTransform.Value) extends FeatureTransformer
+  val transform: CaseTransform.Value)
+    extends FeatureTransformer with CaseTransform
     with Archivable[BagOfWordsTransformer, BagOfWordsTransformerLoader] {
 
   // for performance, convert the list of accepted token tags into a bitmask
@@ -35,32 +27,14 @@ class BagOfWordsTransformer(accept: Seq[Tag.Value],
 
   /** Produces a bag of words from a sequence of Tokens
     *
-    * @param tokens - the generated tokens
-    * @param language - the primary language identified for the token stream
+    * @param toks - the generated tokens
+    * @param lc - the primary language identified for the token stream
     * @return bag of words represented as a sequence of Word features.
     */
-  def apply(tokens: Seq[Feature[Token]], language: Feature[LanguageCode]):
-      Seq[Word] = {
-    val accepted = tokens.filter(t => (_tokenMask & (1 << t.get.tag.id)) != 0)
-    this.transform match {
-      case CaseTransform.ToLower => {
-        language.get.icuLocale.map(locale => {
-          accepted.map(t => Word(UCharacter.toLowerCase(locale, t.get.content)))
-        }).getOrElse({
-          accepted.map(t => Word(UCharacter.toLowerCase(t.get.content)))
-        })
-      }
-      case CaseTransform.ToUpper => {
-        language.get.icuLocale.map(locale => {
-          accepted.map(t => Word(UCharacter.toUpperCase(locale, t.get.content)))
-        }).getOrElse({
-          accepted.map(t => Word(UCharacter.toUpperCase(t.get.content)))
-        })
-      }
-      case CaseTransform.None => {
-        accepted.map(t => Word(t.get.content))
-      }
-    }
+  def apply(toks: Seq[Feature[Token]], lc: Feature[LanguageCode]): Seq[Word] = {
+    val accepted = toks.filter(t => (_tokenMask & (1 << t.get.tag.id)) != 0)
+    val f = transformation(lc)
+    accepted.map(t => f(t.get))
   }
 
   /** Saves the configuration data for this transform to an Alloy */

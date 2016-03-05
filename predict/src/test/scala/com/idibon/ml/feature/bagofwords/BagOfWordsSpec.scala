@@ -1,11 +1,25 @@
 package com.idibon.ml.feature.bagofwords
 
-import com.idibon.ml.feature.Feature
+import com.idibon.ml.feature.{Chain, Feature}
+import com.idibon.ml.common.EmbeddedEngine
+import com.idibon.ml.alloy.{MemoryAlloyWriter, MemoryAlloyReader}
 import com.idibon.ml.feature.language.LanguageCode
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
 
 class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
+
+  describe("ChainBagOfWords") {
+    it("should save and load correctly") {
+      val archive = collection.mutable.HashMap[String, Array[Byte]]()
+      val cow = new ChainBagOfWords(CaseTransform.ToUpper)
+      val cfg = cow.save(new MemoryAlloyWriter(archive))
+      val loader = new ChainBagOfWordsLoader
+      val cow2 = loader.load(new EmbeddedEngine,
+        Some(new MemoryAlloyReader(archive.toMap)), cfg)
+      cow2(Chain(Token("abacus", Tag.Word, 0, 0)), LanguageCode(Some("eng"))) shouldBe Chain(Word("ABACUS"))
+    }
+  }
 
   describe("accept-all, no case transform") {
 
