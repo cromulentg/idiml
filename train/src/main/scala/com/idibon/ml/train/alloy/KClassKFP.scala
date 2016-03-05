@@ -3,7 +3,8 @@ package com.idibon.ml.train.alloy
 import java.util
 
 import com.idibon.ml.feature.FeaturePipeline
-import com.idibon.ml.predict.{PredictModel, Classification}
+import com.idibon.ml.predict.ml.MLModel
+import com.idibon.ml.predict.{Label, PredictModel, Classification}
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
@@ -31,46 +32,46 @@ class KClassKFP(builder: KClassKFPBuilder)
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
                     pipelineConfig: Option[JObject],
-                    classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE):
+                    classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE,
+                    labels: Seq[Label]):
   Map[String, PredictModel[Classification]] = {
 
     // 1. Create feature pipelines
-    val rawPipelines = pipelineConfig match {
-      case Some(config) => createFeaturePipelines(this.engine, config)
-      case _ => throw new IllegalArgumentException("No feature pipeline config passed.")
-    }
+    val labelToPipeline = labels.map(label => {
+      val rawPipelines: Seq[FeaturePipeline] = pipelineConfig match {
+        case Some(config) => createFeaturePipelines(this.engine, config)
+        case _ => throw new IllegalArgumentException("No feature pipeline config passed.")
+      }
+      (label, rawPipelines)
+    })
 
-    // 2. Prime the pipelines
+    // 2. Prime the pipelines -- they are now all FROZEN
     // TODO: Add save/load to keep this from blowing up working memory
-    val primedPipelines = rawPipelines.map(p => p.prime(rawData()))
+    val labelToPrimedPipelines = labelToPipeline.map({case (label, pipelines) =>
+      (label, pipelines.map(p => p.prime(rawData())))
+    })
 
     // 3. Featurize the data for each pipeline
-    //    Returns: Seq[Option[Map[String, DataFrame]]]
-    val featurizedData = furnace.featurizeData(rawData, dataGen, primedPipelines)
+    val featurizedData = furnace.featurizeData(rawData, dataGen, labelToPrimedPipelines.head._2)
 
     //    Build a tuple of the pipeline and its associated per-label feature vector map
-    val pipelinesFeatures = primedPipelines zip featurizedData
+    val labelPipelinesFeatures = labelToPrimedPipelines.map({case (label, primedPipelines) =>
+      (label, primedPipelines zip featurizedData)
+    })
 
     // 4. Fit the models
-    val pipelineFeaturesMap : Seq[(FeaturePipeline, Map[String, DataFrame])] = pipelinesFeatures.map {
-      case (p : FeaturePipeline, f: Option[Map[String, DataFrame]]) => (p, f.get)
-    }
-
-    val pipelineLabelFeatures : Seq[(FeaturePipeline, String, DataFrame)] = pipelineFeaturesMap.map {
-      case (p: FeaturePipeline, f: Map[String, DataFrame]) => {
-        f.map{
-          case (label : String, features : DataFrame) => (p, label, features)
-        }
+    val pipelineLabelFeatures = labelPipelinesFeatures.flatMap({
+      case (label, seq) => {
+        seq.map({case (primed: FeaturePipeline, f: Option[Map[String, DataFrame]]) =>
+          (primed, label.uuid.toString(), f.get(label.uuid.toString()))
+        })
       }
-    }.flatten
+    })
 
     val labelFeatures : Seq[(String, PredictModel[Classification], Double)] = pipelineLabelFeatures.map {
       case (pipeline, label, features) => {
-        // Get a copy of the pipeline
-        val pipelineCopy = pipeline.prime(None)
-
         // Fit the model & evaluate it
-        val model = furnace.fit(label, List(features), Some(List(pipelineCopy)))
+        val model = furnace.fit(label, List(features), Some(List(pipeline)))
         val metric = model.getEvaluationMetric()
 
         // 5. Prepare for pruning
@@ -84,10 +85,10 @@ class KClassKFP(builder: KClassKFPBuilder)
         val usedFeatures = model.getFeaturesUsed()
         //    add what was used so we can prune it from the feature pipeline.
         usedFeatures.foreachActive((index, _) => featuresUsed.add(index))
-        logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
+        logger.info(s"Fitted model for ${label}, used ${featuresUsed.size()} features.")
 
         // 6. Prune unused features
-        pipelineCopy.prune(isNotUsed)
+        pipeline.prune(isNotUsed)
 
         // Now that the furnace includes the pipeline, there's no need to keep track of it
         (label, model, metric)

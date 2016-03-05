@@ -5,7 +5,7 @@ import java.util
 import com.idibon.ml.feature.{Feature, FeaturePipeline}
 import com.idibon.ml.predict.ml.metrics.{MetricHelper}
 import com.idibon.ml.predict.ml.{TrainingSummary}
-import com.idibon.ml.predict.{PredictOptions, Document, PredictModel, Classification}
+import com.idibon.ml.predict._
 import com.idibon.ml.predict.ensemble.GangModel
 import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGenerator, SparkDataGenerator}
 import com.typesafe.scalalogging.StrictLogging
@@ -37,7 +37,8 @@ class KClass1FP(builder: KClass1FPBuilder)
   override def melt(rawData: () => TraversableOnce[JObject],
                     dataGen: SparkDataGenerator,
                     pipelineConfig: Option[JObject],
-                    classification_type: String): Map[String, PredictModel[Classification]] = {
+                    classification_type: String,
+                    labels: Seq[Label]): Map[String, PredictModel[Classification]] = {
 
     // create one feature pipeline
     val rawPipeline = pipelineConfig match {

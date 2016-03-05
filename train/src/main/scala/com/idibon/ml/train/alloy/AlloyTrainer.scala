@@ -163,7 +163,12 @@ abstract class BaseTrainer(protected val engine: Engine,
       - training MLModels
      */
     val gang = mergeRulesWithModels(
-      melt(docs, dataGen, config.map(c => (c \ BaseTrainer.PIPELINE_CONFIG).extract[JObject]), task_type),
+      melt(docs,
+        dataGen,
+        config.map(c => (c \ BaseTrainer.PIPELINE_CONFIG).extract[JObject]),
+        task_type,
+        labels
+      ),
       parsedRules)
 
     val validationResults = createValidationSet(docs, numberOfValidationExamples)
@@ -211,7 +216,8 @@ abstract class BaseTrainer(protected val engine: Engine,
   def melt(rawData: () => TraversableOnce[JObject],
            dataGen: SparkDataGenerator,
            pipelineConfig: Option[JObject],
-           classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE):
+           classification_type: String = AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE,
+           labels: Seq[Label]):
   Map[String, PredictModel[Classification]]
 
 }
