@@ -36,7 +36,8 @@ class CrossValidatingAlloyTrainer(engine: Engine,
                                   trainer: AlloyTrainer,
                                   numFolds: Int,
                                   portion: Double,
-                                  foldSeed: Long)
+                                  foldSeed: Long,
+                                  skipFinalTraining: Boolean = false)
   extends AlloyTrainer with KFoldDataSetCreator with StrictLogging {
 
   /**
@@ -93,16 +94,25 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     // average the results
     val resultsAverage = averageMetrics(s"$name${CrossValidatingAlloyTrainer.SUFFIX}", summaries)
     logger.info(s"Xval results for - $name:\n ${resultsAverage.toString}")
-    // train on all data
-    val finalAlloy = trainer.trainAlloy(name, docs, labelsAndRules, config)
-      .asInstanceOf[BaseAlloy[Classification] with HasTrainingSummary]
-    // get training summary
-    val finalAlloyTrainingSummary = HasTrainingSummary.getSummaries[Classification](finalAlloy)
-      .map(ts => new TrainingSummary(s"$name-${ts.identifier}", ts.metrics))
-    // create new alloy with combined summaries
-    new BaseAlloy[Classification](name, labels, finalAlloy.models) with HasTrainingSummary {
-      override def getTrainingSummaries = {
-        Some(Seq(resultsAverage) ++ finalAlloyTrainingSummary)
+    if (skipFinalTraining) {
+      // create new alloy with just xval summaries -- no model!
+      new BaseAlloy[Classification](name, labels, Map()) with HasTrainingSummary {
+        override def getTrainingSummaries = {
+          Some(Seq(resultsAverage))
+        }
+      }
+    } else {
+      // train on all data
+      val finalAlloy = trainer.trainAlloy(name, docs, labelsAndRules, config)
+        .asInstanceOf[BaseAlloy[Classification] with HasTrainingSummary]
+      // get training summary
+      val finalAlloyTrainingSummary = HasTrainingSummary.getSummaries[Classification](finalAlloy)
+        .map(ts => new TrainingSummary(s"$name-${ts.identifier}", ts.metrics))
+      // create new alloy with combined summaries
+      new BaseAlloy[Classification](name, labels, finalAlloy.models) with HasTrainingSummary {
+        override def getTrainingSummaries = {
+          Some(Seq(resultsAverage) ++ finalAlloyTrainingSummary)
+        }
       }
     }
   }
