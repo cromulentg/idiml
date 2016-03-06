@@ -68,7 +68,7 @@ class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
   }
 
   /**
-    * Gets the training summaries that come from cross validation.
+    * Gets the training summaries that come from cross validation alloys.
     *
     * @param portionAlloys
     * @return
