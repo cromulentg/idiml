@@ -28,14 +28,13 @@ class BIOModel(model: FactorieCRF,
     with Archivable[BIOModel, BIOModelLoader]
     with BIOAssembly {
 
-  /**
-    */
-  def predict(document: Document, options: PredictOptions): Seq[Span] = {
+  /** Perform a Span prediction for the document */
+  def predict(doc: Document, options: PredictOptions): Seq[Span] = {
     /* TODO: apply language-detection and content-detection once and store
      * within a mutated document object for the pipelines */
-    val tokens = sequencer(document.json)
-    val tags = model.predict(extractor(document.json, tokens).flatten)
-    assemble(tokens.flatten, tags.map(crf => BIOTag(crf.value.category)))
+    val tokens = sequencer(doc.json)
+    val tagsWithConfidence = model.predict(extractor(doc.json, tokens).flatten)
+    assemble(tokens.flatten, tagsWithConfidence)
   }
 
   def getEvaluationMetric(): Double = ???

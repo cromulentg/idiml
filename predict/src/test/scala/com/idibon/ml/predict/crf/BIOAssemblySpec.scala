@@ -16,7 +16,7 @@ class BIOAssemblySpec extends FunSpec with Matchers with BIOAssembly {
   def tokenize(x: String) = tokenizer(StringFeature(x), LanguageCode(Some("eng")),
     ContentType(ContentTypeCode.PlainText)).filter(_.tag != Tag.Whitespace)
 
-  def tag(x: String*) = x map BIOTag
+  def tag(x: String*) = (x.map(v => BIOTag(v) -> 1.0))
 
   it("should support empty lists") {
     assemble(Seq(), Seq()) shouldBe Seq()

@@ -18,10 +18,11 @@ trait BIOAssembly {
     * The list of tokens and tags must have the same length
     *
     * @param tok list of tokens
-    * @param tag list of tags for each token
+    * @param tag list of tags for each token, with confidence
     * @return list of spans, possibly empty
     */
-  def assemble(tok: Traversable[Token], tag: Traversable[BIOTag]): Seq[Span] = {
+  def assemble(tok: Traversable[Token], tag: Traversable[(BIOTag, Double)]):
+      Seq[Span] = {
     require(tok.size == tag.size, "Tokens and tags have different lengths")
 
     val spans = ListBuffer[Span]()
@@ -29,17 +30,20 @@ trait BIOAssembly {
     var tagged = tok.toIterable.zip(tag.toIterable)
     while (tagged.nonEmpty) {
       tagged = tagged.head match {
-        case (startTok, BIOLabel(BIOType.BEGIN, label)) => {
+        case (startTok, (BIOLabel(BIOType.BEGIN, label), confidence)) => {
           /* slurp every INSIDE token with the same label that immediately
            * follows this BEGIN token, since they belong to the same span. */
           val (inside, next) = tagged.tail.span(_ match {
-            case (_, BIOLabel(BIOType.INSIDE, label2)) => label == label2
+            case (_, (BIOLabel(BIOType.INSIDE, label2), _)) => label == label2
             case _ => false
           })
-          // FIXME: where is probability stored?
+
+          /* return the average of the token confidences across the span */
+          val prob = (confidence + inside.map(_._2._2).sum) / (1 + inside.size)
+
           spans += inside.lastOption.map({ case (endTok, _) => {
-            Span(label, 1.0f, 0, startTok.offset, endTok.end - startTok.offset)
-          }}).getOrElse(Span(label, 1.0f, 0, startTok.offset, startTok.length))
+            Span(label, prob.toFloat, 0, startTok.offset, endTok.end - startTok.offset)
+          }}).getOrElse(Span(label, prob.toFloat, 0, startTok.offset, startTok.length))
           // skip over all of the I tags processed
           next
         }

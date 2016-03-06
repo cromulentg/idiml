@@ -31,14 +31,45 @@ class FactorieCRF(dimensions: Int) extends Freezable[FactorieCRF] {
   private[crf] val model = new m.TemplateModel with m.Parameters
 
   /** Assigns a tag from the tagDomain to every entry in the sequence
+    *
+    * @param sequence list of feature vectors in the sequence
+    * @return list of tags and model confidence for each assignment
     */
-  def predict(sequence: Traversable[Vector]): Seq[CRFTag] = {
+  def predict(sequence: Traversable[Vector]): Seq[(BIOTag, Double)] = {
     val inferred: Seq[TaggedVar] = sequence.foldLeft(new CRFSequence)(
       (result, vector) => {
         result += new CRFObservation(vector, this); result
       }).links.map(_.tag)
-    i.BP.inferChainMax(inferred, model).setToMaximize(null)
-    inferred
+
+    val summary = i.BP.inferChainMax(inferred, model)
+    summary.setToMaximize(null)
+
+    val scores = new Array[Double](inferred.size)
+
+    /* accumulate the factor weights for the assigned tags across the
+     * sequence, to compute a value for predictive confidence */
+    summary.factorMarginals.foreach(_ match {
+      case m: i.MAPSummary#SingletonFactorMarginal => {
+        m.variables.foreach(_ match {
+          case t: TaggedVar @unchecked => scores(t.obs.position) += m.score
+          case _ =>
+        })
+      }
+      case _ =>
+    })
+
+    val biases = model.parameters.tensors(1)
+
+    /* convert the inferred CRFTags to BIOTags, and compute per-assignment
+     * confidence by treating each tag's bias term as 50% predictive
+     * confidence (i.e., an assignment for a single-element sequence where
+     * the one element is completely out-of-vocabulary will have 50%
+     * confidence. */
+    inferred.zip(scores).map({ case (tag, score) => {
+      val bias = biases(tag.value.intValue)
+      val confidence = 1.0 / (1.0 + Math.exp(bias - score))
+      BIOTag(tag.value.category) -> confidence
+    }})
   }
 
   /** Writes a FactorieCRF to an output stream

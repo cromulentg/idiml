@@ -40,14 +40,14 @@ class FactorieCRFSpec extends FunSpec with Matchers {
     it("should learn parameters") {
       val documents = Seq(
         Seq($("O", 0.0, 0.0, 0.0, 0.0, 1.0),
-          $("B", 0.0, 0.0, 0.0, 1.0, 0.0),
-          $("I", 0.0, 0.0, 1.0, 0.0, 0.0),
-          $("I", 0.0, 0.0, 0.0, 0.0, 1.0),
-          $("I", 0.0, 0.0, 0.0, 0.0, 1.0)),
+          $("B0", 0.0, 0.0, 0.0, 1.0, 0.0),
+          $("I0", 0.0, 0.0, 1.0, 0.0, 0.0),
+          $("I0", 0.0, 0.0, 0.0, 0.0, 1.0),
+          $("I0", 0.0, 0.0, 0.0, 0.0, 1.0)),
         Seq($("O", 0.0, 0.0, 0.0, 0.0, 1.0),
           $("O", 0.0, 0.0, 1.0, 0.0, 0.0),
-          $("B", 0.0, 0.0, 0.0, 1.0, 0.0),
-          $("I", 0.0, 1.0, 1.0, 0.0, 0.0),
+          $("B0", 0.0, 0.0, 0.0, 1.0, 0.0),
+          $("I0", 0.0, 1.0, 1.0, 0.0, 0.0),
           $("O", 1.0, 0.0, 0.0, 0.0, 0.0)))
 
       val begin = Vectors.dense(0.0, 0.0, 0.0, 1.0, 0.0)
@@ -58,14 +58,13 @@ class FactorieCRFSpec extends FunSpec with Matchers {
       val model = new FactorieCRF(5) with TrainableFactorieModel
       model.train(documents map model.observe, new Random)
 
-      model.predict(Seq(begin)).head.value.category shouldBe "B"
-      model.predict(Seq(outside)).head.value.category shouldBe "O"
-      model.predict(Seq(oov)).head.value.category shouldBe "O"
-      //model.predict(Seq(inside)).head.value.category shouldBe "O"
-      model.predict(Seq(begin, inside)).map(_.value.category) shouldBe Seq("B", "I")
+      model.predict(Seq(begin)).head._1 shouldBe BIOTag("B0")
+      model.predict(Seq(outside)).head._1 shouldBe BIOTag("O")
+      model.predict(Seq(oov)).head._1 shouldBe BIOTag("O")
+      model.predict(Seq(begin, inside)).map(_._1) shouldBe Seq(BIOTag("B0"), BIOTag("I0"))
 
       val expected = documents.reverse.map(doc => {
-        model.predict(doc.map(_._2)).map(_.value.category)
+        model.predict(doc.map(_._2)).map(_._1)
       })
 
       val os = new ByteArrayOutputStream()
@@ -73,11 +72,11 @@ class FactorieCRFSpec extends FunSpec with Matchers {
       println(s"Model size: ${os.toByteArray.length}")
 
       val re = FactorieCRF.deserialize(new ByteArrayInputStream(os.toByteArray))
-      re.predict(Seq(begin)).head.value.category shouldBe "B"
-      re.predict(Seq(outside)).head.value.category shouldBe "O"
+      re.predict(Seq(begin)).head._1 shouldBe BIOTag("B0")
+      re.predict(Seq(outside)).head._1 shouldBe BIOTag("O")
 
       val compare = documents.reverse.map(doc => {
-        re.predict(doc.map(_._2)).map(_.value.category)
+        re.predict(doc.map(_._2)).map(_._1)
       })
       compare shouldBe expected
     }
