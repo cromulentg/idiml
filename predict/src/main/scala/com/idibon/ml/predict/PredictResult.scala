@@ -115,6 +115,8 @@ trait HasRegion {
   val offset: Int
   /** Length of the affected region, in UTF-16 code units */
   val length: Int
+  /** End of the affected region, in UTF-16 code units */
+  final val end = offset + length
 }
 
 /** Basic PredictResult for span extraction

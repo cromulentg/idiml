@@ -54,7 +54,9 @@ package com.idibon.ml.feature.tokenizer {
   }
 
   case class Token(content: String, tag: Tag.Value, offset: Int, length: Int)
-      extends Feature[Token] with Buildable[Token, TokenBuilder]{
+      extends Feature[Token] with Buildable[Token, TokenBuilder] {
+
+    final val end = offset + length
 
     def get = this
 

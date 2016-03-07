@@ -91,7 +91,7 @@ subprojects {
     compile "org.scala-lang:scala-library:${project.ext.scalaVersion}.${project.ext.scalaCompilerBuild}"
 
     // Scala Parser Combinators
-    compile "org.scala-lang:scala-parser-combinators:${project.ext.scalaVersion}.0-M4"
+    compile "org.scala-lang.modules:scala-parser-combinators_${project.ext.scalaVersion}:1.0.4"
 
     // Common Spark / Spark MLLib dependencies
     compile("org.apache.spark:spark-core_${project.ext.scalaVersion}:${project.ext.sparkVersion}") {
@@ -107,6 +107,13 @@ subprojects {
       // see comment above about excluding these dependencies
       exclude group: "org.slf4j", module: "slf4j-log4j12"
       exclude group: "log4j"
+    }
+
+    // FACTORIE
+    compile("cc.factorie:factorie_${project.ext.scalaVersion}:1.1.1") {
+      // FACTORIE's example apps bring along some cruft -- remove them
+      exclude group: 'info.bliki.wiki'
+      exclude group: 'org.mongodb'
     }
 
     // Json 4 Scala (Json4s)
