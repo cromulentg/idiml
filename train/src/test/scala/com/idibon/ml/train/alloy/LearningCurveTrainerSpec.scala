@@ -4,15 +4,9 @@ import com.idibon.ml.alloy.{BaseAlloy, HasTrainingSummary}
 import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.Classification
+import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
-import com.idibon.ml.train.datagenerator.{MultiClassDataFrameGeneratorBuilder, KClassDataFrameGeneratorBuilder}
-import com.idibon.ml.train.furnace.{MultiClassLRFurnaceBuilder, SimpleLogisticRegressionFurnaceBuilder}
-import org.json4s.JsonAST.JObject
 import org.scalatest._
-import org.json4s._
-import org.json4s.native.JsonMethods._
-
-import scala.io.Source
 
 /**
   * Tests the Learning Curve Trainer
@@ -23,321 +17,249 @@ class LearningCurveTrainerSpec extends FunSpec
   val engine = new EmbeddedEngine
 
   /**
+    * Helper method to create a sequence of label float metrics of a single metric type.
     *
-    * @param actual
-    * @param expected
+    * @param metricType
+    * @return
     */
-  def evaluateMetrics(actual: Seq[Metric with Buildable[_, _]], expected: Seq[Metric with Buildable[_, _]]) = {
-    val zipped = actual.sortBy(x => x.metricType).zip(expected.sortBy(x => x.metricType))
-    zipped.foreach(tup => {
-      val evaluation = tup match {
-        case (lpf: LabelPointsMetric, lpfe: LabelPointsMetric) => {
-          lpf.points.sortBy(_._1) == lpfe.points.sortBy(_._1) && lpf.label == lpfe.label && lpf.metricType == lpfe.metricType && lpf.metricClass == lpfe.metricClass
-        }
-        case (lpf: PointsMetric, lpfe: PointsMetric) => {
-          lpf.points.sortBy(_._1) == lpfe.points.sortBy(_._1)  && lpf.metricType == lpfe.metricType && lpf.metricClass == lpfe.metricClass
-        }
-      }
-      evaluation shouldBe true
-    })
-  }
-
-  describe("Per label learning curve metrics tests") {
-
-    it("works on empty tuples") {
-      val trainer = new LearningCurveTrainerBuilder().build(engine)
-      val input = Seq()
-      trainer.createPerLabelLCMetrics(input) shouldBe Map()
-    }
-
-    it("works on single portion metrics") {
-      val trainer = new LearningCurveTrainerBuilder().build(engine)
-      val input = Seq(ResultTuple("label", 0, 1.0, true, true), ResultTuple("label", 1, 1.0, false, false),
-        ResultTuple("label", 0, 1.0, false, false), ResultTuple("label", 1, 1.0, true, true))
-      val expected = List[Metric with Buildable[_, _]](
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelPrecision, MetricClass.Binary,"label", Seq((1.0f,1.0f))),
-        new PointsMetric(MetricTypes.LearningCurveF1, MetricClass.Binary,List((1.0f,1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1, MetricClass.Binary, "label",Seq((1.0f,1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelRecall, MetricClass.Binary,"label",Seq((1.0f,1.0f))))
-      evaluateMetrics(trainer.createPerLabelLCMetrics(input)("label"), expected)
-    }
-
-    it("works on single fold metrics") {
-      val trainer = new LearningCurveTrainerBuilder().build(engine)
-      val input = Seq(ResultTuple("label", 0, 1.0, true, true), ResultTuple("label", 0, 0.5, false, false),
-        ResultTuple("label", 0, 1.0, false, false), ResultTuple("label", 0, 0.5, true, true))
-      val expected = List[Metric with Buildable[_, _]](
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelPrecision, MetricClass.Binary,"label", Seq((1.0f,1.0f), (0.5f, 1.0f))),
-        new PointsMetric(MetricTypes.LearningCurveF1, MetricClass.Binary,List((1.0f,1.0f), (0.5f, 1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1, MetricClass.Binary, "label",Seq((1.0f,1.0f), (0.5f, 1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelRecall, MetricClass.Binary,"label",Seq((1.0f,1.0f), (0.5f, 1.0f))))
-      evaluateMetrics(trainer.createPerLabelLCMetrics(input)("label"), expected)
-    }
-
-    it("works on regular metrics with multiple portions and folds") {
-      val trainer = new LearningCurveTrainerBuilder().build(engine)
-      val input =  Seq(ResultTuple("label", 0, 1.0, true, true), ResultTuple("label", 1, 1.0, false, false),
-        ResultTuple("label", 0, 1.0, false, false), ResultTuple("label", 1, 1.0, true, true),
-        ResultTuple("label", 0, 0.5, true, true), ResultTuple("label", 1, 0.5, false, false),
-        ResultTuple("label", 0, 0.5, false, false), ResultTuple("label", 1, 0.5, true, true),
-        ResultTuple("label", 0, 1.0, true, true), ResultTuple("label", 1, 1.0, false, false))
-
-      val expected = List[Metric with Buildable[_, _]](
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelPrecision, MetricClass.Binary,"label", Seq((1.0f,1.0f), (0.5f, 1.0f))),
-        new PointsMetric(MetricTypes.LearningCurveF1, MetricClass.Binary,List((1.0f,1.0f), (0.5f, 1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1, MetricClass.Binary, "label",Seq((1.0f,1.0f), (0.5f, 1.0f))),
-        new LabelPointsMetric(MetricTypes.LearningCurveLabelRecall, MetricClass.Binary,"label",Seq((1.0f,1.0f), (0.5f, 1.0f))))
-      evaluateMetrics(trainer.createPerLabelLCMetrics(input)("label"), expected)
-    }
-  }
-
-  describe("average across folds tests") {
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("averages as expected across label portion &  metrics") {
-      val actual = trainer.averageAcrossFolds(Seq(
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelF1, 0.5f),
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelF1, 1.0f),
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 0.5, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 0.5, MetricTypes.LabelPrecision, 0.0f)
-      )).toList.sortBy(x => (x.label, x.portion, x.metric))
-      val expected = List(new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelF1, 0.75f),
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 0.5, MetricTypes.LabelPrecision, 0.5f))
-        .sortBy(x => (x.label, x.portion, x.metric))
-      actual shouldBe expected
-    }
+  def createLabelMetricSequence(metricType: MetricTypes) = {
+    Seq(
+      (0.5, new LabelFloatMetric(metricType, MetricClass.Binary, "L1", 1.0f)),
+      (1.0, new LabelFloatMetric(metricType, MetricClass.Binary, "L1", 1.0f)),
+      (0.6, new LabelFloatMetric(metricType, MetricClass.Binary, "L2", 1.0f)),
+      (0.9, new LabelFloatMetric(metricType, MetricClass.Binary, "L2", 1.0f))
+    )
   }
 
   describe("create learning curve metrics tests") {
+
     val trainer = new LearningCurveTrainerBuilder().build(engine)
+
     it("throws illegal state exception with bad metric") {
       intercept[IllegalStateException]{
-        trainer.createLearningCurveMetrics(List(new LabelPortionMetricTuple("L1", 1.0, MetricTypes.F1ByThreshold, 1.0f) ))
+        trainer.createLearningCurveMetrics(Map(MetricTypes.WeightedPrecision -> Seq()))
       }
     }
-    it("works groups metrics together correctly") {
-      val actual = trainer.createLearningCurveMetrics(List(
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 0.9, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L1", 0.5, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("L2", 0.6, MetricTypes.LabelPrecision, 1.0f)
-      ))
-      val expected = Map("L1" -> Seq(
+    it("can create LearningCurveLabelPrecision from LabelPrecision") {
+      val actual = trainer.createLearningCurveMetrics(Map(
+        MetricTypes.LabelPrecision -> createLabelMetricSequence(MetricTypes.LabelPrecision)))
+      val expected = Seq(
         new LabelPointsMetric(MetricTypes.LearningCurveLabelPrecision,
-          MetricClass.Binary, "L1", Seq((0.5f, 1.0f), (1.0f, 1.0f)))),
-        "L2" -> Seq(
+          MetricClass.Alloy, "L1", Seq((0.5f, 1.0f), (1.0f, 1.0f))),
         new LabelPointsMetric(MetricTypes.LearningCurveLabelPrecision,
-          MetricClass.Binary, "L2", Seq((0.6f, 1.0f), (0.9f, 1.0f))))
+          MetricClass.Alloy, "L2", Seq((0.6f, 1.0f), (0.9f, 1.0f))))
+      actual.sortBy(x => x.asInstanceOf[LabelPointsMetric].label) shouldBe expected
+    }
+    it("can create LearningCurveLabelF1 from LabelF1") {
+      val actual = trainer.createLearningCurveMetrics(Map(
+        MetricTypes.LabelF1 -> createLabelMetricSequence(MetricTypes.LabelF1)))
+      val expected = Seq(
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1,
+          MetricClass.Alloy, "L1", Seq((0.5f, 1.0f), (1.0f, 1.0f))),
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1,
+          MetricClass.Alloy, "L2", Seq((0.6f, 1.0f), (0.9f, 1.0f))))
+      actual.sortBy(x => x.asInstanceOf[LabelPointsMetric].label) shouldBe expected
+    }
+    it("can create LearningCurveLabelRecall from LabelRecall") {
+      val actual = trainer.createLearningCurveMetrics(Map(
+        MetricTypes.LabelRecall -> createLabelMetricSequence(MetricTypes.LabelRecall)))
+      val expected = Seq(
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelRecall,
+          MetricClass.Alloy, "L1", Seq((0.5f, 1.0f), (1.0f, 1.0f))),
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelRecall,
+          MetricClass.Alloy, "L2", Seq((0.6f, 1.0f), (0.9f, 1.0f))))
+      actual.sortBy(x => x.asInstanceOf[LabelPointsMetric].label) shouldBe expected
+    }
+    it("can create LearningCurveF1 from F1") {
+      val actual = trainer.createLearningCurveMetrics(Map(
+        MetricTypes.F1 -> Seq(
+          (0.5, new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.5f)),
+          (0.6, new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.6f)),
+          (0.9, new FloatMetric(MetricTypes.F1, MetricClass.Binary, 0.7f)),
+          (1.0, new FloatMetric(MetricTypes.F1, MetricClass.Binary, 1.0f))
+        )))
+      val expected = Seq(
+        new PointsMetric(MetricTypes.LearningCurveF1,
+          MetricClass.Alloy, Seq((0.5f, 0.5f), (0.6f, 0.6f), (0.9f, 0.7f), (1.0f, 1.0f))))
+      actual.sortBy(x => x.asInstanceOf[LabelPointsMetric].label) shouldBe expected
+    }
+  }
+
+  describe("createLabelPointsMetrics tests") {
+    it("creates label points metrics") {
+      val trainer = new LearningCurveTrainerBuilder().build(engine)
+      val actual = trainer.createLabelPointsMetrics(
+        MetricTypes.LearningCurveLabelF1,
+        MetricClass.Alloy,
+        createLabelMetricSequence(MetricTypes.LabelF1))
+      val expected = Seq(
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1,
+          MetricClass.Alloy, "L1", Seq((0.5f, 1.0f), (1.0f, 1.0f))),
+        new LabelPointsMetric(MetricTypes.LearningCurveLabelF1,
+          MetricClass.Alloy, "L2", Seq((0.6f, 1.0f), (0.9f, 1.0f))))
+      actual.sortBy(x => x.label) shouldBe expected
+    }
+  }
+
+  describe("transformAndFilterToWantedMetrics tests"){
+    val trainer = new LearningCurveTrainerBuilder().build(engine)
+
+    /**
+      * Helper method to create a metric.
+      * @param mt
+      * @param mc
+      * @return
+      */
+    def createMetric(mt: MetricTypes, mc: MetricClass.Value): Metric with Buildable[_, _] = {
+      mt match {
+        case m if m == MetricTypes.F1 => new FloatMetric(mt, mc, 0.4f)
+        case m if m == MetricTypes.LabelPrecision => new LabelFloatMetric(mt, mc, "a", 0.4f)
+        case m if m == MetricTypes.LabelRecall => new LabelFloatMetric(mt, mc, "a", 0.4f)
+        case m if m == MetricTypes.LabelF1 => new LabelFloatMetric(mt, mc, "a", 0.4f)
+        case m if m == MetricTypes.Precision => new FloatMetric(mt, mc, 0.4f)
+      }
+    }
+    /**
+      * Helper method to create some metrics.
+      * @param metricTypes
+      * @param metricClasses
+      * @return
+      */
+    def createSomeMetrics(metricTypes: Seq[MetricTypes],
+                          metricClasses: Seq[MetricClass.Value]): Seq[Metric with Buildable[_, _]] = {
+        metricTypes.flatMap(mt => {
+          metricClasses.map(mc => {
+            createMetric(mt, mc)
+          })
+        })
+    }
+
+    it("filters correct metrics") {
+      val metrics = createSomeMetrics(
+        Seq(MetricTypes.Precision, MetricTypes.F1, MetricTypes.LabelRecall,
+          MetricTypes.LabelF1, MetricTypes.LabelPrecision),
+        Seq(MetricClass.Alloy)
       )
-      // have to do this nasty comparisons because sequences with tuples the wrong way will be counted
-      // as wrong :(
+      val ts = new TrainingSummary("0.5", metrics)
+      val actual = trainer.transformAndFilterToWantedMetrics(Seq((0.5, ts)))
+      val expected: Map[MetricTypes, Seq[(Double, Metric with Buildable[_, _])]] = Map(
+        MetricTypes.F1 ->
+          Seq((0.5, createSomeMetrics(Seq(MetricTypes.F1), Seq(MetricClass.Alloy)).head)),
+        MetricTypes.LabelRecall ->
+          Seq((0.5, createSomeMetrics(Seq(MetricTypes.LabelRecall), Seq(MetricClass.Alloy)).head)),
+        MetricTypes.LabelF1 ->
+          Seq((0.5, createSomeMetrics(Seq(MetricTypes.LabelF1), Seq(MetricClass.Alloy)).head)),
+        MetricTypes.LabelPrecision ->
+          Seq((0.5, createSomeMetrics(Seq(MetricTypes.LabelPrecision), Seq(MetricClass.Alloy)).head))
+      )
+      actual.size shouldBe expected.size
       actual.foreach({case (key, value) =>
-        value.size shouldBe expected(key).size
-          value(0) match {
-            case l: LabelPointsMetric => l.points.sortBy(_._1) shouldBe expected(key)(0).points.sortBy(_._1)
-          }
+        value shouldBe expected(key)
+      })
+    }
+    it("filters correct metric class"){
+      val metrics1 = createSomeMetrics(
+        Seq(MetricTypes.F1, MetricTypes.LabelRecall,
+          MetricTypes.LabelF1, MetricTypes.LabelPrecision),
+        Seq(MetricClass.Binary))
+      val metrics2 = createSomeMetrics(
+        Seq(MetricTypes.LabelF1, MetricTypes.LabelPrecision),
+        Seq(MetricClass.Alloy))
+      val ts1 = new TrainingSummary("0.5", metrics1)
+      val ts2 = new TrainingSummary("0.6", metrics2)
+      val actual = trainer.transformAndFilterToWantedMetrics(Seq((0.5, ts1), (0.6, ts2)))
+      val expected: Map[MetricTypes, Seq[(Double, Metric with Buildable[_, _])]] = Map(
+        MetricTypes.LabelF1 ->
+          Seq((0.6, createSomeMetrics(Seq(MetricTypes.LabelF1), Seq(MetricClass.Alloy)).head)),
+        MetricTypes.LabelPrecision ->
+          Seq((0.6, createSomeMetrics(Seq(MetricTypes.LabelPrecision), Seq(MetricClass.Alloy)).head))
+      )
+      actual.size shouldBe expected.size
+      actual.foreach({case (key, value) =>
+        value shouldBe expected(key)
+      })
+    }
+    it("groups metric types properly") {
+      val metrics1 = createSomeMetrics(
+        Seq(MetricTypes.LabelF1),
+        Seq(MetricClass.Alloy))
+      val metrics2 = createSomeMetrics(
+        Seq(MetricTypes.LabelF1),
+        Seq(MetricClass.Alloy))
+      val metrics3 = createSomeMetrics(
+        Seq(MetricTypes.LabelF1),
+        Seq(MetricClass.Alloy))
+      val ts1 = new TrainingSummary("0.5", metrics1)
+      val ts2 = new TrainingSummary("0.6", metrics2)
+      val ts3 = new TrainingSummary("0.7", metrics3)
+      val actual = trainer.transformAndFilterToWantedMetrics(
+        Seq((0.5, ts1),
+          (0.6, ts2),
+          (0.7, ts3)))
+      val expected: Map[MetricTypes, Seq[(Double, Metric with Buildable[_, _])]] = Map(
+        MetricTypes.LabelF1 ->
+          Seq(
+            (0.5, createSomeMetrics(Seq(MetricTypes.LabelF1), Seq(MetricClass.Alloy)).head),
+            (0.6, createSomeMetrics(Seq(MetricTypes.LabelF1), Seq(MetricClass.Alloy)).head),
+            (0.7, createSomeMetrics(Seq(MetricTypes.LabelF1), Seq(MetricClass.Alloy)).head)
+          )
+      )
+      actual.size shouldBe expected.size
+      actual.foreach({case (key, value) =>
+        value shouldBe expected(key)
       })
     }
   }
 
-  describe("createLabelPortionMetricTuples tests") {
+  describe("getting portion summaries from alloy tests") {
     val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("works as intended") {
-      val input =  Seq(
-        ResultTuple("label", 0, 1.0, true, true),
-        ResultTuple("label", 0, 1.0, false, false),
-        ResultTuple("label", 0, 0.5, true, true),
-        ResultTuple("label", 0, 0.5, false, false),
-        ResultTuple("label", 1, 1.0, false, false),
-        ResultTuple("label", 1, 1.0, true, true),
-        ResultTuple("label", 1, 0.5, false, false),
-        ResultTuple("label", 1, 0.5, true, true),
-        ResultTuple("label", 1, 0.5, false, true),
-        ResultTuple("label", 1, 0.5, true, false)
+
+    def createSummaries(name1: String, name2: String) = {
+      Seq(
+        new TrainingSummary(name1,
+          Seq(new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Alloy, "L1", 1.0f))),
+        new TrainingSummary(name2,
+          Seq(new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Alloy, "L1", 1.0f)))
       )
-      val actual = trainer.createLabelPortionMetricTuples(input)
+    }
+    it("ignores non cross validation summaries") {
+      val summaries1 = createSummaries("1", "2")
+      val alloy1 = new BaseAlloy[Classification]("name", Seq(), Map()) with HasTrainingSummary {
+        override def getTrainingSummaries: Option[Seq[TrainingSummary]] = {
+          Some(summaries1)
+        }
+      }
+      trainer.getXValPortionSummaries(Seq((0.5, alloy1))) shouldBe Seq()
+    }
+
+    it("gets all training summaries") {
+      val summaries1 = createSummaries(
+        s"1${CrossValidatingAlloyTrainer.SUFFIX}", s"2${CrossValidatingAlloyTrainer.SUFFIX}")
+      val alloy1 = new BaseAlloy[Classification]("name", Seq(), Map()) with HasTrainingSummary {
+        override def getTrainingSummaries: Option[Seq[TrainingSummary]] = {
+          Some(summaries1)
+        }
+      }
+      val summaries2 = createSummaries(
+        s"3${CrossValidatingAlloyTrainer.SUFFIX}", s"4${CrossValidatingAlloyTrainer.SUFFIX}")
+      val alloy2 = new BaseAlloy[Classification]("name", Seq(), Map()) with HasTrainingSummary {
+        override def getTrainingSummaries: Option[Seq[TrainingSummary]] = {
+          Some(summaries2)
+        }
+      }
+      val alloy3 = new BaseAlloy[Classification]("name", Seq(), Map()) with HasTrainingSummary {}
+      val actual = trainer.getXValPortionSummaries(Seq(
+        (0.5, alloy1),
+        (0.6, alloy2),
+        (0.7, alloy3)
+      ))
       val expected = Seq(
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.F1, 0.5f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelPrecision, 0.5f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelRecall, 0.5f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelF1, 0.5f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.F1, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelRecall, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelF1, 1.0f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.F1, 1.0f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelRecall, 1.0f),
-        new LabelPortionMetricTuple("label", 0.5, MetricTypes.LabelF1, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.F1, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelPrecision, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelRecall, 1.0f),
-        new LabelPortionMetricTuple("label", 1.0, MetricTypes.LabelF1, 1.0f)
+        (0.5, summaries1(0)),
+        (0.5, summaries1(1)),
+        (0.6, summaries2(0)),
+        (0.6, summaries2(1))
       )
-      actual.size shouldBe expected.size
-      actual shouldBe expected
+      actual.sortBy(x => (x._1, x._2.identifier)) shouldBe expected
     }
   }
-
-
-  describe("Filter metrics tests") {
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("filters to correct metrics") {
-      val actual = trainer.filterMetrics("L1", Seq[Metric with Buildable[_, _]](
-        new FloatMetric(MetricTypes.F1, MetricClass.Binary, 1.0f),
-        new FloatMetric(MetricTypes.Precision, MetricClass.Binary, 1.0f),
-        new FloatMetric(MetricTypes.Recall, MetricClass.Binary, 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Binary, "L1", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Binary, "L1", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "L1", 1.0f)
-      ))
-      val expected = Seq[Metric with Buildable[_, _]](
-        new FloatMetric(MetricTypes.F1, MetricClass.Binary, 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Binary, "L1", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Binary, "L1", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "L1", 1.0f)
-      )
-      actual shouldBe expected
-    }
-    it("filters to correct labels") {
-      val actual = trainer.filterMetrics("L1", Seq[Metric with Buildable[_, _]](
-        new FloatMetric(MetricTypes.F1, MetricClass.Binary, 1.0f),
-        new FloatMetric(MetricTypes.Precision, MetricClass.Binary, 1.0f),
-        new FloatMetric(MetricTypes.Recall, MetricClass.Binary, 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Binary, "L2", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Binary, "L2", 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "L1", 1.0f)
-      ))
-      val expected = Seq[Metric with Buildable[_, _]](
-        new FloatMetric(MetricTypes.F1, MetricClass.Binary, 1.0f),
-        new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Binary, "L1", 1.0f)
-      )
-      actual shouldBe expected
-    }
-  }
-
-  describe("createDataForRDD tests") {
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("correctly produces sequence of data ") {
-      trainer.createDataForRDD(Seq(
-        ResultTuple("label", 0, 1.0, true, true),
-        ResultTuple("label", 0, 1.0, false, false),
-        ResultTuple("label", 0, 0.5, true, true),
-        ResultTuple("label", 0, 0.5, false, false),
-        ResultTuple("label", 1, 1.0, false, false),
-        ResultTuple("label", 1, 1.0, true, true),
-        ResultTuple("label", 1, 0.5, false, false),
-        ResultTuple("label", 1, 0.5, true, true),
-        ResultTuple("label", 1, 0.5, false, true),
-        ResultTuple("label", 1, 0.5, true, false)
-      )) shouldBe Seq((1.0, 1.0), (0.0, 0.0), (1.0, 1.0), (0.0, 0.0), (0.0, 0.0),
-        (1.0, 1.0), (0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (1.0, 0.0))
-    }
-  }
-
-  describe("extract label points metric"){
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("works as inteded") {
-      val actual = trainer.extractLabeledPointsMetric(MetricTypes.LearningCurveLabelF1, "L1", Seq(
-        new LabelPortionMetricTuple("L1", 0.5, MetricTypes.LabelF1, 0.5f),
-        new LabelPortionMetricTuple("L1", 1.0, MetricTypes.LabelF1, 0.6f)
-      ))
-      val expected = new LabelPointsMetric(
-        MetricTypes.LearningCurveLabelF1, MetricClass.Binary, "L1", Seq((0.5f, 0.5f), (1.0f, 0.6f)))
-      actual shouldBe expected
-    }
-  }
-
-  describe("createResultsForAggregation tests") {
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("creates a flat list as expected") {
-      val fold0 = new Fold(0, Stream(), Seq())
-      val fold1 = new Fold(1, Stream(), Seq())
-      val pPredictions0 = Seq(
-        new PortionPredictions(0.5,
-          Seq(new Prediction("l1", true, true), new Prediction("l1", false, false))),
-        new PortionPredictions(1.0,
-          Seq(new Prediction("l1", true, true), new Prediction("l1", false, false))))
-      val pPredictions1 = Seq(
-        new PortionPredictions(0.5,
-          Seq(new Prediction("l1", true, true), new Prediction("l1", false, false))),
-        new PortionPredictions(1.0,
-          Seq(new Prediction("l1", true, true), new Prediction("l1", false, false))))
-      val actual = trainer.createResultsForAggregation(Seq(
-        (fold0, Stream(pPredictions0)),
-        (fold1, Stream(pPredictions1)
-      )))
-      val expected = Seq(
-        ResultTuple("l1",0,0.5,true,true),
-        ResultTuple("l1",0,0.5,false,false),
-        ResultTuple("l1",0,1.0,true,true),
-        ResultTuple("l1",0,1.0,false,false),
-        ResultTuple("l1",1,0.5,true,true),
-        ResultTuple("l1",1,0.5,false,false),
-        ResultTuple("l1",1,1.0,true,true),
-        ResultTuple("l1",1,1.0,false,false))
-
-      actual shouldBe expected
-    }
-  }
-
-  describe("create gold labels tests") {
-    val trainer = new LearningCurveTrainerBuilder().build(engine)
-    it("creates labels as expected") {
-      implicit val formats = org.json4s.DefaultFormats
-      val actual = trainer.createGoldLabels(parse(
-        """{ "content": "Who drives a chevy malibu? Would you recommend it?",
-           "metadata": { "iso_639_1": "en" },
-           "annotations": [
-           { "label": { "name": "aaa" }, "isPositive": true },
-           { "label": { "name": "bbb" }, "isPositive": false },
-            ] }
-        """).extract[JObject])
-      val expected = Map("aaa" -> true, "bbb" -> false)
-      actual shouldBe expected
-    }
-  }
-
-//  describe("integration test") {
-//    val inFile : String = "test_data/multiple_points.json"
-//    val inFilePath = getClass.getClassLoader.getResource(inFile).getPath()
-//    val configFile : String = "test_data/pipeline_config.json"
-//    val configFilePath = getClass.getClassLoader.getResource(configFile).getPath()
-//    val labelFile : String = "test_data/english_social_sentiment/label_rule_config.json"
-//    val labelFilePath = getClass.getClassLoader.getResource(labelFile).getPath()
-//    implicit val formats = org.json4s.DefaultFormats
-//    val docs = () => Source.fromFile(inFilePath).getLines.map(line => parse(line).extract[JObject])
-//    val labelsAndRules = parse(Source.fromFile(labelFilePath).reader()).extract[JObject]
-//    val config = parse(Source.fromFile(configFilePath).reader()).extract[JObject]
-//
-//    it("works with k-class trainer") {
-//      val kclass = new KClass1FPBuilder(new KClassDataFrameGeneratorBuilder(),
-//        new SimpleLogisticRegressionBuilder(2),
-//        true)
-//      val lcTrainerBuilder = new LearningCurveTrainerBuilder(kclass, 2, Array(0.5, 1.0), 1L)
-//      val lcTrainer = lcTrainerBuilder.build(engine)
-//      val alloy = lcTrainer.trainAlloy("t1", docs, labelsAndRules, Some(config))
-//      val summaries = alloy match {
-//        case a: BaseAlloy[Classification] with HasTrainingSummary => a.getTrainingSummaries
-//        case o => None
-//      }
-//      summaries
-//    }
-//
-//    it("works with multi-class trainer") {
-//      val kclass = new MultiClass1FPBuilder(new MultiClassDataFrameGeneratorBuilder(),
-//        new MultiClassLRFurnaceBuilder(2))
-//      val lcTrainerBuilder = new LearningCurveTrainerBuilder(kclass, 2, Array(0.5, 1.0), 1L)
-//      val lcTrainer = lcTrainerBuilder.build(engine)
-//      val alloy = lcTrainer.trainAlloy("t1", docs, labelsAndRules, Some(config))
-//      val summaries = alloy match {
-//        case a: BaseAlloy[Classification] with HasTrainingSummary => a.getTrainingSummaries
-//        case o => None
-//      }
-//      summaries
-//    }
-//  }
 }
