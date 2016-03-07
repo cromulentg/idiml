@@ -97,6 +97,12 @@ public enum MetricTypes {
      */
     MicroRecall(FloatMetric.class),
     /**
+     * Hacky way to encode portion. i.e. if in included in a sequence
+     * of metrics, it'll be assumed that the value in `portion` will
+     * reflect the training set portion trained on.
+     */
+    Portion(FloatMetric.class),
+    /**
      * The precision as a float. When we call something
      * foo, how accurate are we?
      */

@@ -59,13 +59,12 @@ class TrainingSummaryCreatorSpec extends FunSpec
     }
     it("createTrainingSummary works as expected") {
       val me = new MultiClassMetricsEvaluator(0.7f)
-      val actual = me.createTrainingSummary(
-        engine, Seq(
-          (Array(1.0), Array(1.0)),
-          (Array(0.0), Array(0.0))
-        ), Map("a" -> 1.0, "b" -> 0.0), "name")
+      val actual = me.createTrainingSummary(engine, Seq(
+                (Array(1.0), Array(1.0)),
+                (Array(0.0), Array(0.0))
+              ), Map("a" -> 1.0, "b" -> 0.0), "name")
       actual.identifier shouldBe "name"
-      actual.metrics.size shouldBe 16
+      actual.metrics.size shouldBe 17
       val expected = Some(new FloatMetric(MetricTypes.F1, MetricClass.Multiclass, 1.0f))
       actual.metrics.find(m => m.metricType == MetricTypes.F1) shouldBe expected
     }
@@ -113,13 +112,12 @@ class TrainingSummaryCreatorSpec extends FunSpec
     }
     it("createTrainingSummary works as expected") {
       val me = new MultiLabelMetricsEvaluator(0.7f)
-      val actual = me.createTrainingSummary(
-        engine, Seq(
-          (Array(1.0), Array(1.0)),
-          (Array(0.0), Array(0.0))
-        ), Map("a" -> 1.0, "b" -> 0.0), "name")
+      val actual = me.createTrainingSummary(engine, Seq(
+                (Array(1.0), Array(1.0)),
+                (Array(0.0), Array(0.0))
+              ), Map("a" -> 1.0, "b" -> 0.0), "name")
       actual.identifier shouldBe "name"
-      actual.metrics.size shouldBe 15
+      actual.metrics.size shouldBe 16
       val expected = Some(new FloatMetric(MetricTypes.F1, MetricClass.Multilabel, 1.0f))
       actual.metrics.find(m => m.metricType == MetricTypes.F1) shouldBe expected
     }

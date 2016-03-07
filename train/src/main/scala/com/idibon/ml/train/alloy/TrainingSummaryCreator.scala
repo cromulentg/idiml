@@ -5,7 +5,7 @@ import java.util
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
-import com.idibon.ml.predict.ml.metrics.MetricHelper
+import com.idibon.ml.predict.ml.metrics.{MetricClass, MetricTypes, FloatMetric, MetricHelper}
 import org.apache.spark.mllib.evaluation.{MultilabelMetrics, MulticlassMetrics}
 import scala.collection.JavaConversions._
 
@@ -41,12 +41,14 @@ trait TrainingSummaryCreator extends MetricHelper {
     * @param dataPoints
     * @param labelToDouble
     * @param summaryName
+    * @param portion
     * @return
     */
   def createTrainingSummary(engine: Engine,
                             dataPoints: Seq[(Array[Double], Array[Double])],
                             labelToDouble: Map[String, Double],
-                            summaryName: String): TrainingSummary
+                            summaryName: String,
+                            portion: Double = 1.0): TrainingSummary
 
 }
 
@@ -111,16 +113,20 @@ case class MultiClassMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     * @param dataPoints
     * @param labelToDouble
     * @param summaryName
+    * @param portion
     * @return
     */
   override def createTrainingSummary(engine: Engine,
                                      dataPoints: Seq[(Array[Double], Array[Double])],
                                      labelToDouble: Map[String, Double],
-                                     summaryName: String): TrainingSummary = {
+                                     summaryName: String,
+                                     portion: Double = 1.0): TrainingSummary = {
     val predictionRDDs = engine.sparkContext.parallelize(dataPoints.map(p => (p._1.head, p._2.head)))
     val multiClass = new MulticlassMetrics(predictionRDDs)
     val metrics = createMultiClassMetrics(multiClass, labelToDouble.map(x => (x._2, x._1)))
-    new TrainingSummary(summaryName, metrics)
+    new TrainingSummary(
+      summaryName,
+      metrics ++ Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat)))
   }
 }
 
@@ -160,15 +166,19 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     * @param dataPoints
     * @param labelToDouble
     * @param summaryName
+    * @param portion
     * @return
     */
   override def createTrainingSummary(engine: Engine,
                                      dataPoints: Seq[(Array[Double], Array[Double])],
                                      labelToDouble: Map[String, Double],
-                                     summaryName: String): TrainingSummary = {
+                                     summaryName: String,
+                                     portion: Double = 1.0): TrainingSummary = {
     val predictionRDDs = engine.sparkContext.parallelize(dataPoints)
     val multiLabel = new MultilabelMetrics(predictionRDDs)
     val metrics = createMultilabelMetrics(multiLabel, labelToDouble.map(x => (x._2, x._1)))
-    new TrainingSummary(summaryName, metrics)
+    new TrainingSummary(
+      summaryName,
+      metrics ++ Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat)))
   }
 }
