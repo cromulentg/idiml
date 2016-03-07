@@ -62,23 +62,21 @@ class PredictResultSpec extends FunSpec with Matchers {
       }
       prAlpha.isCloseEnough(pr1) shouldBe false
     }
-    it("fails on isForces") {
+    it("fails on force flag") {
       val prAlpha = new PredictResult {
         override def probability: Float = 0.25f
         override def matchCount: Int = 3
         override def label: String = "monkeys"
-        override def flags: Int = 123
-        override def isForced = false
+        override def flags: Int = 2
       }
       prAlpha.isCloseEnough(pr1) shouldBe false
     }
-    it("fails on isRule") {
+    it("fails on rule flag") {
       val prAlpha = new PredictResult {
         override def probability: Float = 0.25f
         override def matchCount: Int = 3
         override def label: String = "monkeys"
-        override def flags: Int = 123
-        override def isRule = false
+        override def flags: Int = 1
       }
       prAlpha.isCloseEnough(pr1) shouldBe false
     }

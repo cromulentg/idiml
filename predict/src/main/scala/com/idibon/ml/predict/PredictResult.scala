@@ -31,8 +31,6 @@ trait PredictResult {
     this.label == other.label &&
       this.matchCount == other.matchCount &&
       this.flags == other.flags &&
-      this.isForced == other.isForced &&
-      this.isRule == other.isRule &&
       PredictResult.floatIsCloseEnough(this.probability, other.probability)
   }
 }
