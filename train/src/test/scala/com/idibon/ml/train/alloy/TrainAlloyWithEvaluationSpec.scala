@@ -151,7 +151,8 @@ class DummyTrainingSummaryCreator extends TrainingSummaryCreator {
   override def createTrainingSummary(engine: common.Engine,
                                      dataPoints: Seq[(Array[Double], Array[Double])],
                                      labelToDouble: Map[String, Double],
-                                     summaryName: String): TrainingSummary = {
+                                     summaryName: String,
+                                     portion: Double): TrainingSummary = {
     new TrainingSummary("test", Seq())
   }
 }

@@ -41,7 +41,8 @@ class TrainAlloyWithEvaluation(name: String,
     // evaluate
     val evalPoints = evaluate(trained, thresholds)
     // create summary
-    trainingSummaryCreator.createTrainingSummary(engine, evalPoints, uuidStrToDouble, name)
+    trainingSummaryCreator.createTrainingSummary(
+      engine, evalPoints, uuidStrToDouble, name, dataSet.info.portion)
   }
 
   /**
