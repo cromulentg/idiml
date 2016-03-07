@@ -1,6 +1,7 @@
 package com.idibon.ml.feature
 
 import com.idibon.ml.feature.bagofwords.Word
+import com.idibon.ml.feature.chain.ChainFeature
 
 import org.scalatest.{Matchers, FunSpec}
 
