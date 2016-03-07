@@ -68,8 +68,7 @@ object AlloyTrainer2 {
 }
 
 // === JSON configuration schema ===
-case class AlloyTrainerConfig(furnaces: List[FurnaceConfig]) {
-}
+case class AlloyTrainerConfig(furnaces: List[FurnaceConfig])
 
 /** Schema for each furnace used within the trainer
   *
