@@ -36,7 +36,7 @@ class IdidatAlloySpec extends FunSpec with Matchers {
           "bar" -> num(0.0f)).asJava).asJava, false)
 
       val results = alloy.predict("content" -> "foobar", PredictOptions.DEFAULT)
-      results shouldBe Seq(Classification(labelFoo.uuid.toString, 0.5f, 2, 1, Seq())).asJava
+      results shouldBe Seq(Classification(labelFoo.uuid.toString, 0.5f, 2, 3, Seq())).asJava
     }
 
     it("should replace existing rules models at the top level") {
@@ -49,9 +49,9 @@ class IdidatAlloySpec extends FunSpec with Matchers {
         Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
-      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava
+      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 2, Seq())).asJava
       val r2 = updatedAlloy.predict("content" -> "hello world", PredictOptions.DEFAULT)
-      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq())).asJava
+      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 2, Seq())).asJava
     }
 
     it("should replace rules models within gang models") {
@@ -66,9 +66,9 @@ class IdidatAlloySpec extends FunSpec with Matchers {
         Map(labelFoo -> Map("world" -> num(0.8f)).asJava).asJava, true)
 
       val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
-      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 0, Seq())).asJava
+      r1 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.0f, 0, 2, Seq())).asJava
       val r2 = updatedAlloy.predict("content" -> "hello world", PredictOptions.DEFAULT)
-      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 0, Seq())).asJava
+      r2 shouldBe Seq(Classification(labelFoo.uuid.toString, 0.8f, 1, 2, Seq())).asJava
     }
 
     it("should keep other classification models") {
