@@ -62,7 +62,7 @@ class ChainNERFurnaceSpec extends FunSpec with Matchers {
       val config = (("sequenceGenerator" -> sequenceConfig) ~
         ("featureExtractor" -> extractorConfig))
 
-      ChainNERFurnace("spec", new EmbeddedEngine, config) shouldBe a [Furnace2[_]]
+      ChainNERFurnace(new EmbeddedEngine, "spec", config) shouldBe a [Furnace2[_]]
     }
 
     it("should use custom seed values") {
@@ -70,7 +70,7 @@ class ChainNERFurnaceSpec extends FunSpec with Matchers {
       val config = (("sequenceGenerator" -> sequenceConfig) ~
         ("featureExtractor" -> extractorConfig) ~
         ("seed" -> 17))
-      val furnace = ChainNERFurnace("spec", new EmbeddedEngine, config)
+      val furnace = ChainNERFurnace(new EmbeddedEngine, "spec", config)
       furnace.prng.nextInt() shouldBe eval.nextInt()
     }
   }
@@ -83,7 +83,7 @@ class ChainNERFurnaceSpec extends FunSpec with Matchers {
     it("should train a predict model") {
       val config = (("sequenceGenerator" -> sequenceConfig) ~
         ("featureExtractor" -> extractorConfig))
-      val furnace = ChainNERFurnace("spec", new EmbeddedEngine, config)
+      val furnace = ChainNERFurnace(new EmbeddedEngine, "spec", config)
 
       val training = TrainOptions()
         .addDocuments(documents.map(d => parse(d).asInstanceOf[JObject]))

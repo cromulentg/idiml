@@ -57,7 +57,7 @@ class ChainNERFurnace(val name: String,
   }
 }
 
-object ChainNERFurnace {
+object ChainNERFurnace extends Function3[Engine, String, JObject, Furnace2[Span]] {
 
   /** Constructs a ChainNERFurnace to train NER models
     *
@@ -65,7 +65,7 @@ object ChainNERFurnace {
     * @param engine current IdiML engine content
     * @param json JSON configuration data for the CRFFurnace
     */
-  def apply(name: String, engine: Engine, json: JObject): ChainNERFurnace = {
+  def apply(engine: Engine, name: String, json: JObject): ChainNERFurnace = {
     implicit val formats = org.json4s.DefaultFormats
     val config = json.extract[ChainNERFurnaceConfig]
 

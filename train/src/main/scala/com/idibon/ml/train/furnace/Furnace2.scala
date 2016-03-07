@@ -1,10 +1,12 @@
 package com.idibon.ml.train.furnace
 
 import scala.util.{Try, Success, Failure}
+import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.reflect.runtime.universe.{typeOf, Type, TypeTag}
 
 import com.idibon.ml.train.TrainOptions
+import com.idibon.ml.common.Engine
 import com.idibon.ml.predict._
 
 import org.json4s.JObject
@@ -16,6 +18,7 @@ trait Furnace2[+T <: PredictResult] {
 
   /** Trains the model synchronously
     *
+    * @param options training data and options
     */
   protected def doTrain(options: TrainOptions): PredictModel[T]
 
@@ -36,20 +39,42 @@ trait Furnace2[+T <: PredictResult] {
 
 object Furnace2 {
 
-  /** Returns an appropriate builder for a Furnace with a given name
+  type Builder = Function3[Engine, String, JObject, Furnace2[_]]
+
+  // master registry of all furnaces
+  private[this] val _registry = mutable.Map[Type, mutable.Map[String, Builder]]()
+
+  /** Register a new furnace type
     *
-    * @tparam T the type of predict result the alloy will generate
-    * @param tpe the type of the furnace to configure
+    * @tparam T class of prediction made by the model
+    * @param tpe short name used to identify the furnace class
+    * @param b builder function
     */
-  def builder[T <: PredictResult: TypeTag](tpe: String, config: JObject):
-      FurnaceBuilder[T] = {
-    REGISTRY(typeOf[T])(tpe)(config).asInstanceOf[FurnaceBuilder[T]]
+  private[train] def register[T <: PredictResult: TypeTag](tpe: String, b: Builder) {
+    val r = _registry.getOrElseUpdate(typeOf[T], mutable.Map[String, Builder]())
+    r += (tpe -> b)
   }
 
-  // registry of all known furnace types, organized by the model result type
-  private[this] val REGISTRY: Map[Type, Map[String, (JObject) => Furnace2[_]]] = Map(
-    typeOf[Classification] -> Map()
-  )
+  /** Re-initializes the registry (for testing) */
+  private[train] def resetRegistry() {
+    _registry.clear()
+    register[Span]("ChainNERFurnace", ChainNERFurnace)
+  }
+
+  resetRegistry()
+
+  /** Constructs a new Furnace
+    *
+    * @param engine current engine context
+    * @param tpe type of furnace to construct
+    * @param name name for the new furnace
+    * @param config furnace JSON configuration
+    */
+  def apply[T <: PredictResult: TypeTag](engine: Engine, tpe: String,
+      name: String, config: JObject): Furnace2[T] = {
+
+    _registry(typeOf[T])(tpe)(engine, name, config).asInstanceOf[Furnace2[T]]
+  }
 }
 
 /** Trait for Furnaces which delegates some of the training to other furnaces
