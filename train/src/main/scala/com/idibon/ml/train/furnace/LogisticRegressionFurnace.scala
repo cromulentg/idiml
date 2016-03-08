@@ -24,7 +24,7 @@ import org.json4s.native.JsonMethods
   * @param engine the engine context to use for RDD & DataFrame generation
   * @tparam T The type of trainer to expect to train on.
   */
-abstract class LogisticRegressionFurnace[T](engine: Engine)
+abstract class LogisticRegressionFurnace[T](protected val engine: Engine)
     extends Furnace[Classification] with StrictLogging with MetricHelper {
 
   /**
@@ -233,7 +233,29 @@ class XValLogisticRegressionFurnace(builder: XValLogisticRegressionFurnaceBuilde
     * @return
     */
   protected def fitModel(estimator: CrossValidator, data: DataFrame): LogisticRegressionModel = {
-    estimator.fit(data.cache()).bestModel.asInstanceOf[LogisticRegressionModel]
+    // Checking data suitability
+    val byLabel = data.groupBy("label")
+    val labelCounts = byLabel.count()
+    val labelToCount = labelCounts.collect().map(r => {
+      val labelNum = r.getAs[Double]("label")
+      val count = r.getAs[Long]("count")
+      (labelNum, count)
+    })
+    val minLabelCount = labelToCount.minBy({ case (label, count) => count})._2
+    // If less than 30 do SimpleInstead.
+    if (minLabelCount < numberOfFolds || data.count() < 4 * numberOfFolds) {
+      logger.warn("Data set has size issues. Either there are less items for a label than folds, " +
+        s"or there are less than ${4 * numberOfFolds} data points total. " +
+        s"Therefore NOT doing x-validation grid search and instead training single model " +
+        s"using the first values from the input.")
+      new LogisticRegression()
+        .setElasticNetParam(elasticNetParams.head)
+        .setMaxIter(maxIterations)
+        .setRegParam(regressionParams.head)
+        .setTol(tolerances.head).fit(data.cache())
+    } else {
+      estimator.fit(data.cache()).bestModel.asInstanceOf[LogisticRegressionModel]
+    }
   }
 
   /**
