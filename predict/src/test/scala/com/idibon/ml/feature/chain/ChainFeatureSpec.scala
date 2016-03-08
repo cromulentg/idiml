@@ -1,6 +1,8 @@
-package com.idibon.ml.feature
+package com.idibon.ml.feature.chain
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+
+import com.idibon.ml.feature._
 
 import org.scalatest.{Matchers, FunSpec}
 

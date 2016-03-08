@@ -56,10 +56,8 @@ object JarAlloy {
     *
     * @param alloy JarAlloy to save.
     * @param file file to save alloy to.
-    * @tparam T the PredictResult type this alloy uses.
     */
-  def save[T <: PredictResult with Buildable[T, Builder[T]]](
-      alloy: Alloy[T], file: File) = {
+  def save(alloy: Alloy[_], file: File) = {
     val jos = new JarOutputStream(new FileOutputStream(file))
     try {
       val writer = new JarAlloyWriter(jos)

@@ -60,6 +60,8 @@ object Chain {
     Chain(items)
   }
 
+  def apply[T](): Chain[T] = new Chain(Vector[T]())
+
   def itemBuilder[T]: collection.mutable.Builder[T, Chain[T]] =
     (new mutable.ArrayBuffer[T]).mapResult(x => Chain(x))
 

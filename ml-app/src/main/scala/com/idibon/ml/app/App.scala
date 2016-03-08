@@ -8,6 +8,7 @@ object App extends Tool {
 
   private [this] val _dispatcher = Map(
     ("predict" -> Predict),
+    ("spanPredict" -> SpanPredict),
     ("train" -> Train),
     ("trainingSummary" -> GetTrainingStats),
     ("sparkBatchPredict" -> SparkBatchPredict)

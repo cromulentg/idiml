@@ -1,4 +1,6 @@
-package com.idibon.ml.feature
+package com.idibon.ml.feature.chain
+
+import com.idibon.ml.feature._
 
 import com.idibon.ml.alloy.Codec
 
