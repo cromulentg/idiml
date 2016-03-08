@@ -36,7 +36,7 @@ def getVersionString(String baseVersion) {
   version
 }
 
-version = getVersionString("0.8.2")
+version = getVersionString("0.9.0")
 ext {
   /* Gradle treats the JAR file as out-of-date if the timestamp
    * changes, so just restrict the build date to a daily update
