@@ -74,14 +74,22 @@ trait MetricHelper {
       )
     })
     val labelToDouble = doubleToLabel.map(x => (x._2, x._1))
-    val confusionMatrix = Seq(new ConfusionMatrixMetric(
-      MetricTypes.ConfusionMatrix,
-      metricClass,
-      labelToDouble.flatMap(x => {
-        labelToDouble.map(y => {
-          (x._1, y._1, metrics.confusionMatrix(x._2.toInt, y._2.toInt).toFloat)
-        })
-      }).toSeq))
+    // if we get a set of data items that only have a single class, then we
+    // can reliably know what column/row is what. So skip creating confusion
+    // matrix.
+    val confusionMatrix = if (metrics.confusionMatrix.numRows < doubleToLabel.size ||
+      metrics.confusionMatrix.numCols < doubleToLabel.size ) {
+      Seq()
+    } else {
+      Seq(new ConfusionMatrixMetric(
+        MetricTypes.ConfusionMatrix,
+        metricClass,
+        labelToDouble.flatMap(x => {
+          labelToDouble.map(y => {
+            (x._1, y._1, metrics.confusionMatrix(x._2.toInt, y._2.toInt).toFloat)
+          })
+        }).toSeq))
+    }
     metricSeq ++ labelMetrics ++ confusionMatrix
   }
 

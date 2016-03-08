@@ -69,7 +69,7 @@ class SimpleLogisticRegressionFurnaceSpec extends FunSpec
           Array(19,20,21,22,23,24,25,26,27,28),
           Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))))
       val mpoints = features.get("Monkey").collect()
-      mpoints.size shouldBe 1
+      mpoints.size shouldBe 2 // because we pad with scaler
       mpoints(0) === Array(LabeledPoint(1.0,
         Vectors.sparse(29,
           Array(19,20,21,22,23,24,25,26,27,28),
@@ -141,7 +141,7 @@ class XValLogisticRegressionFurnaceSpec extends FunSpec
           Array(19,20,21,22,23,24,25,26,27,28),
           Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))))
       val mpoints = features.get("Monkey").collect()
-      mpoints.size shouldBe 1
+      mpoints.size shouldBe 2 // 2 because we pad via scaler
       mpoints(0) === Array(LabeledPoint(1.0,
         Vectors.sparse(29,
           Array(19,20,21,22,23,24,25,26,27,28),
@@ -213,7 +213,7 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
           Array(19,20,21,22,23,24,25,26,27,28),
           Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))))
       val mpoints = features.get("Monkey").collect()
-      mpoints.size shouldBe 1
+      mpoints.size shouldBe 2 // due to padding from scaler
       mpoints(0) === Array(LabeledPoint(1.0,
         Vectors.sparse(29,
           Array(19,20,21,22,23,24,25,26,27,28),
