@@ -1,6 +1,7 @@
 package com.idibon.ml.train.alloy
 
 import com.idibon.ml.predict.Label
+import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 
 import scala.util.Random
@@ -13,7 +14,7 @@ import scala.util.Random
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/1/16.
   */
-trait KFoldDataSetCreator {
+trait KFoldDataSetCreator extends StrictLogging {
 
   /**
     * Creates the datasets for each fold.
@@ -68,16 +69,24 @@ trait KFoldDataSetCreator {
                          labelToDouble: Map[Label, Double]): Seq[TrainingDataSet] = {
     // create random mapping of training examples to fold on examples that pertain to this uuid label
     val validationFoldMapping = createValidationFoldMapping(docs().toStream, numFolds, foldSeed)
-    // create "folds"
-    val folds = (0 until numFolds).map { fold: Int =>
-      val testSet = getKthItems(docs().toStream, validationFoldMapping.toStream, fold)
-      val trainingSet = getPortion(
-        getAllButKthItems(docs().toStream, validationFoldMapping.toStream, fold),
-        portion)
-      val dataSetInfo = new DataSetInfo(fold, portion, labelToDouble)
-      new TrainingDataSet(dataSetInfo, () => trainingSet, () => testSet)
+    // handle small data use case
+    if (validationFoldMapping.length < numFolds * 4) {
+      logger.warn("Individual fold data will be meaningless; You don't have enough data; " +
+        "defaulting to training and evaluating on all data.")
+      val dataSetInfo = new DataSetInfo(0, 1.0, labelToDouble)
+      Seq(new TrainingDataSet(dataSetInfo, () => docs().toStream, () => docs().toStream))
+    } else {
+      // create "folds"
+      val folds = (0 until numFolds).map { fold: Int =>
+        val testSet = getKthItems(docs().toStream, validationFoldMapping.toStream, fold)
+        val trainingSet = getPortion(
+          getAllButKthItems(docs().toStream, validationFoldMapping.toStream, fold),
+          portion)
+        val dataSetInfo = new DataSetInfo(fold, portion, labelToDouble)
+        new TrainingDataSet(dataSetInfo, () => trainingSet, () => testSet)
+      }
+      folds.toSeq
     }
-    folds.toSeq
   }
 
   /**
