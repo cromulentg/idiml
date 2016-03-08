@@ -315,6 +315,68 @@ object LabelPointsMetric {
 }
 
 /**
+  * Creates metrics that are a list of values, e.g. probabilities.
+  * @param mType
+  * @param mClass
+  * @param label
+  * @param points
+  */
+case class LabelFloatListMetric(mType: MetricTypes,
+                             mClass: MetricClass.Value,
+                             label: String,
+                             points: Seq[Float])
+  extends RawMetric(mType, mClass) with Buildable[LabelFloatListMetric, LabelFloatListMetricBuilder] {
+  override def save(output: FeatureOutputStream): Unit = {
+    Codec.String.write(output, metricType.toString)
+    Codec.String.write(output, metricClass.toString)
+    Codec.String.write(output, label)
+    Codec.VLuint.write(output, points.size)
+    points.foreach { case (p) => {
+      output.writeFloat(p)
+    }}
+  }
+  override def toString: String = {
+    val pointString = points
+      .sortBy(p => p)
+      .map({case p => s"($p)\t"
+      }).reduce(_ + _)
+    s"[$mClass, $mType, $label, ${points.size}, ${pointString.substring(0, 20)}...]"
+  }
+}
+class LabelFloatListMetricBuilder extends Builder[LabelFloatListMetric] {
+  override def build(input: FeatureInputStream): LabelFloatListMetric = {
+    val mType = Codec.String.read(input)
+    val mClass = Codec.String.read(input)
+    val label = Codec.String.read(input)
+    val size = Codec.VLuint.read(input)
+    val points = (0 until size).map(_ => {
+      input.readFloat()
+    })
+    new LabelFloatListMetric(MetricTypes.valueOf(mType), MetricClass.withName(mClass), label, points)
+  }
+}
+object LabelFloatListMetric {
+  /**
+    * Average doesn't make sense. So concatenate the sequence of floats by label.
+    * Assumes they are all the same class and type.
+    * @param metrics the metrics to "concatenate".
+    * @param newClass optional new metric class to give this metric.
+    * @return a sequence of "concatenate" label float list metrics, one for each label
+    */
+  def concat(metrics: Seq[LabelFloatListMetric], newClass: Option[MetricClass.Value] = None): Seq[LabelFloatListMetric] = {
+    val byLabel = metrics.groupBy(m => m.label)
+    byLabel.map({case (label, labelMetrics) =>
+      val points = labelMetrics.flatMap(l => l.points).sortBy(x => x)
+      val newMetricClass = newClass match {
+        case None => labelMetrics.head.mClass
+        case Some(c) => c
+      }
+      new LabelFloatListMetric(labelMetrics.head.mType, newMetricClass, label, points)
+    }).toSeq
+  }
+}
+
+/**
   * Creates metrics that are around a set of properties.
   *
   * Makes all values strings. It is the consumers responsibility to
@@ -449,6 +511,8 @@ object Metric {
       case m: LabelIntMetric => LabelIntMetric.average(metrics.asInstanceOf[Seq[LabelIntMetric]], metricClass)
       case m: PointsMetric => Seq(PointsMetric.average(metrics.asInstanceOf[Seq[PointsMetric]], metricClass))
       case m: LabelPointsMetric => LabelPointsMetric.average(metrics.asInstanceOf[Seq[LabelPointsMetric]], metricClass)
+      case m: LabelFloatListMetric => // doesn't make sense to average, so concatenate the list
+        LabelFloatListMetric.concat(metrics.asInstanceOf[Seq[LabelFloatListMetric]], metricClass)
       case m: PropertyMetric => metrics // no average defined
         // sum confusion matrix since average doesn't make sense
       case m: ConfusionMatrixMetric => Seq(ConfusionMatrixMetric.sum(metrics.asInstanceOf[Seq[ConfusionMatrixMetric]], metricClass))

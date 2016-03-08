@@ -62,6 +62,11 @@ public enum MetricTypes {
      */
     LabelPrecision(LabelFloatMetric.class),
     /**
+     * Probabilities for this label from the evaluation set.
+     * Useful for computing deciles.
+     */
+    LabelProbabilities(LabelFloatListMetric.class),
+    /**
      * Recall but for an individual label.
      */
     LabelRecall(LabelFloatMetric.class),
