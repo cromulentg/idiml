@@ -47,12 +47,12 @@ trait SingleClassDataSetDefender extends StrictLogging {
     * @return
     */
   def defend(labeledPoints: RDD[LabeledPoint]): Option[RDD[LabeledPoint]] = {
-    val byPosNeg = labeledPoints.groupBy(x => x.label)
-    val polarityCounts: Map[Double, Int] = byPosNeg.map({ case (label, points) => (label, points.size) })
-      .toLocalIterator.map(x => x).toMap
-    if (polarityCounts.size == 1){
-      val labelUsed = polarityCounts.keys.head
-      logger.warn(s"Data set has only single polarity/class. Padding so we don't break.")
+    val byLabel = labeledPoints.groupBy(x => x.label)
+    val labelCount = byLabel.count()
+    if (labelCount == 1){
+      val labelUsed = byLabel.collect().head._1
+      logger.warn(s"Data set has only single polarity/class from ${labeledPoints.count()} points." +
+        s" Padding so we don't break.")
       val labelToUse = if (labelUsed == 1.0) 0.0 else 1.0
       Some(labeledPoints.union(labeledPoints.map(lp => new LabeledPoint(labelToUse, lp.features))))
     } else {
