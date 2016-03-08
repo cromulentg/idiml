@@ -1,5 +1,7 @@
 package com.idibon.ml.feature.indexer
 
+import scala.collection.mutable.ArrayBuffer
+
 import com.idibon.ml.feature.{Chain, Feature, Freezable}
 import com.idibon.ml.common.Archivable
 import com.typesafe.scalalogging.StrictLogging
@@ -18,8 +20,28 @@ class ChainIndexTransformer(vocabulary: Vocabulary)
 
   def this() { this(new MutableVocabulary()) }
 
-  def apply(chain: Chain[Seq[Feature[_]]]): Chain[Vector] =
-    chain.map(features => toVector(features.value))
+  def apply(chains: Chain[Seq[Feature[_]]]*): Chain[Vector] = {
+    val joined = if (chains.length == 1) chains.head else join(chains)
+    joined.map(features => toVector(features.value))
+  }
+
+  /** Performs a link-wise concatenation of feature lists across chains
+    *
+    * Given multiple chains (which must have the same number of links),
+    * produces a single chain where each link includes all of the features
+    * from each input chain
+    */
+  def join(chains: Seq[Chain[Seq[Feature[_]]]]) = {
+    val joined = new ArrayBuffer[Seq[Feature[_]]](chains.head.size)
+    chains.head.foreach(joined += _.value)
+    chains.tail.foreach(chain => {
+      require(chain.size == joined.size, "Incompatible chain lengths!")
+      chain.toIterable.zipWithIndex.foreach({ case (link, index) => {
+      joined(index) = joined(index) ++: link.value
+      }})
+    })
+    Chain(joined)
+  }
 
   def freeze(): ChainIndexTransformer =
     new ChainIndexTransformer(vocabulary.freeze)
