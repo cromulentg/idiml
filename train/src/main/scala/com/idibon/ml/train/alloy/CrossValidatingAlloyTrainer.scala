@@ -132,8 +132,9 @@ class CrossValidatingAlloyTrainer(engine: Engine,
                     config: Option[JObject],
                     trainingSummaryCreator: TrainingSummaryCreator,
                     folds: Seq[TrainingDataSet]): Seq[TrainingSummary] = {
-    folds.par.map(ds => {
+    folds.map(ds => {
       val foldName = s"$name-${ds.info.fold}-${ds.info.portion}"
+      logger.info(s"Begining fold run: $foldName")
       val tawe = new TrainAlloyWithEvaluation(foldName, engine, trainer, ds, trainingSummaryCreator)
       tawe(labelsAndRules, config)
     }).toList.toSeq
