@@ -52,7 +52,7 @@ class KClass1FP(builder: KClass1FPBuilder)
     val featuresUsed = new util.HashSet[Int](100000)
     // delegate to the furnace for producing MLModels for each label
     val models = featurizedData.head match {
-      case Some(featureData) => featureData.par.map {
+      case Some(featureData) => featureData.map {
         case (label, data) => {
           val model = furnace.fit(label, List(data), None)
           (label, model, model.getFeaturesUsed())
