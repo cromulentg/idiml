@@ -36,12 +36,16 @@ class MultiClassDataFrameGenerator(builder: MultiClassDataFrameGeneratorBuilder)
                          perLabelLPs: Map[String, List[LabeledPoint]]): Map[String, RDD[LabeledPoint]] = {
     perLabelLPs.map {
       case (label, lp) => {
-        val scaledLPs = this.scale.balance(label, engine.sparkContext.parallelize(lp))
-        val splits = scaledLPs.groupBy(x => x.label)
-          .map(x => s"Polarity: ${x._1}, Size: ${x._2.size}").collect().toList
-        if (label.equals(MultiClass.MODEL_KEY))
-          logger.info(s"\nCreated ${scaledLPs.count()} multi-class data points; with splits $splits")
-        (label, scaledLPs)
+        label match {
+          case MultiClass.MODEL_KEY => {
+            val scaledLPs = this.scale.balance(label, engine.sparkContext.parallelize(lp))
+            val splits = scaledLPs.groupBy(x => x.label)
+              .map(x => s"Polarity: ${x._1}, Size: ${x._2.size}").collect().toList
+            logger.info(s"\nCreated ${scaledLPs.count()} multi-class data points; with splits $splits")
+            (label, scaledLPs)
+          }
+          case _ => (label, engine.sparkContext.parallelize(lp))
+        }
       }
     }
   }

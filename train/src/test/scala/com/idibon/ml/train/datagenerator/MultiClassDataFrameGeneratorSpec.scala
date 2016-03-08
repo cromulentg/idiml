@@ -57,9 +57,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
         Array(19,20,21,22,23,24,25,26,27,28),
         Array(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0)))
     val itbLP = LabeledPoint(0.0, Vectors.zeros(0))
-    val notITBLP = LabeledPoint(1.0, Vectors.zeros(0))
     val monkeyLP = LabeledPoint(1.0, Vectors.zeros(0))
-    val notMonkeyLP = LabeledPoint(0.0, Vectors.zeros(0))
     val expectedTrainingData = Map("Intent to Buy" -> List(itbLP),
                        "Monkey" -> List(monkeyLP),
                         MultiClass.MODEL_KEY -> List(dp1, dp2))
@@ -84,8 +82,8 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
       val training = gen.createPerLabelRDDs(engine, expectedTrainingData)
       training.size shouldBe 3
       List(
-        ("Intent to Buy", Array(itbLP, notITBLP)), // add the not variants due to padding
-        ("Monkey", Array(monkeyLP, notMonkeyLP)), // add the not variants due to padding
+        ("Intent to Buy", Array(itbLP)),
+        ("Monkey", Array(monkeyLP)),
         (MultiClass.MODEL_KEY, Array(dp1, dp2)))
         .foreach({case (label, dps) => {
         val rdd = training(label)
