@@ -89,9 +89,10 @@ case class BalancedBinaryScale(builder: BalancedBinaryScaleBuilder)
     val byPosNeg = labeledPoints.groupBy(x => x.label)
     val polarityCounts: Map[Double, Int] = byPosNeg.map({ case (label, points) => (label, points.size) })
       .toLocalIterator.map(x => x).toMap
-    if (polarityCounts.size != 2) {
+    if (polarityCounts.size > 2) {
+      // we should not worry about < 2 since we use the SingleClassDataSetDefender
       logger.warn(s"Skipping balancing since there are ${polarityCounts.size} classes," +
-        s" rather than the needed 2.")
+        s" rather than the required 2 that I was designed for.")
       return labeledPoints
     }
     val neg_ratio = polarityCounts.get(1.0).get.toFloat / polarityCounts.get(0.0).get.toFloat

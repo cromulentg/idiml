@@ -24,7 +24,7 @@ import org.json4s.native.JsonMethods
   * @param engine the engine context to use for RDD & DataFrame generation
   * @tparam T The type of trainer to expect to train on.
   */
-abstract class LogisticRegressionFurnace[T](protected val engine: Engine)
+abstract class LogisticRegressionFurnace[T](engine: Engine)
     extends Furnace[Classification] with StrictLogging with MetricHelper {
 
   /**
