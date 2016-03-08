@@ -27,8 +27,8 @@ class TrainingSummaryCreatorSpec extends FunSpec
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0), Set("m"), classifications, Map("m" -> 0.5f))
       val expected = (Array(0.0), Array(0.0))
-      actual._1(0) shouldBe expected._1(0)
-      actual._2(0) shouldBe expected._2(0)
+      actual.predicted(0) shouldBe expected._1(0)
+      actual.gold(0) shouldBe expected._2(0)
     }
     it("getMaxLabel something over default threshold, no thresholds passed") {
       val me = new MultiClassMetricsEvaluator(0.5f)
@@ -60,8 +60,8 @@ class TrainingSummaryCreatorSpec extends FunSpec
     it("createTrainingSummary works as expected") {
       val me = new MultiClassMetricsEvaluator(0.7f)
       val actual = me.createTrainingSummary(engine, Seq(
-                (Array(1.0), Array(1.0)),
-                (Array(0.0), Array(0.0))
+                new EvaluationDataPoint(Array(1.0), Array(1.0), Seq()),
+                new EvaluationDataPoint(Array(0.0), Array(0.0), Seq())
               ), Map("a" -> 1.0, "b" -> 0.0), "name")
       actual.identifier shouldBe "name"
       actual.metrics.size shouldBe 17
@@ -80,9 +80,9 @@ class TrainingSummaryCreatorSpec extends FunSpec
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0), Set("m", "n"), classifications, Map("m" -> 0.5f))
       val expected = (Array(1.0), Array(0.0, 1.0))
-      actual._1(0) shouldBe expected._1(0)
-      actual._2(0) shouldBe expected._2(0)
-      actual._2(1) shouldBe expected._2(1)
+      actual.predicted(0) shouldBe expected._1(0)
+      actual.gold(0) shouldBe expected._2(0)
+      actual.gold(1) shouldBe expected._2(1)
     }
     it("createEvaluationDataPoint some over passed in threshold"){
       val me = new MultiLabelMetricsEvaluator(0.5f)
@@ -93,9 +93,9 @@ class TrainingSummaryCreatorSpec extends FunSpec
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0), Set("m", "n"), classifications, Map("m" -> 0.3f))
       val expected = (Array(0.0), Array(0.0, 1.0))
-      actual._1(0) shouldBe expected._1(0)
-      actual._2(0) shouldBe expected._2(0)
-      actual._2(1) shouldBe expected._2(1)
+      actual.predicted(0) shouldBe expected._1(0)
+      actual.gold(0) shouldBe expected._2(0)
+      actual.gold(1) shouldBe expected._2(1)
     }
     it("createEvaluationDataPoint none over threshold"){
       val me = new MultiLabelMetricsEvaluator(0.7f)
@@ -106,15 +106,15 @@ class TrainingSummaryCreatorSpec extends FunSpec
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0), Set("m", "n"), classifications, Map("m" -> 0.5f))
       val expected = (Array(), Array(0.0, 1.0))
-      actual._1.length shouldBe expected._1.length
-      actual._2(0) shouldBe expected._2(0)
-      actual._2(1) shouldBe expected._2(1)
+      actual.predicted.length shouldBe expected._1.length
+      actual.gold(0) shouldBe expected._2(0)
+      actual.gold(1) shouldBe expected._2(1)
     }
     it("createTrainingSummary works as expected") {
       val me = new MultiLabelMetricsEvaluator(0.7f)
       val actual = me.createTrainingSummary(engine, Seq(
-                (Array(1.0), Array(1.0)),
-                (Array(0.0), Array(0.0))
+                new EvaluationDataPoint(Array(1.0), Array(1.0), Seq()),
+                new EvaluationDataPoint(Array(0.0), Array(0.0), Seq())
               ), Map("a" -> 1.0, "b" -> 0.0), "name")
       actual.identifier shouldBe "name"
       actual.metrics.size shouldBe 16

@@ -32,7 +32,7 @@ trait TrainingSummaryCreator extends MetricHelper {
   def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                 goldSet: Set[String],
                                 classifications: util.List[Classification],
-                                thresholds: Map[String, Float]): (Array[Double], Array[Double])
+                                thresholds: Map[String, Float]): EvaluationDataPoint
 
   /**
     * Creates a training summary from a sequence of data points.
@@ -45,7 +45,7 @@ trait TrainingSummaryCreator extends MetricHelper {
     * @return
     */
   def createTrainingSummary(engine: Engine,
-                            dataPoints: Seq[(Array[Double], Array[Double])],
+                            dataPoints: Seq[EvaluationDataPoint],
                             labelToDouble: Map[String, Double],
                             summaryName: String,
                             portion: Double = 1.0): TrainingSummary
@@ -71,11 +71,12 @@ case class MultiClassMetricsEvaluator(defaultThreshold: Float) extends TrainingS
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Set[String],
                                          classifications: util.List[Classification],
-                                         thresholds: Map[String, Float]):
-  (Array[Double], Array[Double]) = {
+                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabel = goldSet.map(gl => labelToDouble(gl)).head
     val maxLabel: Classification = getMaxLabel(classifications, thresholds)
-    (Array[Double](labelToDouble(maxLabel.label)), Array[Double](goldLabel))
+    val rawProbabilities = classifications.map(c => (labelToDouble(c.label), c.probability)).toSeq
+    new EvaluationDataPoint(
+      Array[Double](labelToDouble(maxLabel.label)), Array[Double](goldLabel), rawProbabilities)
   }
 
   /**
@@ -117,11 +118,12 @@ case class MultiClassMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     * @return
     */
   override def createTrainingSummary(engine: Engine,
-                                     dataPoints: Seq[(Array[Double], Array[Double])],
+                                     dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
                                      portion: Double = 1.0): TrainingSummary = {
-    val predictionRDDs = engine.sparkContext.parallelize(dataPoints.map(p => (p._1.head, p._2.head)))
+    val labeledPoints = dataPoints.map(e => (e.predicted.head, e.gold.head))
+    val predictionRDDs = engine.sparkContext.parallelize(labeledPoints)
     val multiClass = new MulticlassMetrics(predictionRDDs)
     val metrics = createMultiClassMetrics(multiClass, labelToDouble.map(x => (x._2, x._1)))
     new TrainingSummary(
@@ -149,14 +151,14 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Set[String],
                                          classifications: util.List[Classification],
-                                         thresholds: Map[String, Float]):
-  (Array[Double], Array[Double]) = {
+                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabels = goldSet.map(gl => labelToDouble(gl)).toArray
     val predictedLabels = // filter to only those over threshold -- this could potentially be empty.
       classifications.filter(c => {
         c.probability >= thresholds.getOrDefault(c.label, defaultThreshold)
       }).map(c => labelToDouble(c.label)).toArray
-    (predictedLabels, goldLabels)
+    val rawProbabilities = classifications.map(c => (labelToDouble(c.label), c.probability)).toSeq
+    new EvaluationDataPoint(predictedLabels, goldLabels, rawProbabilities)
   }
 
   /**
@@ -170,11 +172,12 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     * @return
     */
   override def createTrainingSummary(engine: Engine,
-                                     dataPoints: Seq[(Array[Double], Array[Double])],
+                                     dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
                                      portion: Double = 1.0): TrainingSummary = {
-    val predictionRDDs = engine.sparkContext.parallelize(dataPoints)
+    val labeledPoints = dataPoints.map(e => (e.predicted, e.gold))
+    val predictionRDDs = engine.sparkContext.parallelize(labeledPoints)
     val multiLabel = new MultilabelMetrics(predictionRDDs)
     val metrics = createMultilabelMetrics(multiLabel, labelToDouble.map(x => (x._2, x._1)))
     new TrainingSummary(
@@ -182,3 +185,8 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
       metrics ++ Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat)))
   }
 }
+
+
+case class EvaluationDataPoint(predicted: Array[Double],
+                               gold: Array[Double],
+                               rawProbabilities: Seq[(Double, Float)])

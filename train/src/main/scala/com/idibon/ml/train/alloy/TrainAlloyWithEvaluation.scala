@@ -53,7 +53,7 @@ class TrainAlloyWithEvaluation(name: String,
     * @return
     */
   def evaluate(trained: Alloy[Classification],
-               thresholds: Map[String, Float]): Seq[(Array[Double], Array[Double])] = {
+               thresholds: Map[String, Float]): Seq[EvaluationDataPoint] = {
     dataSet.test().map(doc => {
       val goldSet = getGoldSet(doc)
       goldSet.isEmpty match {

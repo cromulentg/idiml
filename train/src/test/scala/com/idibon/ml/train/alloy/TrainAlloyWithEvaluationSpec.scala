@@ -96,8 +96,8 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
       val dummy = new DummyAlloy()
       val actual = trainer.evaluate(dummy, Map("a" -> 0.3f))
       actual.size shouldBe 1
-      actual(0)._1 shouldBe Array(1.0)
-      actual(0)._2 shouldBe Array(1.0)
+      actual(0).predicted shouldBe Array(1.0)
+      actual(0).gold shouldBe Array(1.0)
     }
   }
 
@@ -144,12 +144,12 @@ class DummyTrainingSummaryCreator extends TrainingSummaryCreator {
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Set[String],
                                          classifications: util.List[Classification],
-                                         thresholds: Map[String, Float]): (Array[Double], Array[Double]) = {
-    (Array(1.0), Array(1.0))
+                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
+    new EvaluationDataPoint(Array(1.0), Array(1.0), Seq())
   }
 
   override def createTrainingSummary(engine: common.Engine,
-                                     dataPoints: Seq[(Array[Double], Array[Double])],
+                                     dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
                                      portion: Double): TrainingSummary = {
