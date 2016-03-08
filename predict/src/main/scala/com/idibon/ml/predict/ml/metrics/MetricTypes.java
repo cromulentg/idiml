@@ -46,6 +46,10 @@ public enum MetricTypes {
      */
     HyperparameterProperties(PropertyMetric.class),
     /**
+     * Confidence Deciles for a label computed from an evaluation set(s).
+     */
+    LabelConfidenceDeciles(LabelPointsMetric.class),
+    /**
      * Count of data points for that label.
      */
     LabelCount(LabelIntMetric.class),

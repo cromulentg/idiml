@@ -1,7 +1,11 @@
 package com.idibon.ml.train.alloy
 
+import java.util
+
+import com.idibon.ml.common
 import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.predict.Classification
+import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
 import org.scalatest._
 
@@ -120,6 +124,37 @@ class TrainingSummaryCreatorSpec extends FunSpec
       actual.metrics.size shouldBe 16
       val expected = Some(new FloatMetric(MetricTypes.F1, MetricClass.Multilabel, 1.0f))
       actual.metrics.find(m => m.metricType == MetricTypes.F1) shouldBe expected
+    }
+  }
+
+  describe("TrainingSummaryCreator tests") {
+
+    it("createPerLabelMetricsFromProbabilities correctly") {
+      val edps = Seq(
+        new EvaluationDataPoint(Array(), Array(), Seq((0.0, 0.2f), (1.0, 0.3f))),
+        new EvaluationDataPoint(Array(), Array(), Seq((0.0, 0.3f), (1.0, 0.4f)))
+      )
+      val ltodb = Map("a" -> 0.0, "b" -> 1.0)
+      val x = new DummyTrainingSummaryCreator()
+      val actual = x.createPerLabelMetricsFromProbabilities(ltodb, edps, MetricClass.Binary)
+      actual.sortBy(x => x.label) shouldBe Seq(
+        new LabelFloatListMetric(
+          MetricTypes.LabelProbabilities, MetricClass.Binary, "a", Seq(0.2f, 0.3f)),
+        new LabelFloatListMetric(
+          MetricTypes.LabelProbabilities, MetricClass.Binary, "b", Seq(0.3f, 0.4f))
+      )
+    }
+    it("collatePerLabelProbabilities correctly") {
+      val dps = Seq((0.0, 0.2f), (1.0, 0.3f), (0.0, 0.3f), (1.0, 0.4f))
+      val dbtl = Map(0.0 -> "a", 1.0 -> "b")
+      val x = new DummyTrainingSummaryCreator()
+      val actual = x.collatePerLabelProbabilities(dps, dbtl, MetricClass.Alloy)
+      actual.sortBy(x => x.label) shouldBe Seq(
+        new LabelFloatListMetric(
+          MetricTypes.LabelProbabilities, MetricClass.Alloy, "a", Seq(0.2f, 0.3f)),
+        new LabelFloatListMetric(
+          MetricTypes.LabelProbabilities, MetricClass.Alloy, "b", Seq(0.3f, 0.4f))
+      )
     }
   }
 }

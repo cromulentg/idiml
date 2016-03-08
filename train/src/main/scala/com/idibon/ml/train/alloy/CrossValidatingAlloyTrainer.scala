@@ -4,7 +4,7 @@ import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
-import com.idibon.ml.predict.ml.metrics.{MetricClass, Metric}
+import com.idibon.ml.predict.ml.metrics._
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 
@@ -174,7 +174,39 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     val averagedMetrics = groupedMetrics.flatMap({ case (metricType, metrics) =>
       Metric.average(metrics, Some(MetricClass.Alloy))
     }).toSeq
-    new TrainingSummary(summaryName, averagedMetrics)
+    val processedMetrics = averagedMetrics.map(metric => {
+      val metricType = metric.metricType
+      (metric, metricType) match {
+        case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) => computeProbabilityDeciles(m)
+        case _ => metric
+      }
+    })
+    new TrainingSummary(summaryName, processedMetrics)
+  }
+
+  /**
+    * Computes confidence deciles based on a passed in label float list metric.
+    * @param metric the metric to compute deciles from.
+    * @return a LabelPointsMetric representing LabelConfidenceDeciles
+    */
+  def computeProbabilityDeciles(metric: LabelFloatListMetric) = {
+    val numConfidences = metric.points.size
+    val quantiles = if (numConfidences < 9) {
+      // We need at least 9 values for the deciles hash, so if confidences.length < 9, return the
+      // confidences themselves as each decile value, set the first length - 9 values to zero
+      val numZeros = 9 - numConfidences
+      val ip = ((numZeros + 1) until 10).zip(metric.points).map({case (i, p) => (i.toFloat, p)})
+      (1 to numZeros).map(i => (i.toFloat, 0.0f)) ++ ip
+    } else {
+      //otherwise use the length = n-1 method for calculating quantiles (the default method in R,
+      // https://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html)
+      (1 to 9).map(i => {
+        val quantileIndex = Math.floor((i/10.0f) * (numConfidences -1)).toInt
+        (i.toFloat, metric.points(quantileIndex))
+      })
+    }
+    new LabelPointsMetric(
+      MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
   }
 }
 

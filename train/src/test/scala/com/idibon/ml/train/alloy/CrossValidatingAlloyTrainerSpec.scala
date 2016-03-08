@@ -58,5 +58,68 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
       actual.identifier shouldBe expected.identifier
       actual.metrics.sortBy(m => m.metricType) shouldBe expected.metrics.sortBy(m => m.metricType)
     }
+
+    it("creates label confidence deciles correctly when less than 9 values") {
+      val trainingSummaries = Seq[TrainingSummary](
+        new TrainingSummary("0", Seq(
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
+            0.4f, 0.5f, 0.88f, 0.9f
+          )),
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "y", Seq(
+            0.41f, 0.51f, 0.881f, 0.91f
+          ))
+        )),
+        new TrainingSummary("1", Seq(
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
+            0.14f, 0.15f, 0.188f, 0.19f
+          )),
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "y", Seq(
+            0.423f, 0.55f, 0.8823f, 0.94f
+          ))
+        ))
+      )
+      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
+      val actual = trainer.averageMetrics("testsummary", trainingSummaries)
+      val expected = new TrainingSummary("testsummary", Seq(
+        new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "x", Seq(
+          (1.0f, 0.0f), (2.0f, 0.14f), (3.0f, 0.15f), (4.0f, 0.188f), (5.0f, 0.19f),
+          (6.0f, 0.4f), (7.0f, 0.5f), (8.0f, 0.88f), (9.0f, 0.9f)
+        )),
+        new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "y", Seq(
+          (1.0f, 0.0f), (2.0f, 0.41f), (3.0f, 0.423f), (4.0f, 0.51f), (5.0f, 0.55f),
+          (6.0f, 0.881f), (7.0f, 0.8823f), (8.0f, 0.91f), (9.0f, 0.94f)
+        ))
+      ))
+      actual.identifier shouldBe expected.identifier
+      actual.metrics.sortBy(m => m.asInstanceOf[LabelPointsMetric].label) shouldBe expected.metrics
+    }
+
+    it("creates label confidence deciles correctly when we have more than 9 values") {
+      val trainingSummaries = Seq[TrainingSummary](
+        new TrainingSummary("0", Seq(
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x",
+            (0 until 50).map(_.toFloat)),
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "y",
+            (50 until 100).map(_.toFloat)
+          )
+        )),
+        new TrainingSummary("1", Seq(
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x",
+            (50 until 100).map(_.toFloat)),
+          new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "y",
+            (0 until 50).map(_.toFloat))
+        ))
+      )
+      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
+      val actual = trainer.averageMetrics("testsummary", trainingSummaries)
+      val expected = new TrainingSummary("testsummary", Seq(
+        new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "x",
+          (1 to 9).map(i => (i.toFloat, i.toFloat * 10.0f - 1.0f))),
+        new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "y",
+          (1 to 9).map(i => (i.toFloat, i.toFloat * 10.0f - 1.0f)))
+      ))
+      actual.identifier shouldBe expected.identifier
+      actual.metrics.sortBy(m => m.asInstanceOf[LabelPointsMetric].label) shouldBe expected.metrics
+    }
   }
 }

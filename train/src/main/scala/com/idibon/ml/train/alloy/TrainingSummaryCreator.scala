@@ -5,7 +5,7 @@ import java.util
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
-import com.idibon.ml.predict.ml.metrics.{MetricClass, MetricTypes, FloatMetric, MetricHelper}
+import com.idibon.ml.predict.ml.metrics._
 import org.apache.spark.mllib.evaluation.{MultilabelMetrics, MulticlassMetrics}
 import scala.collection.JavaConversions._
 
@@ -50,6 +50,46 @@ trait TrainingSummaryCreator extends MetricHelper {
                             summaryName: String,
                             portion: Double = 1.0): TrainingSummary
 
+
+  /**
+    * Helper method to create metrics for each label using the raw probabilities.
+    *
+    * @param labelToDouble
+    * @param dataPoints
+    * @param metricClass
+    * @return
+    */
+  def createPerLabelMetricsFromProbabilities(labelToDouble: Map[String, Double],
+                                             dataPoints: Seq[EvaluationDataPoint],
+                                             metricClass: MetricClass.Value):
+  Seq[LabelFloatListMetric] = {
+    val doubleToLabel = labelToDouble.map(x => (x._2, x._1))
+    val labelProbs = collatePerLabelProbabilities(
+      dataPoints.flatMap(e => e.rawProbabilities), doubleToLabel, metricClass)
+    // TODO: per label thresholding
+    labelProbs
+  }
+
+  /**
+    * Helper method to create LabelProbabilities metrics.
+    *
+    * @param dataPoints
+    * @param doubleToLabel
+    * @param metricClass
+    * @return
+    */
+  def collatePerLabelProbabilities(dataPoints: Seq[(Double, Float)],
+                                   doubleToLabel: Map[Double, String],
+                                   metricClass: MetricClass.Value): Seq[LabelFloatListMetric] = {
+    val doubleLabelToProb = dataPoints
+      .groupBy({ case (label, prob) => label })
+    // create sequence of metrics, one per label
+    doubleLabelToProb.map({ case (doubleLabel, probs) =>
+      val points = probs.map(x => x._2).sortBy(x => x)
+      new LabelFloatListMetric(
+        MetricTypes.LabelProbabilities, metricClass, doubleToLabel(doubleLabel), points)
+    }).toSeq
+  }
 }
 
 /**
@@ -128,7 +168,9 @@ case class MultiClassMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     val metrics = createMultiClassMetrics(multiClass, labelToDouble.map(x => (x._2, x._1)))
     new TrainingSummary(
       summaryName,
-      metrics ++ Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat)))
+      metrics ++
+        Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat)) ++
+        createPerLabelMetricsFromProbabilities(labelToDouble, dataPoints, MetricClass.Multiclass))
   }
 }
 
@@ -182,11 +224,19 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
     val metrics = createMultilabelMetrics(multiLabel, labelToDouble.map(x => (x._2, x._1)))
     new TrainingSummary(
       summaryName,
-      metrics ++ Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat)))
+      metrics ++
+        Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat)) ++
+        createPerLabelMetricsFromProbabilities(labelToDouble, dataPoints, MetricClass.Multiclass))
   }
 }
 
-
+/**
+  * Class to help store data from an evaluation.
+  *
+  * @param predicted
+  * @param gold
+  * @param rawProbabilities
+  */
 case class EvaluationDataPoint(predicted: Array[Double],
                                gold: Array[Double],
                                rawProbabilities: Seq[(Double, Float)])
