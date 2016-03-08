@@ -18,9 +18,15 @@ import org.json4s._
   * @param prng random number generator instance to use
   */
 class ChainNERFurnace(val name: String,
-  override val sequenceGenerator: SequenceGenerator,
-  override val featureExtractor: ChainPipeline,
+  baseSequenceGenerator: SequenceGenerator,
+  baseFeatureExtractor: ChainPipeline,
   private[furnace] val prng: Random) extends Furnace2[Span] with BIOTagger {
+
+  private[this] var _currentSequenceGenerator = baseSequenceGenerator
+  private[this] var _currentFeatureExtractor = baseFeatureExtractor
+
+  def featureExtractor = _currentFeatureExtractor
+  def sequenceGenerator = _currentSequenceGenerator
 
   /** Trains the model
     *
@@ -39,8 +45,9 @@ class ChainNERFurnace(val name: String,
         .map(_.value.size)
         .getOrElse(dims)
     })
-    sequenceGenerator.freeze()
-    featureExtractor.freeze()
+    // freeze the now-primed pipelines
+    _currentSequenceGenerator = sequenceGenerator.freeze()
+    _currentFeatureExtractor = featureExtractor.freeze()
 
     // TODO: figure out how to pass regularization parameters...
     val model = new crf.FactorieCRF(dimensions) with crf.TrainableFactorieModel
@@ -50,6 +57,9 @@ class ChainNERFurnace(val name: String,
     val trainingData = options.documents().map(json => {
       model.observe(tag(json).map({ case (t, v) => (t.toString, v) }))
     }).toSeq
+
+    // make sure that lazy training data views are all observed pre-training
+    trainingData.foreach(x => x)
 
     model.train(trainingData, prng)
 
