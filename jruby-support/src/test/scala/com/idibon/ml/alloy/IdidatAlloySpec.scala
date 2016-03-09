@@ -22,6 +22,23 @@ class IdidatAlloySpec extends FunSpec with Matchers {
 
   def num(x: Float) = java.lang.Float.valueOf(x).asInstanceOf[java.lang.Number]
 
+  describe("loadSpanTask") {
+    it("should load simple span tasks") {
+      val labelFoo = new Label("00000000-0000-0000-0000-000000000001", "foo")
+
+      val initialAlloy = new BaseAlloy("testing",
+        Seq(labelFoo), Map("foo" -> new VSpanModel(labelFoo.uuid.toString)))
+      val archive = scala.collection.mutable.HashMap[String, Array[Byte]]()
+      initialAlloy.save(new MemoryAlloyWriter(archive))
+      val updatedAlloy = IdidatAlloy.loadSpanTask(new EmbeddedEngine,
+        "updated", new MemoryAlloyReader(archive.toMap), List(labelFoo).asJava,
+        Map().asJava, true)
+
+      val r1 = updatedAlloy.predict("content" -> "hello", PredictOptions.DEFAULT)
+      r1 shouldBe Seq(Span(labelFoo.uuid.toString, 0.25f, 0, 0, 5)).asJava
+    }
+  }
+
   describe("loadClassificationTask") {
 
     val labelFoo = new Label("00000000-0000-0000-0000-000000000001", "foo")
@@ -142,5 +159,33 @@ class VClassificationModelLoader
 
     val label = (config.get \ "label").asInstanceOf[JString].s
     new VClassificationModel(label)
+  }
+}
+
+class VSpanModel(label: String)
+    extends PredictModel[Span]
+    with Archivable[VSpanModel, VSpanModelLoader] {
+  val reifiedType = classOf[VSpanModel]
+
+  def predict(document: Document, options: PredictOptions) = {
+    val content = (document.json \ "content").asInstanceOf[JString].s
+    Seq(Span(label, 0.25f, 0, 0, content.length))
+  }
+
+  def getFeaturesUsed: Vector = ???
+
+  def getEvaluationMetric: Double = ???
+
+  def save(w: Alloy.Writer): Option[JObject] = {
+    Some("label" -> label)
+  }
+}
+
+class VSpanModelLoader extends ArchiveLoader[VSpanModel] {
+  def load(engine: Engine, reader: Option[Alloy.Reader],
+    config: Option[JObject]) = {
+
+    val label = (config.get \ "label").asInstanceOf[JString].s
+    new VSpanModel(label)
   }
 }
