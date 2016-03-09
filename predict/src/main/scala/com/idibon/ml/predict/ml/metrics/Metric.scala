@@ -340,7 +340,7 @@ case class LabelFloatListMetric(mType: MetricTypes,
       .sortBy(p => p)
       .map({case p => s"($p)\t"
       }).reduce(_ + _)
-    s"[$mClass, $mType, $label, ${points.size}, ${pointString.substring(0, 20)}...]"
+    s"[$mClass, $mType, $label, ${points.size}, ${pointString.substring(0, Math.min(20, pointString.length()))}...]"
   }
 }
 class LabelFloatListMetricBuilder extends Builder[LabelFloatListMetric] {

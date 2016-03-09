@@ -3,10 +3,12 @@ package com.idibon.ml.train.alloy
 import java.util
 
 import com.idibon.ml.common.Engine
+import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
-import org.apache.spark.mllib.evaluation.{MultilabelMetrics, MulticlassMetrics}
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MultilabelMetrics, MulticlassMetrics}
+import org.apache.spark.sql.functions._
 import scala.collection.JavaConversions._
 
 /**
@@ -59,15 +61,17 @@ trait TrainingSummaryCreator extends MetricHelper {
     * @param metricClass
     * @return
     */
-  def createPerLabelMetricsFromProbabilities(labelToDouble: Map[String, Double],
+  def createPerLabelMetricsFromProbabilities(engine: Engine,
+                                             labelToDouble: Map[String, Double],
                                              dataPoints: Seq[EvaluationDataPoint],
                                              metricClass: MetricClass.Value):
-  Seq[LabelFloatListMetric] = {
+  Seq[Metric with Buildable[_, _]] = {
     val doubleToLabel = labelToDouble.map(x => (x._2, x._1))
-    val labelProbs = collatePerLabelProbabilities(
+    val labelProbs: Seq[Metric with Buildable[_, _]] = collatePerLabelProbabilities(
       dataPoints.flatMap(e => e.rawProbabilities), doubleToLabel, metricClass)
-    // TODO: per label thresholding
-    labelProbs
+    val labelThresholds: Seq[Metric with Buildable[_, _]] = getSuggestedLabelThreshold(
+      engine, dataPoints, doubleToLabel, metricClass)
+    labelProbs ++ labelThresholds
   }
 
   /**
@@ -90,6 +94,63 @@ trait TrainingSummaryCreator extends MetricHelper {
         MetricTypes.LabelProbabilities, metricClass, doubleToLabel(doubleLabel), points)
     }).toSeq
   }
+
+  /**
+    * Returns a sequence of label float metrics containing the suggested threshold for that label.
+    *
+    * For a label creates "binary label" data from the gold data and uses the probabilities passed in
+    * to compute the threshold that achieves the optimum F1.
+    *
+    * @param engine
+    * @param points
+    * @param doubleToLabel
+    * @param metricClass
+    * @return
+    */
+  def getSuggestedLabelThreshold(engine: Engine,
+                                 points: Seq[EvaluationDataPoint],
+                                 doubleToLabel: Map[Double, String],
+                                 metricClass: MetricClass.Value): Seq[LabelFloatMetric] = {
+    val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
+    val byLabel = points.flatMap(e => {
+      e.rawProbabilities.map({case (dblLabel, prob) =>
+        val binaryLabel = if (e.gold.contains(dblLabel)) 1.0 else 0.0
+        (dblLabel, prob, binaryLabel)
+      })
+    }).groupBy({case (dblLabel, prob, binaryLabel) => dblLabel})
+    byLabel.map({case (label, grouped) =>
+      val bestThreshold = computeBestF1Threshold(engine, sqlContext,
+        grouped.map({case (dblLabel, prob, binaryLabel) => (prob.toDouble, binaryLabel)}))
+      new LabelFloatMetric(
+        MetricTypes.LabelBestF1Threshold, metricClass, doubleToLabel(label), bestThreshold)
+    }).toSeq
+  }
+
+  /**
+    * Helper method to extract the float threshold value.
+    *
+    * Constructs the RDD & delegates to Spark's BinaryClassificationMetrics before doing
+    * the query to find the right threshold.
+    *
+    * @param engine
+    * @param sqlContext
+    * @param labelValues
+    * @return
+    */
+  def computeBestF1Threshold(engine: Engine,
+                             sqlContext: org.apache.spark.sql.SQLContext,
+                             labelValues: Seq[(Double, Double)]): Float = {
+    val predictionRDDs = engine.sparkContext.parallelize(labelValues)
+    // use 100 since that's what spark uses internally
+    val binaryMetrics = new BinaryClassificationMetrics(predictionRDDs, 100)
+    val fMeasure = sqlContext.createDataFrame(binaryMetrics.fMeasureByThreshold())
+    // _1 is threshold, _2 is metric
+    val maxFMeasure = fMeasure.select(max("_2")).head().getDouble(0)
+    val bestThreshold = fMeasure.where(fMeasure.col("_2") === maxFMeasure)
+      .select("_1").head().getDouble(0)
+    bestThreshold.toFloat
+  }
+
 }
 
 /**
@@ -170,7 +231,7 @@ case class MultiClassMetricsEvaluator(defaultThreshold: Float) extends TrainingS
       summaryName,
       metrics ++
         Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat)) ++
-        createPerLabelMetricsFromProbabilities(labelToDouble, dataPoints, MetricClass.Multiclass))
+        createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multiclass))
   }
 }
 
@@ -226,7 +287,7 @@ case class MultiLabelMetricsEvaluator(defaultThreshold: Float) extends TrainingS
       summaryName,
       metrics ++
         Seq(new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat)) ++
-        createPerLabelMetricsFromProbabilities(labelToDouble, dataPoints, MetricClass.Multiclass))
+        createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multilabel))
   }
 }
 

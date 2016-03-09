@@ -46,6 +46,11 @@ public enum MetricTypes {
      */
     HyperparameterProperties(PropertyMetric.class),
     /**
+     * This is reserved for the threshold that results in the Best F1.
+     * Note: this can cover multinomial as we as binary classifiers...
+     */
+    LabelBestF1Threshold(LabelFloatMetric.class),
+    /**
      * Confidence Deciles for a label computed from an evaluation set(s).
      */
     LabelConfidenceDeciles(LabelPointsMetric.class),

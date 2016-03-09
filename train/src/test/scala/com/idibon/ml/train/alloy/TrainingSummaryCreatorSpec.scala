@@ -1,11 +1,9 @@
 package com.idibon.ml.train.alloy
 
-import java.util
 
-import com.idibon.ml.common
 import com.idibon.ml.common.EmbeddedEngine
+import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.Classification
-import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
 import org.scalatest._
 
@@ -128,20 +126,26 @@ class TrainingSummaryCreatorSpec extends FunSpec
   }
 
   describe("TrainingSummaryCreator tests") {
-
     it("createPerLabelMetricsFromProbabilities correctly") {
       val edps = Seq(
-        new EvaluationDataPoint(Array(), Array(), Seq((0.0, 0.2f), (1.0, 0.3f))),
-        new EvaluationDataPoint(Array(), Array(), Seq((0.0, 0.3f), (1.0, 0.4f)))
+        new EvaluationDataPoint(Array(0.0), Array(1.0), Seq((0.0, 0.2f), (1.0, 0.3f))),
+        new EvaluationDataPoint(Array(1.0), Array(0.0), Seq((0.0, 0.3f), (1.0, 0.4f)))
       )
       val ltodb = Map("a" -> 0.0, "b" -> 1.0)
       val x = new DummyTrainingSummaryCreator()
-      val actual = x.createPerLabelMetricsFromProbabilities(ltodb, edps, MetricClass.Binary)
-      actual.sortBy(x => x.label) shouldBe Seq(
+      val actual = x.createPerLabelMetricsFromProbabilities(engine, ltodb, edps, MetricClass.Binary)
+      actual.sortBy(x => x match {
+        case a: LabelFloatListMetric => (a.label, a.metricType)
+        case b: LabelFloatMetric => (b.label, b.metricType)
+      }) shouldBe Seq[Metric with Buildable[_, _]](
+        new LabelFloatMetric(
+          MetricTypes.LabelBestF1Threshold, MetricClass.Binary, "a", 0.3f),
         new LabelFloatListMetric(
           MetricTypes.LabelProbabilities, MetricClass.Binary, "a", Seq(0.2f, 0.3f)),
-        new LabelFloatListMetric(
-          MetricTypes.LabelProbabilities, MetricClass.Binary, "b", Seq(0.3f, 0.4f))
+        new LabelFloatMetric(
+          MetricTypes.LabelBestF1Threshold, MetricClass.Binary, "b", 0.3f),
+      new LabelFloatListMetric(
+            MetricTypes.LabelProbabilities, MetricClass.Binary, "b", Seq(0.3f, 0.4f))
       )
     }
     it("collatePerLabelProbabilities correctly") {
@@ -155,6 +159,31 @@ class TrainingSummaryCreatorSpec extends FunSpec
         new LabelFloatListMetric(
           MetricTypes.LabelProbabilities, MetricClass.Alloy, "b", Seq(0.3f, 0.4f))
       )
+    }
+    it("creates best label f1 metrics properly") {
+      val edps = Seq(
+        new EvaluationDataPoint(Array(0.0), Array(1.0), Seq((0.0, 0.4f), (1.0, 0.3f))),
+        new EvaluationDataPoint(Array(1.0), Array(0.0), Seq((0.0, 0.3f), (1.0, 0.4f))),
+        new EvaluationDataPoint(Array(0.0), Array(0.0), Seq((0.0, 0.6f), (1.0, 0.4f))),
+        new EvaluationDataPoint(Array(1.0), Array(1.0), Seq((0.0, 0.3f), (1.0, 0.5f))),
+        new EvaluationDataPoint(Array(1.0), Array(1.0), Seq((0.0, 0.35f), (1.0, 0.56f)))
+      )
+      val dbletol = Map(0.0 -> "a", 1.0 -> "b")
+      val x = new DummyTrainingSummaryCreator()
+      val actual = x.getSuggestedLabelThreshold(engine, edps, dbletol, MetricClass.Alloy)
+      val expected = Seq(
+        new LabelFloatMetric(MetricTypes.LabelBestF1Threshold, MetricClass.Alloy, "a", 0.6f),
+        new LabelFloatMetric(MetricTypes.LabelBestF1Threshold, MetricClass.Alloy, "b", 0.5f)
+      )
+      actual.sortBy(x => x.label) shouldBe expected
+    }
+
+    it("computes computeBestF1Threshold correctly") {
+      val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
+      val x = new DummyTrainingSummaryCreator()
+      val values = Seq((0.5, 1.0), (0.4, 0.0), (0.3, 0.0), (0.5, 1.0), (0.6, 1.0))
+      val actual = x.computeBestF1Threshold(engine, sqlContext, values)
+      actual shouldBe 0.5f
     }
   }
 }
