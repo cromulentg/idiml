@@ -67,6 +67,14 @@ public enum MetricTypes {
      */
     LabelFPR(LabelFloatMetric.class),
     /**
+     * Max probability/confidence encountered.
+     */
+    LabelMaxConfidence(LabelFloatMetric.class),
+    /**
+     * Min probability/confidence encountered.
+     */
+    LabelMinConfidence(LabelFloatMetric.class),
+    /**
      * Precision but for an individual label.
      */
     LabelPrecision(LabelFloatMetric.class),

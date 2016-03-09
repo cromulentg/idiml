@@ -2,6 +2,7 @@ package com.idibon.ml.train.alloy
 
 import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy, Alloy}
 import com.idibon.ml.common.Engine
+import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
@@ -174,11 +175,13 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     val averagedMetrics = groupedMetrics.flatMap({ case (metricType, metrics) =>
       Metric.average(metrics, Some(MetricClass.Alloy))
     }).toSeq
-    val processedMetrics = averagedMetrics.map(metric => {
+    val processedMetrics = averagedMetrics.flatMap(metric => {
       val metricType = metric.metricType
       (metric, metricType) match {
-        case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) => computeProbabilityDeciles(m)
-        case _ => metric
+        case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) =>
+          Seq[Metric with Buildable[_, _]](
+            computeProbabilityDeciles(m), computeMinProbability(m), computeMaxProbability(m))
+        case _ => Seq[Metric with Buildable[_, _]](metric)
       }
     })
     new TrainingSummary(summaryName, processedMetrics)
@@ -186,10 +189,11 @@ class CrossValidatingAlloyTrainer(engine: Engine,
 
   /**
     * Computes confidence deciles based on a passed in label float list metric.
+    *
     * @param metric the metric to compute deciles from.
     * @return a LabelPointsMetric representing LabelConfidenceDeciles
     */
-  def computeProbabilityDeciles(metric: LabelFloatListMetric) = {
+  def computeProbabilityDeciles(metric: LabelFloatListMetric): LabelPointsMetric  = {
     val numConfidences = metric.points.size
     val quantiles = if (numConfidences < 9) {
       // We need at least 9 values for the deciles hash, so if confidences.length < 9, return the
@@ -207,6 +211,28 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     }
     new LabelPointsMetric(
       MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
+  }
+
+  /**
+    * Helper method to get the min probability seen and create a metric from it.
+ *
+    * @param metric
+    * @return
+    */
+  def computeMinProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMinConfidence, metric.metricClass, metric.label, metric.points.min)
+  }
+
+  /**
+    * Helper method to get the max probability seen and create a metric from it.
+ *
+    * @param metric
+    * @return
+    */
+  def computeMaxProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMaxConfidence, metric.metricClass, metric.label, metric.points.max)
   }
 }
 
