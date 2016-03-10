@@ -1,7 +1,7 @@
 package com.idibon.ml.feature.contenttype
 
 import com.idibon.ml.feature.FeatureTransformer
-import org.json4s.JObject
+import org.json4s.{JString, JObject}
 
 /** Generates a feature based on the document's detected content-type.
   *
@@ -9,14 +9,49 @@ import org.json4s.JObject
   */
 class ContentTypeDetector extends FeatureTransformer {
 
-  /** Uses document metadata or magic-byte detection to determine a
-    * document's content type.
+  /** Uses document starting tags or metadata fields to detect
+    * document's content type. Defaults to plaintext
     *
     * @param document a parsed JSON document
     * @return a ContentType feature
     */
   def apply(document: JObject): ContentType = {
-    // TODO: implement!
-    ContentType(ContentTypeCode.PlainText)
+    (document \ "content").toOption //first check starting tags
+      .flatMap(content => startsWithTag(content.asInstanceOf[JString].s))
+      .orElse({
+        (document \ "metadata").toOption //second, check metadata fields
+          .flatMap(metadata => metadataRules(metadata.asInstanceOf[JObject]))
+      }) //default to plain text
+      .getOrElse(ContentType(ContentTypeCode.PlainText))
+  }
+
+  /** Uses starts with test to check for known starting tags of types
+    *
+    * Returns None if no check passes
+    */
+  private def startsWithTag(content: String): Option[ContentType] = {
+    Some(content)
+      .filter(_.toLowerCase().startsWith("<!doctype"))
+      .flatMap(o => Some(ContentType(ContentTypeCode.HTML)))
+      .orElse({
+        Some(content)
+          .filter(_.toLowerCase().startsWith("<?xml"))
+          .flatMap(o => Some(ContentType(ContentTypeCode.XML)))
+      })
+  }
+
+  /** Hardcoded checks for known metadata fields that imply
+    * a specific document type
+    *
+    * Returns None if no check passes
+    */
+  private def metadataRules(metadata: JObject): Option[ContentType] = {
+    (metadata \ "lexisnexis").toOption
+      .flatMap(metadata => Some(ContentType(ContentTypeCode.HTML)))
+      .orElse({
+        (metadata \ "newscred").toOption
+          .flatMap(metadata => Some(ContentType(ContentTypeCode.HTML)))
+      })
   }
 }
+
