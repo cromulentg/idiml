@@ -30,12 +30,14 @@ class ContentTypeDetector extends FeatureTransformer {
     * Returns None if no check passes
     */
   private def startsWithTag(content: String): Option[ContentType] = {
+    val htmlTag = "<!doctype "
+    val xmlTag = "<?xml "
     Some(content)
-      .filter(_.toLowerCase().startsWith("<!doctype"))
+      .filter(_.regionMatches(true, 0, htmlTag, 0, htmlTag.length()))
       .flatMap(o => Some(ContentType(ContentTypeCode.HTML)))
       .orElse({
         Some(content)
-          .filter(_.toLowerCase().startsWith("<?xml"))
+          .filter(_.regionMatches(true, 0, xmlTag, 0, xmlTag.length()))
           .flatMap(o => Some(ContentType(ContentTypeCode.XML)))
       })
   }

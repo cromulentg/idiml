@@ -16,9 +16,10 @@ class ContentTypeDetectorSpec extends FunSpec with Matchers {
       val plainDoc = JObject(List(
         JField("content", JString("here is some cool plain text"))))
       val htmlDoc = JObject(List(
-        JField("content", JString("<!DOCTYPE> here is some text for an <strong> HTML </strong> document."))))
+        JField("content", JString("<!DOCTYPE html> here is some text for an <strong> HTML </strong> document."))))
       val xmlDoc = JObject(List(
-        JField("content", JString("<?xml> xml what what"))))
+        JField("content", JString("<?xml version='1.0'?> xml what what"))))
+
 
       transform(plainDoc) shouldBe ContentType(ContentTypeCode.PlainText)
       transform(htmlDoc) shouldBe ContentType(ContentTypeCode.HTML)
