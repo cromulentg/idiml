@@ -5,7 +5,7 @@ import java.util.{Map => JavaMap, List => JavaList}
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.{Label, PredictResult,
-  PredictModel, Classification}
+  PredictModel, Classification, Span}
 import com.idibon.ml.predict.rules.DocumentRules
 import com.idibon.ml.predict.ensemble.GangModel
 
@@ -76,6 +76,26 @@ object IdidatAlloy {
           Map(s"${name} - combined" -> combined))
       }
     }
+  }
+
+  /** Loads an Alloy using a possibly-updated label and rule set
+    *
+    * @param engine Engine context for loading
+    * @param name   name for the Alloy
+    * @param alloyReader reader to access the archived Alloy, may be null
+    * @param labels current set of labels
+    * @param rules  current set of rules
+    * @param validate true to validate the Alloy (if present) after loading
+    * @return an alloy with the updated labels and rules
+    */
+  def loadSpanTask(engine: Engine, name: String,
+    alloyReader: Alloy.Reader, labels: JavaList[Label],
+    rules: JavaMap[Label, JavaMap[String, java.lang.Number]],
+    validate: Boolean):
+      Alloy[Span] = {
+    // TODO: span rules support, validation
+    val alloy = BaseAlloy.load[Span](engine, alloyReader)
+    new BaseAlloy[Span](name, labels.asScala, alloy.models)
   }
 
   /** Removes any RulesModel objects from any set of models (e.g., GangModel)
