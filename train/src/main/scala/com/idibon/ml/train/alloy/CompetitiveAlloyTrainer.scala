@@ -56,7 +56,7 @@ class CompetitiveAlloyTrainer(builder: CompetitiveAlloyTrainerBuilder)
     val labels = uuidToLabelGenerator(uuidToLabel)
 
     // for each trainer
-    val alloys = trainers.par.map({case (trainerName, trainer) =>
+    val alloys = trainers.map({case (trainerName, trainer) =>
       // delegate to xval trainer
       val cvat = new CrossValidatingAlloyTrainer(engine, trainer, numFolds, portion, foldSeed)
       cvat.trainAlloy(s"$name-$trainerName", docs, labelsAndRules, config)

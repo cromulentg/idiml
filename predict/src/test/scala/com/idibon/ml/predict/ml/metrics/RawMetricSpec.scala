@@ -23,6 +23,7 @@ class RawMetricSpec extends FunSpec with Matchers
       new PointsMetric(MetricTypes.F1ByThreshold, MetricClass.Binary, Seq((0.5f, 0.3f)))
       new LabelPointsMetric(MetricTypes.LearningCurveLabelF1, MetricClass.Binary, "label", Seq((0.5f, 0.3f)))
       new PropertyMetric(MetricTypes.HyperparameterProperties, MetricClass.Binary, Seq(("p1", "v1")))
+      new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "label", Seq(0.4f, 0.5f, 0.6f))
       new ConfusionMatrixMetric(MetricTypes.ConfusionMatrix, MetricClass.Binary, Seq(("a", "b", 1.0f)))
     }
   }
@@ -182,7 +183,7 @@ class AverageMetricSpec extends FunSpec with Matchers
       val expected = input
       actual shouldBe expected
     }
-    it("confusion matrix metric computes average properly") {
+    it("confusion matrix metric computes sum properly") {
       val mType = MetricTypes.ConfusionMatrix
       val mClass = MetricClass.Multiclass
       val input = Seq(
@@ -191,6 +192,21 @@ class AverageMetricSpec extends FunSpec with Matchers
         new ConfusionMatrixMetric(mType, mClass, Seq(("a", "b", 0.03f))))
       val actual = Metric.average(input)
       val expected = Seq(new ConfusionMatrixMetric(mType, mClass, Seq(("a", "b", 0.21f))))
+      actual shouldBe expected
+    }
+
+    it("LabelFloatListMetric computes concat properly") {
+      val mType = MetricTypes.LabelProbabilities
+      val mClass = MetricClass.Multiclass
+      val input = Seq(
+        new LabelFloatListMetric(mType, mClass, "x", Seq(0.1f, 0.2f, 0.6f)),
+        new LabelFloatListMetric(mType, mClass, "x", Seq(0.5f, 0.7f, 0.8f)),
+        new LabelFloatListMetric(mType, mClass, "y", Seq(0.03f, 0.4f, 0.6f)))
+      val actual = Metric.average(input).sortBy(x => x.asInstanceOf[LabelFloatListMetric].label)
+      val expected = Seq(
+        new LabelFloatListMetric(mType, mClass, "x", Seq(0.1f, 0.2f, 0.5f, 0.6f, 0.7f, 0.8f)),
+        new LabelFloatListMetric(mType, mClass, "y", Seq(0.03f, 0.4f, 0.6f))
+      )
       actual shouldBe expected
     }
   }
