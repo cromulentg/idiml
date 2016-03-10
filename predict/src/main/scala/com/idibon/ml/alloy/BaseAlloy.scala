@@ -3,7 +3,7 @@ package com.idibon.ml.alloy
 import java.lang.Float
 import java.util
 
-import com.idibon.ml.predict.ml.metrics.{FloatMetric, MetricTypes}
+import com.idibon.ml.predict.ml.metrics.{MetricClass, LabelFloatMetric, FloatMetric, MetricTypes}
 
 import scala.collection.JavaConverters._
 import java.util.{Date, TimeZone}
@@ -87,14 +87,36 @@ case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
     *
     */
   override def getSuggestedThresholds: util.Map[Label, Float] = {
-    // get thresholds from models
-    val modelIDtoFloat = this.models.map {case (name, model) => model.getTrainingSummary()}
+    /* Get them from cross validation results if they exist:
+     - Due to prior design, the only way to know what level a metric is for, is by inspecting it.
+     - So if we want to find the suggested threshold created by the cross validating alloy trainer,
+       we have to look through all the metrics in all the training summaries for those metrics explicitly.
+     */
+    val xvalThresholds = this.models.map {case (name, model) => model.getTrainingSummary()}
       .collect { case Some(summaries) => summaries }
       .flatten
-      .map { ts => (ts.identifier, ts) }
-      .map {  case (label, ts) =>
-        (label, ts.metrics.filter(m => m.metricType == MetricTypes.BestF1Threshold))
-      }.filter { case (label, ts) => ts.nonEmpty
+      .flatMap { ts => ts.metrics}
+      .filter {
+        case (m: LabelFloatMetric) => (m.mType == MetricTypes.LabelBestF1Threshold && m.mClass == MetricClass.Alloy)
+        case _ => false
+      }.map { case (m: LabelFloatMetric) => (m.label, float2Float(m.float)) }.toMap
+    // if there is something
+    if (xvalThresholds.nonEmpty) {
+      logger.info("Taking suggested thresholds from cross validated alloy results.")
+        labels
+          .filter(label => xvalThresholds.contains(label.uuid.toString))
+          .map(label => (label, xvalThresholds(label.uuid.toString))).toMap.asJava
+    } else {
+      /* Get thresholds from individual model training:
+       - most likely found by evaluating on the training dataset.
+       */
+      val modelIDtoFloat = this.models.map { case (name, model) => model.getTrainingSummary() }
+        .collect { case Some(summaries) => summaries }
+        .flatten
+        .map { ts => (ts.identifier, ts) }
+        .map { case (label, ts) =>
+          (label, ts.metrics.filter(m => m.metricType == MetricTypes.BestF1Threshold))
+        }.filter { case (label, ts) => ts.nonEmpty
       }.map { case (label, ts) => (label, ts.head)
       }.map { case (label, metric) =>
         val floatValue: Float = metric match {
@@ -104,10 +126,11 @@ case class BaseAlloy[T <: PredictResult with Buildable[T, Builder[T]]](
         }
         (label, floatValue)
       }.toMap
-    // map labels to model threshold
-    labels
-      .filter(label => modelIDtoFloat.contains(label.uuid.toString))
-      .map(label => (label, modelIDtoFloat(label.uuid.toString))).toMap.asJava
+      // map labels to model threshold
+      labels
+        .filter(label => modelIDtoFloat.contains(label.uuid.toString))
+        .map(label => (label, modelIDtoFloat(label.uuid.toString))).toMap.asJava
+    }
   }
 }
 
