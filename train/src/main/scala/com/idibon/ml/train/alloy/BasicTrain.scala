@@ -1,10 +1,13 @@
 package com.idibon.ml.train.alloy
 
 import scala.io.Source
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{PredictResult, Classification}
+import com.idibon.ml.train.TrainOptions
+import com.idibon.ml.predict._
 
 import org.json4s._
 import org.json4s.native.JsonMethods
@@ -53,16 +56,33 @@ object BasicTrain {
     alloyName: String,
     trainingDataFile: String,
     taskConfigFile: String,
-    alloyConfigFile: String): Alloy[Classification] = {
+    alloyConfigFile: String): Alloy[_] = {
+
+    implicit val formats = org.json4s.DefaultFormats
 
     val alloyConfig = readJsonFile(alloyConfigFile)
     val taskConfig = readJsonFile(taskConfigFile)
+    val taskType = (taskConfig \ "task_type").extract[String]
 
-    val trainer = AlloyFactory.getTrainer(engine,
-      (alloyConfig \ "trainerConfig").asInstanceOf[JObject])
+    taskType match {
+      case "extraction.bio_ner" => {
+        val labels = (alloyConfig \ "uuid_to_label")
+          .extract[List[(String, String)]]
+          .map({ case (uuid, name) => new Label(uuid, name) })
+        val options = TrainOptions()
+          .addDocuments(lazyFileReader(trainingDataFile)())
+        val trainer = AlloyTrainer2[Span](engine, alloyName, labels.toSeq,
+          (alloyConfig \ "trainerConfig").extract[JObject])
+        Await.result(trainer.train(options.build()), Duration.Inf)
+      }
+      case _ => {
+        val trainer = AlloyFactory.getTrainer(engine,
+          (alloyConfig \ "trainerConfig").asInstanceOf[JObject])
 
-    trainer.trainAlloy(alloyName,
-      lazyFileReader(trainingDataFile),
-      taskConfig, Some(alloyConfig))
+        trainer.trainAlloy(alloyName,
+          lazyFileReader(trainingDataFile),
+          taskConfig, Some(alloyConfig))
+      }
+    }
   }
 }
