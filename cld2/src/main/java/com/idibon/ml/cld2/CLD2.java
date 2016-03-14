@@ -4,6 +4,7 @@ import java.nio.charset.Charset;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.nio.file.Files;
+import java.nio.file.AccessDeniedException;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.File;
@@ -136,6 +137,13 @@ public final class CLD2 {
         try {
             initialize();
             success = true;
+        } catch (NoSuchElementException |
+                 FileNotFoundException |
+                 AccessDeniedException ex) {
+            /* these are all common enough errors that logging the full
+             * stack is more log noise than desirable */
+            LOGGER.error("failed to initialize CLD2\n\t{}: {}",
+                         ex.getClass().getSimpleName(), ex.getMessage());
         } catch (Exception ex) {
             LOGGER.error("failed to initialize CLD2", ex);
         } finally {
