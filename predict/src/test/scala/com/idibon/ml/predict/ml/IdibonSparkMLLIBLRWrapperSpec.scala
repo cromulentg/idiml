@@ -35,13 +35,13 @@ class IdibonSparkMLLIBLRWrapperSpec extends FunSpec
   describe("predict probability n-ary case") {
     it("handles vectors of different sizes well") {
       val result = multinomialmodel.predictProbability(Vectors.sparse(11, Array(0, 3, 11), Array(1.0, 1.0, 1.0)))
-      result shouldBe Vectors.sparse(3, Array(0,1,2), Array(0.4005470986636675,0.4005470986636675,0.19890580267266503))
+      result shouldBe Vectors.sparse(3, Array(0,1,2), Array(0.7304317024458798,0.18012224018985287,0.08944605736426732))
       result.toDense.values.sum shouldBe 1.0
     }
 
     it("handles vectors equal to model size") {
       val result = multinomialmodel.predictProbability(Vectors.sparse(10, Array(0, 3, 9), Array(1.0, 1.0, 1.0)))
-      result shouldBe Vectors.sparse(3, Array(0,1,2), Array(0.4005470986636675,0.4005470986636675,0.19890580267266503))
+      result shouldBe Vectors.sparse(3, Array(0,1,2), Array(0.7304317024458798,0.18012224018985287,0.08944605736426732))
       result.toDense.values.sum shouldBe 1.0
     }
   }
@@ -73,18 +73,18 @@ class IdibonSparkMLLIBLRWrapperSpec extends FunSpec
       val result = multinomialmodel.getSignificantDimensions(
         Vectors.sparse(10, Array(0, 3, 5), Array(1.0, 1.0, 1.0)), 0.2f)
       result.size shouldBe 3
-      result(0) shouldBe (0, Vectors.sparse(10, Array(0, 3, 5), Array(0.36485455053318794,0.3744869464185019,0.33884183713341054)))
-      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.36485455053318794,0.3744869464185019,0.33884183713341054)))
-      result(2) shouldBe (2, Vectors.sparse(10, Array(0, 3, 5), Array(0.2702908989336242,0.25102610716299617,0.3223163257331788)))
+      result(0) shouldBe (0, Vectors.sparse(10, Array(0, 3, 5), Array(0.5114092080814167,0.571257789495951,0.3615923289499618)))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.28066732420071266,0.25668267079810947,0.32718226930869276)))
+      result(2) shouldBe (2, Vectors.sparse(10, Array(0, 5), Array(0.20792346771787082,0.31122540174134544)))
     }
 
     it("ignores feature counts when determining significance") {
       val result = multinomialmodel.getSignificantDimensions(
-        Vectors.sparse(10, Array(0, 3, 5), Array(100.0, 100.0, 2.0)), 0.2f)
+        Vectors.sparse(10, Array(0, 3, 5), Array(100.0, 100.0, 2.0)), 0.1f)
       result.size shouldBe 3
-      result(0) shouldBe (0, Vectors.sparse(10, Array(0, 3, 5), Array(0.36485455053318794,0.3744869464185019,0.33884183713341054)))
-      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.36485455053318794,0.3744869464185019,0.33884183713341054)))
-      result(2) shouldBe (2, Vectors.sparse(10, Array(0, 3, 5), Array(0.2702908989336242,0.25102610716299617,0.3223163257331788)))
+      result(0) shouldBe (0, Vectors.sparse(10, Array(0, 3, 5), Array(0.5114092080814167,0.571257789495951,0.3615923289499618)))
+      result(1) shouldBe (1, Vectors.sparse(10, Array(0, 3, 5), Array(0.28066732420071266,0.25668267079810947,0.32718226930869276)))
+      result(2) shouldBe (2, Vectors.sparse(10, Array(0, 3, 5), Array(0.20792346771787082,0.1720595397059396,0.31122540174134544)))
     }
   }
 

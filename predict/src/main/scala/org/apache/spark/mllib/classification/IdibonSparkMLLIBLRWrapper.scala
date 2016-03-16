@@ -95,8 +95,9 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
         margin - math.max(0, maxMargin) //only subtract if maxMargin is greater than 0
       }).map(margin => math.exp(margin)).toList // exponentiate the value
       val marginSum = margins.sum // get the sum
-      val otherClasses = margins.map(m => m / (1.0 + marginSum)) // now compute probabilities
-      val zerothClass = 1.0 / (1.0 + marginSum) // get zeroth class
+      val eMax = math.exp(math.max(0, maxMargin))
+      val otherClasses = margins.map(m => m / (eMax + marginSum))
+      val zerothClass = eMax / (eMax + marginSum)
       Vectors.sparse(numClasses, (0 until numClasses).toArray, (zerothClass :: otherClasses).toArray)
     }
   }
