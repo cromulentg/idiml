@@ -10,6 +10,9 @@ import scala.collection.mutable.ListBuffer
   * Extends an MLLIB LR implementation.
   *
   * Namely it exposes the probability calculation, and significant features.
+  *
+  * Note: intercept will be zero for 3 or more classes (because the intercept is
+  * encoded in the weights).
   */
 class IdibonSparkMLLIBLRWrapper(weights: Vector,
                                 intercept: Double,
@@ -68,11 +71,13 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
       val score = 1.0 / (1.0 + math.exp(-margin))
       Vectors.sparse(2, Array(0, 1), Array(1.0 - score, score))
     } else {
+      // compute exp(x * w) for each class
       var bestClass = 0
       var maxMargin = 0.0
       val withBias = features.size + 1 == dataWithBiasSize
       val margins = (0 until numClasses - 1).map { i =>
         var margin = 0.0
+        // this computes x*w (without intercept)
         features.foreachActive { (index, value) =>
           if (value != 0.0) margin += value * weightsArray((i * dataWithBiasSize) + index)
         }
@@ -84,13 +89,16 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
           maxMargin = margin
           bestClass = i + 1
         }
-        margin
+        margin  // so this is just the margin
         // not sure about the bits here -- guesstimating without really thinking
       }.map(margin => {
         margin - math.max(0, maxMargin) //only subtract if maxMargin is greater than 0
-      }).map(margin => 1.0 / (1.0 + math.exp(-margin))).toList
-      val leftOver = 1.0 - margins.sum
-      Vectors.sparse(numClasses, (0 until numClasses).toArray, (leftOver :: margins).toArray)
+      }).map(margin => math.exp(margin)).toList // exponentiate the value
+      val marginSum = margins.sum // get the sum
+      val eMax = math.exp(math.max(0, maxMargin))
+      val otherClasses = margins.map(m => m / (eMax + marginSum))
+      val zerothClass = eMax / (eMax + marginSum)
+      Vectors.sparse(numClasses, (0 until numClasses).toArray, (zerothClass :: otherClasses).toArray)
     }
   }
 
