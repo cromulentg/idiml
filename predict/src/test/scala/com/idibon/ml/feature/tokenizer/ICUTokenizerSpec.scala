@@ -55,6 +55,19 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
       !!("1,000,000.09") shouldBe List("1,000,000.09")
     }
 
+    it("should tokenize emoticons and character references") {
+      !!("&amp; :):-)w00t!(/◕ヮ◕)/") shouldBe List("&amp;", ":)", ":-)", "w00t", "!", "(/◕ヮ◕)/")
+      !!(" (╯°□°）╯︵ ┻━┻") shouldBe List("(╯°□°）╯","︵", "┻━┻")
+      !!("༼ つ ಥ_ಥ ༽つ ノ( º _ ºノ)") shouldBe List("༼ つ ಥ_ಥ ༽つ", "ノ( º _ ºノ)")
+    }
+
+    it("should tokenize URLs") {
+      ??("https://www.reddit.com/r/conspiracies is hilarious") shouldBe List(
+        "https://www.reddit.com/r/conspiracies", " ", "is", " ", "hilarious")
+      !!("check this out: http://t.co/Dwv1VnpJr0") shouldBe List("check", "this",
+        "out", ":", "http://t.co/Dwv1VnpJr0")
+    }
+
     ignore("should tokenize times of day") {
       !!("1:15PM") shouldBe List("1:15", "PM")
     }
@@ -104,9 +117,9 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
 
   describe("surrogate pairs") {
 
-    ignore("should account for surrogate pairs in returned locations") {
+    it("should account for surrogate pairs in returned locations") {
       <<("happy \ud83d\ude00\ud83d\udc31") shouldBe
-        List((0,5), (5, 1), (6, 1), (7, 1))
+        List((0,5), (5, 1), (6, 2), (8, 2))
     }
   }
 

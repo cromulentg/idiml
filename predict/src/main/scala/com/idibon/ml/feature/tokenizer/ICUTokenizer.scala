@@ -75,7 +75,11 @@ package com.idibon.ml.feature.tokenizer {
         } catch {
           case _: NoSuchElementException => None
         }
-      }.getOrElse({ BreakIterator.getWordInstance(locale) })
+      }.getOrElse({
+        /* create a new break iterator instance, and wrap it in the
+         * suppression logic */
+        new WebWordBreakIterator(BreakIterator.getWordInstance(locale))
+      })
 
       try {
         fn(iterator)
