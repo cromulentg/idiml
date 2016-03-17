@@ -83,13 +83,13 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
       val actual = trainer.averageMetrics("testsummary", trainingSummaries)
       val expected = new TrainingSummary("testsummary", Seq[Metric with Buildable[_, _]](
         new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "x", Seq(
-          (1.0f, 0.0f), (2.0f, 0.14f), (3.0f, 0.15f), (4.0f, 0.188f), (5.0f, 0.19f),
+          (1.0f, 0.14f), (2.0f, 0.15f), (3.0f, 0.188f), (4.0f, 0.19f), (5.0f, 0.4f),
           (6.0f, 0.4f), (7.0f, 0.5f), (8.0f, 0.88f), (9.0f, 0.9f)
         )),
           new LabelFloatMetric(MetricTypes.LabelMaxConfidence, MetricClass.Alloy, "x", 0.9f),
           new LabelFloatMetric(MetricTypes.LabelMinConfidence, MetricClass.Alloy, "x", 0.14f),
         new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "y", Seq(
-          (1.0f, 0.0f), (2.0f, 0.41f), (3.0f, 0.423f), (4.0f, 0.51f), (5.0f, 0.55f),
+          (1.0f, 0.41f), (2.0f, 0.423f), (3.0f, 0.51f), (4.0f, 0.55f), (5.0f, 0.881f),
           (6.0f, 0.881f), (7.0f, 0.8823f), (8.0f, 0.91f), (9.0f, 0.94f)
         )),
         new LabelFloatMetric(MetricTypes.LabelMaxConfidence, MetricClass.Alloy, "y", 0.94f),

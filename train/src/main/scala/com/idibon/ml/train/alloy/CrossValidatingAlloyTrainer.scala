@@ -194,28 +194,31 @@ class CrossValidatingAlloyTrainer(engine: Engine,
     * @return a LabelPointsMetric representing LabelConfidenceDeciles
     */
   def computeProbabilityDeciles(metric: LabelFloatListMetric): LabelPointsMetric  = {
-    val numConfidences = metric.points.size
-    val quantiles = if (numConfidences < 9) {
-      // We need at least 9 values for the deciles hash, so if confidences.length < 9, return the
-      // confidences themselves as each decile value, set the first length - 9 values to zero
-      val numZeros = 9 - numConfidences
-      val ip = ((numZeros + 1) until 10).zip(metric.points).map({case (i, p) => (i.toFloat, p)})
-      (1 to numZeros).map(i => (i.toFloat, 0.0f)) ++ ip
-    } else {
-      //otherwise use the length = n-1 method for calculating quantiles (the default method in R,
-      // https://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html)
-      (1 to 9).map(i => {
-        val quantileIndex = Math.floor((i/10.0f) * (numConfidences -1)).toInt
-        (i.toFloat, metric.points(quantileIndex))
-      })
-    }
+    val cut_dq = metric.points.size / CrossValidatingAlloyTrainer.NUM_QUANTILES
+    val cut_dq_rem = metric.points.size % CrossValidatingAlloyTrainer.NUM_QUANTILES
+
+    var x = Math.max(cut_dq - 1, 0)
+    var err = cut_dq_rem
+
+    val quantiles = (1 until CrossValidatingAlloyTrainer.NUM_QUANTILES).map(i => {
+      val cut_point = metric.points(x)
+      x += cut_dq
+      err += cut_dq_rem
+      if (err >= CrossValidatingAlloyTrainer.NUM_QUANTILES) {
+        x += 1
+        err -= CrossValidatingAlloyTrainer.NUM_QUANTILES
+      }
+      (i.toFloat, cut_point)
+    })
+    new LabelPointsMetric(
+      MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
     new LabelPointsMetric(
       MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
   }
 
   /**
     * Helper method to get the min probability seen and create a metric from it.
- *
+    *
     * @param metric
     * @return
     */
