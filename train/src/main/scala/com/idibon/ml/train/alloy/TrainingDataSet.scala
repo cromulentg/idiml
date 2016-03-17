@@ -20,9 +20,9 @@ import org.json4s.JObject
   * @param dev Optional. Documents used for evaluation when tuning parameters.
   */
 case class TrainingDataSet(info: DataSetInfo,
-                           train:() => Traversable[JObject],
-                           test: () => Traversable[JObject],
-                           dev: () => Traversable[JObject] = () => Seq[JObject]())
+                           train:() => TraversableOnce[JObject],
+                           test: () => TraversableOnce[JObject] = () => Seq[JObject](),
+                           dev: () => TraversableOnce[JObject] = () => Seq[JObject]())
 
 /**
   * Object to encapsulate information about a dataset.
