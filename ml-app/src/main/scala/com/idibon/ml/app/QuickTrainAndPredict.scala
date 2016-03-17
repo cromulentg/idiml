@@ -1,14 +1,12 @@
 package com.idibon.ml.app
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.PredictOptionsBuilder
 import com.idibon.ml.train.alloy._
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization._
 
-import scala.collection.JavaConverters._
 import scala.io.Source
 
 /**
@@ -50,7 +48,7 @@ object QuickTrainAndPredict extends Tool with StrictLogging {
     val line = Source.fromFile(cli.getOptionValue('r'))
       .getLines().foldLeft(new StringBuilder())((bld, jsn) => bld.append(jsn)).mkString
     val model = trainer.trainAlloy("quickTrain",
-      () => { // training data
+      () => { // training data (from idibin/bin/open_source_integration/export_training_to_idiml.rb)
       Source.fromFile(cli.getOptionValue('i'))
         .getLines.map(line => parse(line).extract[JObject])
       },
