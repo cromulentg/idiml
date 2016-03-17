@@ -70,5 +70,5 @@ object PredictOptions {
   val NO_FEATURES = Float.NaN
 
   /** The default set of prediction options */
-  val DEFAULT = (new PredictOptionsBuilder).build
+  val DEFAULT = (new PredictOptionsBuilder).showTokens().showTokenTags().build
 }
