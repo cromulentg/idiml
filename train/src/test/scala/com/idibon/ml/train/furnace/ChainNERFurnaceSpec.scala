@@ -90,7 +90,7 @@ class ChainNERFurnaceSpec extends FunSpec with Matchers {
         .withMaxTrainTime(5.0)
         .build()
 
-      val model = Await.result(furnace.train(training), training.maxTrainTime)
+      val model = Await.result(furnace.heat(training), training.maxTrainTime)
       model shouldBe a [crf.BIOModel]
       val prediction = model.predict(
         Document.document(parse(documents.head).asInstanceOf[JObject]),
