@@ -74,7 +74,7 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
     // create folds -- i.e. data sets
     val folds = createFoldDataSets(options.dataSet.train, numFolds, portion, foldSeed, labelToDouble)
     // get training summaries from alloy
-    val summaries = crossValidate(alloyName, evaluator, folds)
+    val summaries = crossValidate(alloyName, evaluator, folds, options)
     // average the results
     val resultsAverage = averageMetrics(s"$name${CrossValidatingAlloyForge.SUFFIX}", summaries)
     logger.info(s"Xval results for - $alloyName:\n ${resultsAverage.toString}")
@@ -114,10 +114,11 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
     */
   def crossValidate(name: String,
                     evaluator: AlloyEvaluator,
-                    folds: Seq[TrainingDataSet]): Seq[TrainingSummary] = {
+                    folds: Seq[TrainingDataSet],
+                    baseOptions: TrainOptions): Seq[TrainingSummary] = {
     folds.map(ds => {
       logger.info(s"Beginning fold run: $name-${ds.info.fold}-${ds.info.portion}")
-      val alloy = this.forgeForges(new TrainOptions(Duration.Inf, ds), evaluator).head
+      val alloy = this.forgeForges(new TrainOptions(baseOptions.maxTrainTime, ds), evaluator).head
       alloy.asInstanceOf[BaseAlloy[T] with HasTrainingSummary].getTrainingSummaries
     }).collect({case Some(ts) => ts}).flatten
   }
@@ -216,15 +217,10 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
     * @param evaluator the evaluator used to measure the underlying alloy.
     * @return an asynchronous training Future with the Alloy
     */
-  override def forge(options: TrainOptions, evaluator: AlloyEvaluator): Future[Alloy[T]] =  {
-    implicit val context = ExecutionContext.global
+  override def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T] =  {
 
     val labelToDouble = labels.zipWithIndex.map({ case (label, index) => (label, index.toDouble) }).toMap
-    val alloy = Promise[Alloy[T]]()
-    Future {
-      alloy.complete(Try(doCrossValidation(name, options, evaluator, labelToDouble)))
-    }
-    alloy.future
+    doCrossValidation(name, options, evaluator, labelToDouble)
   }
 
   /**
@@ -236,8 +232,6 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
   override def getEvaluator(engine: Engine, taskType: String): AlloyEvaluator = {
     forge.getEvaluator(engine, taskType)
   }
-
-
 }
 
 object CrossValidatingAlloyForge  {

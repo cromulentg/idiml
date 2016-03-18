@@ -4,7 +4,7 @@ import com.idibon.ml.common.Engine
 import org.json4s._
 
 import scala.collection.mutable
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Promise, Await, ExecutionContext, Future}
 
 import com.idibon.ml.train.TrainOptions
 import com.idibon.ml.predict.{Classification, Span, Label, PredictResult}
@@ -12,7 +12,7 @@ import com.idibon.ml.feature.{Builder, Buildable}
 import com.idibon.ml.alloy.{Alloy}
 
 import scala.reflect.runtime.universe.{typeOf, Type, TypeTag}
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 
 
 /**
@@ -23,12 +23,27 @@ trait AlloyForge[T <: PredictResult with Buildable[T, Builder[T]]] {
   val name: String
   val labels: Seq[Label]
 
-  /** Initiate a batch training process across all models to produce the Alloy
+  /** Forge the alloy; this is the asynchronous wrapper.
     *
     * @param options configuration options
     * @return an asynchronous training Future with the Alloy
     */
-  def forge(options: TrainOptions, evaluator: AlloyEvaluator): Future[Alloy[T]]
+  def forge(options: TrainOptions, evaluator: AlloyEvaluator): Future[Alloy[T]] = {
+    implicit val executor = ExecutionContext.global
+    val alloy = Promise[Alloy[T]]()
+    Future {
+      alloy.complete(Try(doForge(options, evaluator)))
+    }
+    alloy.future
+  }
+
+  /**
+    * Synchronous method that creates the alloy.
+    * @param options
+    * @param evaluator
+    * @return
+    */
+  def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T]
 
   /**
     * Returns the appropriate evaluator for this alloy.

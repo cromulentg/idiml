@@ -31,31 +31,19 @@ sealed class BasicAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
     * @param evaluator the evaluator used to measure this alloy.
     * @return an asynchronous training Future with the Alloy
     */
-  def forge(options: TrainOptions, evaluator: AlloyEvaluator): Future[Alloy[T]] = {
+  def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T] = {
     implicit val context = ExecutionContext.global
-    /* WARNING: Everything inside must by in a Try ... else you'll just spin forever. */
-    val alloy = Promise[Alloy[T]]()
-    Future {
-      // train all of the models, creating a name => Model map for the alloy
-      val baseAlloy = Try{
-        val models = furnaces.map(_.name).zip(heatFurnaces(options)).toMap
-        new BaseAlloy[T](name, labels, models)
-      }
-      val summaries = Try(baseAlloy.map(ba => {
-        // evaluate alloy
-        val baSummaries = evaluator.evaluate(name, ba, options.dataSet)
-        if (baSummaries.nonEmpty){ Some(baSummaries) } else { None }
-      })).flatten
-      alloy.complete(baseAlloy.flatMap(m =>
-        Try {
-          // create new one with appropriate training summaries
-          new BaseAlloy(name, labels, m.models) with HasTrainingSummary {
-            override def getTrainingSummaries = summaries.getOrElse(None)
-          }
-        }
-      ))
+
+    // train all of the models, creating a name => Model map for the alloy
+    val models = furnaces.map(_.name).zip(heatFurnaces(options)).toMap
+    // create wrapper alloy for evaluation
+    val baseAlloy = new BaseAlloy[T](name, labels, models)
+    // evaluate
+    val summaries = evaluator.evaluate(name, baseAlloy, options.dataSet)
+    // now make real alloy with results
+    new BaseAlloy(name, labels, models) with HasTrainingSummary {
+      override def getTrainingSummaries = if (summaries.nonEmpty) Some(summaries) else None
     }
-    alloy.future
   }
 
   /**

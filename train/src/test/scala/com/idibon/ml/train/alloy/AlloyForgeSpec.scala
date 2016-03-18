@@ -1,11 +1,11 @@
 package com.idibon.ml.train.alloy
 
-import scala.concurrent.{Await, TimeoutException}
+import scala.concurrent._
 import scala.concurrent.duration._
 
 import com.idibon.ml.predict._
 import com.idibon.ml.feature._
-import com.idibon.ml.alloy.BaseAlloy
+import com.idibon.ml.alloy.{HasTrainingSummary, Alloy, BaseAlloy}
 import com.idibon.ml.common.{Engine, EmbeddedEngine}
 import com.idibon.ml.train.furnace.Furnace2
 import com.idibon.ml.train.TrainOptions
@@ -14,6 +14,8 @@ import org.json4s.JObject
 import org.json4s.JsonDSL._
 
 import org.scalatest.{Matchers, FunSpec, BeforeAndAfter}
+
+import scala.util.Try
 
 class AlloyForgeSpec extends FunSpec with Matchers with BeforeAndAfter {
 
@@ -24,7 +26,7 @@ class AlloyForgeSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   it("should train multiple furnaces") {
     Furnace2.register[JunkResult]("JunkFurnace", JunkFurnace)
-    AlloyForge.register[JunkResult]("JunkAlloyForge", JunkAlloyForge)
+    AlloyForge.register[JunkResult]("JunkAlloyForge", BasicJunkAlloyForge)
     val trainerConfig = ("furnaces" -> List(
       (("name" -> "A") ~
        ("furnace" -> "JunkFurnace") ~
@@ -46,12 +48,25 @@ class AlloyForgeSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   it("should abort if model training takes too long") {
     Furnace2.register[JunkResult]("JunkFurnace", JunkFurnace)
-    AlloyForge.register[JunkResult]("JunkAlloyForge", JunkAlloyForge)
+    AlloyForge.register[JunkResult]("JunkAlloyForge", BasicJunkAlloyForge)
     val trainerConfig = ("furnaces" -> List(
       (("name" -> "A") ~
        ("furnace" -> "JunkFurnace") ~
        ("config" -> ("delay" -> 500)))))
     val trainer = AlloyForge[JunkResult](new EmbeddedEngine, "JunkAlloyForge",
+      "spec", Seq(new Label("00000000-0000-0000-0000-000000000000", "")),
+      trainerConfig)
+    val options = TrainOptions().withMaxTrainTime(0.1).build(Seq())
+    intercept[TimeoutException] {
+      Await.result(trainer.forge(options, new NoOpEvaluator()), Duration.Inf)
+    }
+  }
+
+  it("should abort if alloy training takes too long") {
+    Furnace2.register[JunkResult]("JunkFurnace", JunkFurnace)
+    AlloyForge.register[JunkResult]("ActualJunkAlloyForge", JunkAlloyOfJunkAlloyForges)
+    val trainerConfig = ("delay" -> 500)
+    val trainer = AlloyForge[JunkResult](new EmbeddedEngine, "ActualJunkAlloyForge",
       "spec", Seq(new Label("00000000-0000-0000-0000-000000000000", "")),
       trainerConfig)
     val options = TrainOptions().withMaxTrainTime(0.1).build(Seq())
@@ -95,6 +110,28 @@ object JunkFurnace extends ((Engine, String, JObject) => Furnace2[_]) {
   }
 }
 
+class JunkAlloyForge(override val name:String, override val labels: Seq[Label], delay: Int) extends AlloyForge[JunkResult] {
+  override def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[JunkResult] = {
+    implicit val context = ExecutionContext.global
+    if (delay > 0) Thread.sleep(delay)
+    new BaseAlloy[JunkResult](name, labels, Map()) with HasTrainingSummary {}
+  }
+  override def getEvaluator(engine: Engine, taskType: String): AlloyEvaluator = ???
+}
+
+object BasicJunkAlloyForge extends ((Engine, String, Seq[Label], JObject) => AlloyForge[_]){
+
+  override def apply(engine: Engine, name: String, labels: Seq[Label], json: JObject): BasicAlloyForge[JunkResult] = {
+    implicit val formats = org.json4s.DefaultFormats
+
+    val config = json.extract[BasicForgeConfig]
+    val furnaces = config.furnaces.map(f => {
+      Furnace2[JunkResult](engine, f.furnace, f.name, f.config)
+    })
+    new BasicAlloyForge[JunkResult](name, labels, furnaces)
+  }
+}
+
 object JunkAlloyForge extends ((Engine, String, Seq[Label], JObject) => AlloyForge[_]){
 
   override def apply(engine: Engine, name: String, labels: Seq[Label], json: JObject): BasicAlloyForge[JunkResult] = {
@@ -107,3 +144,16 @@ object JunkAlloyForge extends ((Engine, String, Seq[Label], JObject) => AlloyFor
     new BasicAlloyForge[JunkResult](name, labels, furnaces)
   }
 }
+
+
+object JunkAlloyOfJunkAlloyForges extends ((Engine, String, Seq[Label], JObject) => AlloyForge[_]){
+  override def apply(engine: Engine, name: String, labels: Seq[Label], json: JObject): CrossValidatingAlloyForge[JunkResult] = {
+    implicit val formats = org.json4s.DefaultFormats
+
+    val config = json.extract[JunkForgeConfig]
+    val alloyForge = new JunkAlloyForge(name, labels, config.delay)
+    new CrossValidatingAlloyForge[JunkResult](engine, name, labels, alloyForge, 2, 1.0, 1L)
+  }
+}
+
+case class JunkForgeConfig(delay: Int)
