@@ -3,7 +3,7 @@ package com.idibon.ml.predict.crf
 import scala.collection.mutable.ListBuffer
 
 import com.idibon.ml.feature.tokenizer.Token
-import com.idibon.ml.predict.Span
+import com.idibon.ml.predict.{PredictOptions, Span}
 
 /** Provides methods to assemble spans from B/I/O tagged tokens */
 trait BIOAssembly {
@@ -19,9 +19,12 @@ trait BIOAssembly {
     *
     * @param tok list of tokens
     * @param tag list of tags for each token, with confidence
+    * @param predictOptions the prediction options to know what to return
     * @return list of spans, possibly empty
     */
-  def assemble(tok: Traversable[Token], tag: Traversable[(BIOTag, Double)]):
+  def assemble(tok: Traversable[Token],
+               tag: Traversable[(BIOTag, Double)],
+               predictOptions: PredictOptions):
       Seq[Span] = {
     require(tok.size == tag.size, "Tokens and tags have different lengths")
 
@@ -40,10 +43,12 @@ trait BIOAssembly {
 
           /* return the average of the token confidences across the span */
           val prob = (confidence + inside.map(_._2._2).sum) / (1 + inside.size)
-
+          val (tokens, tokenTags) = getTokensAndTags(startTok, inside, predictOptions)
           spans += inside.lastOption.map({ case (endTok, _) => {
-            Span(label, prob.toFloat, 0, startTok.offset, endTok.end - startTok.offset)
-          }}).getOrElse(Span(label, prob.toFloat, 0, startTok.offset, startTok.length))
+            Span(label, prob.toFloat, 0, startTok.offset, endTok.end - startTok.offset, tokens, tokenTags)
+          }}).getOrElse(
+            Span(label, prob.toFloat, 0, startTok.offset, startTok.length, tokens, tokenTags)
+          )
           // skip over all of the I tags processed
           next
         }
@@ -52,5 +57,26 @@ trait BIOAssembly {
       }
     }
     spans.toSeq
+  }
+
+  /**
+    * Grabs the appropriate tokens and tags from a start token, and an interable
+    * of tokens & tags...
+    *
+    * @param startTok
+    * @param inside
+    * @param predictOptions
+    * @return
+    */
+  def getTokensAndTags(startTok: Token,
+                       inside: Iterable[(Token, (BIOTag, Double))],
+                       predictOptions: PredictOptions): (Seq[Token], Seq[BIOType.Value]) = {
+    val tokens = if (predictOptions.includeTokens) {
+      Seq(startTok) ++ inside.map({case (t, (b, p)) => t})
+    } else Seq()
+    val tokenTags = if (predictOptions.includeTokenTags) {
+      Seq(BIOType.BEGIN) ++ inside.map({case (t, (b, p)) => b.bio})
+    } else Seq()
+    (tokens, tokenTags)
   }
 }
