@@ -2,7 +2,6 @@ package com.idibon.ml.train.alloy
 
 import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration._
-import scala.reflect.runtime.universe.typeOf
 
 import com.idibon.ml.predict._
 import com.idibon.ml.feature._
@@ -16,12 +15,16 @@ import org.json4s.JsonDSL._
 
 import org.scalatest.{Matchers, FunSpec, BeforeAndAfter}
 
-class AlloyTrainer2Spec extends FunSpec with Matchers with BeforeAndAfter {
+class AlloyForgeSpec extends FunSpec with Matchers with BeforeAndAfter {
 
-  before { Furnace2.resetRegistry() }
+  before {
+    Furnace2.resetRegistry()
+    AlloyForge.resetRegistry()
+  }
 
   it("should train multiple furnaces") {
     Furnace2.register[JunkResult]("JunkFurnace", JunkFurnace)
+    AlloyForge.register[JunkResult]("JunkAlloyForge", JunkAlloyForge)
     val trainerConfig = ("furnaces" -> List(
       (("name" -> "A") ~
        ("furnace" -> "JunkFurnace") ~
@@ -29,30 +32,31 @@ class AlloyTrainer2Spec extends FunSpec with Matchers with BeforeAndAfter {
       (("name" -> "B") ~
        ("furnace" -> "JunkFurnace") ~
        ("config" -> ("delay" -> 0)))))
-    val trainer = AlloyTrainer2[JunkResult](new EmbeddedEngine,
+    val trainer = AlloyForge[JunkResult](new EmbeddedEngine, "JunkAlloyForge",
       "spec", Seq(new Label("00000000-0000-0000-0000-000000000000", "")),
-      trainerConfig)
+      trainerConfig).asInstanceOf[BasicAlloyForge[Span]]
     trainer.furnaces should have length 2
 
-    val options = TrainOptions().build()
+    val options = TrainOptions().build(Seq())
 
-    val alloy = Await.result(trainer.train(options), options.maxTrainTime)
+    val alloy = Await.result(trainer.forge(options, new NoOpEvaluator()), options.maxTrainTime)
     alloy shouldBe a [BaseAlloy[_]]
     alloy.asInstanceOf[BaseAlloy[JunkResult]].models.keys should contain theSameElementsAs Seq("A", "B")
   }
 
   it("should abort if model training takes too long") {
     Furnace2.register[JunkResult]("JunkFurnace", JunkFurnace)
+    AlloyForge.register[JunkResult]("JunkAlloyForge", JunkAlloyForge)
     val trainerConfig = ("furnaces" -> List(
       (("name" -> "A") ~
        ("furnace" -> "JunkFurnace") ~
        ("config" -> ("delay" -> 500)))))
-    val trainer = AlloyTrainer2[JunkResult](new EmbeddedEngine,
+    val trainer = AlloyForge[JunkResult](new EmbeddedEngine, "JunkAlloyForge",
       "spec", Seq(new Label("00000000-0000-0000-0000-000000000000", "")),
       trainerConfig)
-    val options = TrainOptions().withMaxTrainTime(0.1).build()
+    val options = TrainOptions().withMaxTrainTime(0.1).build(Seq())
     intercept[TimeoutException] {
-      Await.result(trainer.train(options), Duration.Inf)
+      Await.result(trainer.forge(options, new NoOpEvaluator()), Duration.Inf)
     }
   }
 }
@@ -77,16 +81,29 @@ class JunkModel extends PredictModel[JunkResult] {
 }
 
 class JunkFurnace(val name: String, delay: Int) extends Furnace2[JunkResult] {
-  protected def doTrain(options: TrainOptions) = {
+  protected def doHeat(options: TrainOptions) = {
     if (delay > 0) Thread.sleep(delay)
     new JunkModel
   }
 }
 
-object JunkFurnace extends Function3[Engine, String, JObject, Furnace2[_]] {
+object JunkFurnace extends ((Engine, String, JObject) => Furnace2[_]) {
   def apply(e: Engine, n: String, c: JObject) = {
     implicit val formats = org.json4s.DefaultFormats
     val delay = (c \ "delay").extract[Int]
     new JunkFurnace(n, delay)
+  }
+}
+
+object JunkAlloyForge extends ((Engine, String, Seq[Label], JObject) => AlloyForge[_]){
+
+  override def apply(engine: Engine, name: String, labels: Seq[Label], json: JObject): BasicAlloyForge[JunkResult] = {
+    implicit val formats = org.json4s.DefaultFormats
+
+    val config = json.extract[BasicForgeConfig]
+    val furnaces = config.furnaces.map(f => {
+      Furnace2[JunkResult](engine, f.furnace, f.name, f.config)
+    })
+    new BasicAlloyForge[JunkResult](name, labels, furnaces)
   }
 }

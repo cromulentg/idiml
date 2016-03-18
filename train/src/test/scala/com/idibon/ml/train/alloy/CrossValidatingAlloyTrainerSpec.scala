@@ -26,12 +26,12 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
     it("creates MultiClassMetricsEvaluator") {
       val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
       val actual = trainer.getTrainingSummaryCreator(AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE, 4)
-      actual shouldBe new MultiClassMetricsEvaluator(0.25f)
+      actual shouldBe new MultiClassMetricsEvaluator(null, 0.25f)
     }
     it("creates MultiLabelMetricsEvaluator") {
       val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
       val actual = trainer.getTrainingSummaryCreator(AlloyTrainer.DOCUMENT_MULTI_LABEL, 4)
-      actual shouldBe new MultiLabelMetricsEvaluator(0.5f)
+      actual shouldBe new MultiLabelMetricsEvaluator(null, 0.5f)
     }
   }
 

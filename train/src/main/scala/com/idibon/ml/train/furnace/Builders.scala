@@ -14,7 +14,7 @@ object BuilderDefaults {
   val TOLERANCE = 1e-4
   val REGULARIZATION_PARAMETER = 0.001
   val MAX_ITERATIONS = 100
-  val ELASTIC_NET_PARAMETER = 0.9
+  val ELASTIC_NET_PARAMETER = 0.3
 
   // parameter search related defaults -- everything is largely based off of arrays, so
   // if you're doing only one iteration of model params, you take the head of the array of params.

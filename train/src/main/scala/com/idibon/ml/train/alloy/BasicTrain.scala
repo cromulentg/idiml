@@ -60,29 +60,44 @@ object BasicTrain {
 
     implicit val formats = org.json4s.DefaultFormats
 
-    val alloyConfig = readJsonFile(alloyConfigFile)
-    val taskConfig = readJsonFile(taskConfigFile)
-    val taskType = (taskConfig \ "task_type").extract[String]
+    val alloyConfigJSON = readJsonFile(alloyConfigFile)
+    val alloyConfig = alloyConfigJSON.extract[ForgeConfiguration]
+    val taskConfigJSON = readJsonFile(taskConfigFile)
+    val taskConfig = taskConfigJSON.extract[AlloyConfiguration]
 
-    taskType match {
+    taskConfig.task_type match {
       case "extraction.bio_ner" => {
-        val labels = (alloyConfig \ "uuid_to_label")
-          .extract[List[(String, String)]]
-          .map({ case (uuid, name) => new Label(uuid, name) })
+        val labels = taskConfig.uuid_to_label
+          .map({ case (uuid, name) => new Label(uuid, name) }).toSeq
         val options = TrainOptions()
           .addDocuments(lazyFileReader(trainingDataFile)())
-        val trainer = AlloyTrainer2[Span](engine, alloyName, labels.toSeq,
-          (alloyConfig \ "trainerConfig").extract[JObject])
-        Await.result(trainer.train(options.build()), Duration.Inf)
+        val trainer = AlloyForge[Span](engine, alloyConfig.forgeName, alloyName, labels,
+          alloyConfig.forgeConfig)
+        Await.result(trainer.forge(options.build(labels), new NoOpEvaluator()), Duration.Inf)
       }
       case _ => {
-        val trainer = AlloyFactory.getTrainer(engine,
-          (alloyConfig \ "trainerConfig").asInstanceOf[JObject])
+        val trainer = AlloyFactory.getTrainer(engine, alloyConfig.trainerConfig)
 
         trainer.trainAlloy(alloyName,
           lazyFileReader(trainingDataFile),
-          taskConfig, Some(alloyConfig))
+          taskConfigJSON, Some(alloyConfigJSON))
       }
     }
   }
 }
+
+// === JSON schema ====
+
+/** Schema for for label_and_rules (i.e., task / alloy) configuration file
+  *
+  * @param task_type type of task being trained (classification vs extraction)
+  * @param uuid_to_label mapping of UUID strings to the (current) label name
+  * @param rules opaque rules data
+  */
+case class AlloyConfiguration(
+                               task_type: String,
+                               uuid_to_label: Map[String, String],
+                               rules: Option[JObject])
+
+/** Schema for JSON training configuration file */
+case class ForgeConfiguration(forgeName: String = "", forgeConfig: JObject = null, trainerConfig: JObject = null, configVersion: String = "0.0.1")

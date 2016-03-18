@@ -37,7 +37,7 @@ class ChainNERFurnace(val name: String,
     /* prime the feature pipelines, and return the total number of
      * dimensions in the feature space (size of the last vector in the
      * last extant chain) */
-    val dimensions = options.documents().foldLeft(0)((dims, doc) => {
+    val dimensions = options.dataSet.train().foldLeft(0)((dims, doc) => {
       /* if the last document(s) all convert to empty sequences, return
        * the previous dimension value */
       featureExtractor(doc, sequenceGenerator(doc))
@@ -54,7 +54,7 @@ class ChainNERFurnace(val name: String,
 
     /* generate training data by tagging all of the documents with the
      * appropriate B/I/O sequence, and observing everything in the model */
-    val trainingData = options.documents().map(json => {
+    val trainingData = options.dataSet.train().map(json => {
       model.observe(tag(json).map({ case (t, v) => (t.toString, v) }))
     }).toSeq
 
@@ -67,7 +67,7 @@ class ChainNERFurnace(val name: String,
   }
 }
 
-object ChainNERFurnace extends Function3[Engine, String, JObject, Furnace2[Span]] {
+object ChainNERFurnace extends ((Engine, String, JObject) => Furnace2[Span]) {
 
   /** Constructs a ChainNERFurnace to train NER models
     *

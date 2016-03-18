@@ -81,7 +81,7 @@ object Train extends Tool with StrictLogging {
     trainerConfigJson: JObject, trainingData: Option[String]): Alloy[_] = {
 
     val alloyConfig = alloyConfigJson.extract[AlloyConfiguration]
-    val trainerConfig = trainerConfigJson.extract[TrainerConfiguration]
+    val forgeConfig = trainerConfigJson.extract[ForgeConfiguration]
 
     // training data is loaded lazily (and possibly multiple times)
     val readTrainingData = trainingData.map(filename => () => {
@@ -89,11 +89,11 @@ object Train extends Tool with StrictLogging {
         .getLines
         .map(line => JsonMethods.parse(line).extract[JObject])
     })
-
+    //TODO: check config version for which alloy trainer/forge to use.
     alloyConfig.task_type match {
       case "extraction.bio_ner" =>
         alloyTrainer2(engine, alloyName, alloyConfig,
-          trainerConfig, readTrainingData)
+          forgeConfig, readTrainingData)
       case AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE |
           AlloyTrainer.DOCUMENT_MULTI_LABEL =>
         alloyTrainer(engine, alloyName, alloyConfigJson,
@@ -116,7 +116,7 @@ object Train extends Tool with StrictLogging {
 
   /** Returns the name for this alloy, or a default name
     *
-    * @param cli parsed command line options
+    * @param args parsed command line options
     * @return name for the alloy
     */
   private[this] def alloyName(args: cli.CommandLine): String = {
@@ -131,12 +131,12 @@ object Train extends Tool with StrictLogging {
     * @param engine current engine context
     * @param alloyName name for the alloy
     * @param alloyConfig parsed alloy configuration data (task type, rules, ...)
-    * @param trainerConfig trainer and furnace configuration data
+    * @param forgeConfig trainer and furnace configuration data
     * @param readTrainingData function to load training data
     */
   private[this] def alloyTrainer2(engine: Engine, alloyName: String,
-    alloyConfig: AlloyConfiguration, trainerConfig: TrainerConfiguration,
-    readTrainingData: Option[TrainingData]): Alloy[_] = {
+                                  alloyConfig: AlloyConfiguration, forgeConfig: ForgeConfiguration,
+                                  readTrainingData: Option[TrainingData]): Alloy[_] = {
 
     val labels = alloyConfig.uuid_to_label.map({ case (uuid, name) =>
       new Label(uuid, name)
@@ -146,11 +146,14 @@ object Train extends Tool with StrictLogging {
     readTrainingData.map(f => options.addDocuments(f()))
 
     val trainer = alloyConfig.task_type match {
-      case "extraction.bio_ner" => AlloyTrainer2[Span](engine,
-        alloyName, labels.toSeq, trainerConfig.trainerConfig)
+      case "extraction.bio_ner" => AlloyForge[Span](engine, forgeConfig.forgeName,
+        alloyName, labels.toSeq, forgeConfig.forgeConfig)
     }
-
-    Await.result(trainer.train(options.build()), Duration.Inf)
+    val evaluator = alloyConfig.task_type match {
+      case "extraction.bio_ner" => trainer.getEvaluator(engine, alloyConfig.task_type)
+      case _ => new NoOpEvaluator()
+    }
+    Await.result(trainer.forge(options.build(labels.toSeq), evaluator), Duration.Inf)
   }
 
   /** Trains alloys using the legacy AlloyTrainer mechanism
@@ -165,7 +168,7 @@ object Train extends Tool with StrictLogging {
     alloyConfigJson: JObject, trainerConfigJson: JObject,
     readTrainingData: Option[TrainingData]): Alloy[_] = {
 
-    val trainerConfig = trainerConfigJson.extract[TrainerConfiguration]
+    val trainerConfig = trainerConfigJson.extract[ForgeConfiguration]
     val trainer = AlloyFactory.getTrainer(engine, trainerConfig.trainerConfig)
 
     trainer.trainAlloy(alloyName,
@@ -219,4 +222,4 @@ case class AlloyConfiguration(
   rules: Option[JObject])
 
 /** Schema for JSON training configuration file */
-case class TrainerConfiguration(trainerConfig: JObject)
+case class ForgeConfiguration(forgeName: String = "", forgeConfig: JObject = null, trainerConfig: JObject = null, configVersion: String = "0.0.1")

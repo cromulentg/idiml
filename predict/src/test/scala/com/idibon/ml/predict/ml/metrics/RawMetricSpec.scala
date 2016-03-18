@@ -180,7 +180,7 @@ class AverageMetricSpec extends FunSpec with Matchers
         new PropertyMetric(mType, mClass, Seq(("a", "b"))),
         new PropertyMetric(mType, mClass, Seq(("b", "c"))))
       val actual = Metric.average(input)
-      val expected = input
+      val expected = Seq(input(0), input(2))
       actual shouldBe expected
     }
     it("confusion matrix metric computes sum properly") {

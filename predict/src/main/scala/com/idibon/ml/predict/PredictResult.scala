@@ -1,7 +1,9 @@
 package com.idibon.ml.predict
 
 import com.idibon.ml.alloy.Codec
+import com.idibon.ml.feature.tokenizer.Token
 import com.idibon.ml.feature.{FeatureOutputStream, FeatureInputStream, Builder, Buildable, Feature}
+import com.idibon.ml.predict.crf.{BIOType}
 
 /** Basic output result from a predictive model.
   *
@@ -120,6 +122,63 @@ trait HasRegion {
   final val end = offset + length
 }
 
+/** Trait for predictive results that are over a set of tokens in a document. */
+trait HasTokens {
+  /** The sequence of tokens in order */
+  val tokens: Seq[Token]
+
+  /**
+    * Helper method to save the tokens to an output stream.
+    * @param output
+    */
+  protected def saveTokens(output: FeatureOutputStream) = {
+    Codec.VLuint.write(output, tokens.size)
+    tokens.foreach(tok => tok.save(output))
+  }
+}
+/** Companion object to store method for loading tokens */
+object HasTokens {
+  /**
+    * Helper method to load tokens.
+    * @param input
+    * @return
+    */
+  def loadTokens(input: FeatureInputStream): Seq[Token] = {
+    val tokensSize = Codec.VLuint.read(input)
+    (0 until tokensSize).map(_ => {
+      input.readFeature().asInstanceOf[Token]
+    })
+  }
+}
+/** Trait for predictive results that are over a set of token tags in a document. */
+trait HasTokenTags {
+  /** The sequence of tags in order that would be given to tokens */
+  val tags: Seq[BIOType.Value]
+
+  /**
+    * Helper method to save token tags to a stream
+    * @param output
+    */
+  protected def saveTokenTags(output: FeatureOutputStream) = {
+    Codec.VLuint.write(output, tags.size)
+    tags.foreach(tag => Codec.String.write(output, tag.toString))
+  }
+}
+/** Companion object to store method for loading token tags */
+object HasTokenTags {
+  /**
+    * Helper method to load token tags from input stream.
+    * @param input
+    * @return
+    */
+  def loadTokenTags(input: FeatureInputStream): Seq[BIOType.Value] = {
+    val tagsSize = Codec.VLuint.read(input)
+    (0 until tagsSize).map(_ => {
+      BIOType.withName(Codec.String.read(input))
+    })
+  }
+}
+
 /** Basic PredictResult for span extraction
   *
   * @param label assigned label name
@@ -127,11 +186,15 @@ trait HasRegion {
   * @param flags prediction flags
   * @param offset start of the span, in UTF-16 code units
   * @param length length of the span, in UTF-16 code units
+  * @param tokens sequence of tokens this span represents.
+  * @param tags sequence of tags that would map to the tokens produced.
   */
 case class Span(override val label: String,
   override val probability: Float, override val flags: Int,
-  val offset: Int, val length: Int)
-    extends PredictResult with HasRegion
+  val offset: Int, val length: Int,
+  tokens: Seq[Token] = Seq(),
+  tags: Seq[BIOType.Value] = Seq())
+    extends PredictResult with HasRegion with HasTokens with HasTokenTags
     with Buildable[Span, SpanBuilder] {
 
   override val matchCount = 1
@@ -142,6 +205,8 @@ case class Span(override val label: String,
     Codec.VLuint.write(output, flags)
     Codec.VLuint.write(output, offset)
     Codec.VLuint.write(output, length)
+    saveTokens(output)
+    saveTokenTags(output)
   }
 }
 
@@ -179,7 +244,9 @@ class SpanBuilder extends Builder[Span] {
     val flags = Codec.VLuint.read(input)
     val offset = Codec.VLuint.read(input)
     val length = Codec.VLuint.read(input)
-    Span(label, prob, flags, offset, length)
+    val tokens = HasTokens.loadTokens(input)
+    val tokenTags = HasTokenTags.loadTokenTags(input)
+    Span(label, prob, flags, offset, length, tokens, tokenTags)
   }
 }
 

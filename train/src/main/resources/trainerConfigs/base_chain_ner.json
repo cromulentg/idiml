@@ -1,5 +1,6 @@
 {
-  "trainerConfig": {
+  "forgeName": "BasicSpanAlloyForge",
+  "forgeConfig": {
     "furnaces": [
       {
         "name": "crf_ner",
