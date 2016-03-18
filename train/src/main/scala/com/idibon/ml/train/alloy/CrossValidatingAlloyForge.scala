@@ -172,16 +172,16 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
     val cut_dq = metric.points.size / CrossValidatingAlloyForge.NUM_QUANTILES
     val cut_dq_rem = metric.points.size % CrossValidatingAlloyForge.NUM_QUANTILES
 
-    var x = cut_dq
+    var x = Math.max(cut_dq - 1, 0)
     var err = cut_dq_rem
 
-    val quantiles = (1 to CrossValidatingAlloyForge.NUM_QUANTILES).map(i => {
+    val quantiles = (1 until CrossValidatingAlloyTrainer.NUM_QUANTILES).map(i => {
       val cut_point = metric.points(x)
       x += cut_dq
       err += cut_dq_rem
-      if (err >= CrossValidatingAlloyForge.NUM_QUANTILES) {
+      if (err >= CrossValidatingAlloyTrainer.NUM_QUANTILES) {
         x += 1
-        err -= CrossValidatingAlloyForge.NUM_QUANTILES
+        err -= CrossValidatingAlloyTrainer.NUM_QUANTILES
       }
       (i.toFloat, cut_point)
     })

@@ -183,6 +183,19 @@ class AverageMetricSpec extends FunSpec with Matchers
       val expected = Seq(input(0), input(2))
       actual shouldBe expected
     }
+    it("property metric changes metric class when doing average properly") {
+      val mType = MetricTypes.HyperparameterProperties
+      val mClass = MetricClass.Multiclass
+      val input = Seq(
+        new PropertyMetric(mType, mClass, Seq(("a", "b"))),
+        new PropertyMetric(mType, mClass, Seq(("a", "b"))),
+        new PropertyMetric(mType, mClass, Seq(("b", "c"))))
+      val actual = Metric.average(input, Some(MetricClass.Alloy))
+      val expected = Seq(
+        new PropertyMetric(mType, MetricClass.Alloy, Seq(("a", "b"))),
+        new PropertyMetric(mType, MetricClass.Alloy, Seq(("b", "c"))))
+      actual shouldBe expected
+    }
     it("confusion matrix metric computes sum properly") {
       val mType = MetricTypes.ConfusionMatrix
       val mClass = MetricClass.Multiclass

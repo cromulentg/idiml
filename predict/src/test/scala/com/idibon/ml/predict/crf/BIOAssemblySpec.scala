@@ -57,4 +57,38 @@ class BIOAssemblySpec extends FunSpec with Matchers with BIOAssembly {
       assemble(tokenize("hello, world"), tag("O"), PredictOptions.DEFAULT)
     }
   }
+
+  it("should not return tokens or tags if predict options says no.") {
+    assemble(tokenize("the quick brown fox jumped over the lazy dog"),
+      tag("O", "BNP", "INP", "INP", "BV", "O", "O", "BNP", "INP"), new PredictOptions()) shouldBe Seq(
+        Span("NP", 1.0f, 0, 4, 15),
+        Span("V", 1.0f, 0, 20, 6),
+        Span("NP", 1.0f, 0, 36, 8))
+  }
+
+  it("should just return tags if that is specified.") {
+    assemble(tokenize("the quick brown fox jumped over the lazy dog"),
+      tag("O", "BNP", "INP", "INP", "BV", "O", "O", "BNP", "INP"),
+        new PredictOptions(showTokenTags = true)) shouldBe Seq(
+          Span("NP", 1.0f, 0, 4, 15,
+            Seq(),
+            Seq(BIOType.BEGIN, BIOType.INSIDE, BIOType.INSIDE)),
+          Span("V", 1.0f, 0, 20, 6, Seq(), Seq(BIOType.BEGIN)),
+          Span("NP", 1.0f, 0, 36, 8,
+            Seq(),
+            Seq(BIOType.BEGIN, BIOType.INSIDE)))
+  }
+
+  it("should just return tokens if that is specified") {
+    assemble(tokenize("the quick brown fox jumped over the lazy dog"),
+      tag("O", "BNP", "INP", "INP", "BV", "O", "O", "BNP", "INP"),
+      new PredictOptions(showTokens = true)) shouldBe Seq(
+        Span("NP", 1.0f, 0, 4, 15,
+          Seq(Token("quick", Tag.Word,4,5), Token("brown", Tag.Word,10,5), Token("fox", Tag.Word,16,3)),
+          Seq()),
+        Span("V", 1.0f, 0, 20, 6, Seq(Token("jumped", Tag.Word,20,6)), Seq()),
+        Span("NP", 1.0f, 0, 36, 8,
+          Seq(Token("lazy", Tag.Word,36,4), Token("dog", Tag.Word,41,3)),
+          Seq()))
+  }
 }

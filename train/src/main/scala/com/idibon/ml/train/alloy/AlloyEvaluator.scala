@@ -419,7 +419,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     implicit val formats = org.json4s.DefaultFormats
     val document = jsValue.extract[Document]
     val anns = document.annotations
-      .filter(ann => ann.isPositive && ann.length.get > 0)
+      .filter(ann => ann.isPositive && ann.length.get > 0 && ann.label.name.nonEmpty)
       .sortBy(_.offset.get)
     // create tokens
     val tokens = bioGenerator.sequenceGenerator(jsValue)
@@ -460,8 +460,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
     val (numberGuessesCorrect,
-    numberGoldCorrect,
-    predictedProbabilities) = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
+         numberGoldCorrect,
+         predictedProbabilities) = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
       They are arrays of doubles - where the first half are the classes of the labels predicted,
