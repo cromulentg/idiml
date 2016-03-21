@@ -21,6 +21,7 @@ import org.json4s._
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 2/16/16.
   */
+@deprecated("LearningCurveAlloyForge is the new way.", "Since 2015-03-21")
 class LearningCurveTrainer(builder: LearningCurveTrainerBuilder)
   extends AlloyTrainer with KFoldDataSetCreator with MetricHelper with StrictLogging {
   val engine: Engine = builder.engine

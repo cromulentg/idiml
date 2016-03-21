@@ -35,6 +35,7 @@ import org.json4s._
   * @param foldSeed
   * @param skipFinalTraining
   */
+@deprecated("CrossValidatingAlloyForge is the new way.", "Since 2015-03-21")
 class CrossValidatingAlloyTrainer(engine: Engine,
                                   trainer: AlloyTrainer,
                                   numFolds: Int,
