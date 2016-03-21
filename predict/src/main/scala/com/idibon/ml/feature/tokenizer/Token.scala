@@ -1,8 +1,8 @@
-import com.ibm.icu.lang.UCharacter
-import com.ibm.icu.lang.UCharacterEnums.ECharacterCategory._
-
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.feature._
+import com.idibon.ml.feature.tokenizer.Unicode._
+
+import com.ibm.icu.lang.UCharacter
 
 package com.idibon.ml.feature.tokenizer {
 
@@ -31,25 +31,6 @@ package com.idibon.ml.feature.tokenizer {
         Punctuation
       else
         Word
-    }
-
-    /** Returns true if the character is a punctuation mark
-      *
-      * The list of unicode character categories that are mapped onto the
-      * "punctuation" test is taken from
-      *  http://icu-project.org/apiref/icu4j/com/ibm/icu/lang/UCharacter.html
-      */
-    private [tokenizer] def isPunctuation(ch: Char) = {
-      UCharacter.getType(ch) match {
-        case DASH_PUNCTUATION
-           | START_PUNCTUATION
-           | END_PUNCTUATION
-           | CONNECTOR_PUNCTUATION
-           | OTHER_PUNCTUATION
-           | INITIAL_PUNCTUATION
-           | FINAL_PUNCTUATION => true
-        case _ => false
-      }
     }
   }
 
