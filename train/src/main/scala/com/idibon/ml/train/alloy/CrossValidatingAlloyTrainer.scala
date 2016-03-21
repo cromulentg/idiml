@@ -6,6 +6,7 @@ import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.train.alloy.evaluation.{MultiLabelMetricsEvaluator, MultiClassMetricsEvaluator, AlloyEvaluator}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 import org.json4s._
@@ -213,8 +214,6 @@ class CrossValidatingAlloyTrainer(engine: Engine,
       }
       (i.toFloat, cut_point)
     })
-    new LabelPointsMetric(
-      MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
     new LabelPointsMetric(
       MetricTypes.LabelConfidenceDeciles, metric.metricClass, metric.label, quantiles.sortBy(x => x._1))
   }

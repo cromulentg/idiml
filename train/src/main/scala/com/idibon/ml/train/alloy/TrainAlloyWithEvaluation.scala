@@ -3,6 +3,7 @@ package com.idibon.ml.train.alloy
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.{Classification, PredictOptions}
+import com.idibon.ml.train.alloy.evaluation.{EvaluationDataPoint, AlloyEvaluator}
 import com.idibon.ml.train.datagenerator.json.{Annotation, Document}
 import org.json4s.JsonAST.{JObject}
 import scala.collection.JavaConversions._

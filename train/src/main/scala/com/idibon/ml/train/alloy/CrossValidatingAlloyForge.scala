@@ -9,6 +9,7 @@ import com.idibon.ml.predict.{Span, Label, PredictResult, Classification}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.train.TrainOptions
+import com.idibon.ml.train.alloy.evaluation.AlloyEvaluator
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 import org.json4s._

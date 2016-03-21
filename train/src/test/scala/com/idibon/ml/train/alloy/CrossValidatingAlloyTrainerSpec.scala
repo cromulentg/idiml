@@ -6,6 +6,7 @@ import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.{Classification, Label}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.train.alloy.evaluation.{MultiLabelMetricsEvaluator, MultiClassMetricsEvaluator}
 import org.json4s.JsonAST.JObject
 import org.json4s._
 import org.json4s.native.JsonMethods._

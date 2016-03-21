@@ -5,6 +5,7 @@ import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{SequenceGenerator, Builder, Buildable}
 import com.idibon.ml.predict.{Classification, Span, Label, PredictResult}
 import com.idibon.ml.train.TrainOptions
+import com.idibon.ml.train.alloy.evaluation.{NoOpEvaluator, BIOSpanMetricsEvaluator, AlloyEvaluator}
 import com.idibon.ml.train.furnace.{ChainNERFurnace, HasFurnaces, Furnace2}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._

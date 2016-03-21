@@ -1,6 +1,7 @@
 package com.idibon.ml.train.alloy
 
 import com.idibon.ml.common.Engine
+import com.idibon.ml.train.alloy.evaluation.AlloyEvaluator
 import org.json4s._
 
 import scala.collection.mutable

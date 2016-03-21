@@ -1,5 +1,7 @@
 package com.idibon.ml.app
 
+import com.idibon.ml.train.alloy.evaluation.NoOpEvaluator
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{Try, Success, Failure}

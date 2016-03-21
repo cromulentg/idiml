@@ -9,6 +9,7 @@ import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.predict.{Span, Classification, Label, PredictResult}
 import com.idibon.ml.train.TrainOptions
+import com.idibon.ml.train.alloy.evaluation.AlloyEvaluator
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 
@@ -21,7 +22,6 @@ import org.json4s.JsonAST.JObject
   * validation metrics are also included in the alloy.
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/21/16.
-  *
   * @param engine the engine
   * @param name the name to give the output alloy & and anything else created will be based off this name.
   * @param labels the labels for the current task

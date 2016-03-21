@@ -1,20 +1,22 @@
-package com.idibon.ml.train.alloy
+package com.idibon.ml.train.alloy.evaluation
 
 import java.util
 
 import com.idibon.ml.alloy.Alloy
-import com.idibon.ml.common.{Engine}
+import com.idibon.ml.common.Engine
+import com.idibon.ml.feature.Buildable
 import com.idibon.ml.feature.tokenizer.Token
-import com.idibon.ml.feature.{Buildable}
-import com.idibon.ml.predict.crf.{BIOType, BIOLabel}
-import com.idibon.ml.predict.{Span, PredictOptions, Classification}
+import com.idibon.ml.predict.crf.{BIOLabel, BIOType}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.predict.{Classification, PredictOptions, PredictOptionsBuilder, Span}
+import com.idibon.ml.train.alloy.TrainingDataSet
 import com.idibon.ml.train.datagenerator.crf.BIOTagger
-import com.idibon.ml.train.datagenerator.json.{Document, Annotation}
-import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MultilabelMetrics, MulticlassMetrics}
+import com.idibon.ml.train.datagenerator.json.{Annotation, Document}
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics, MultilabelMetrics}
 import org.apache.spark.sql.functions._
 import org.json4s.JsonAST.JObject
+
 import scala.collection.JavaConversions._
 
 /**
@@ -186,6 +188,7 @@ trait AlloyEvaluator extends MetricHelper {
 
   /**
     * Helper method to create evaluation data points.
+    *
     * @param docs the documents to use for getting gold data and evaluating on.
     * @param alloy the alloy to test
     * @param uuidStrToDouble map of UUID to double label for computing metrics.
@@ -201,7 +204,7 @@ trait AlloyEvaluator extends MetricHelper {
       goldSet.isEmpty match {
         case true => None
         case false => {
-          val predicted = alloy.predict(doc, PredictOptions.DEFAULT)
+          val predicted = alloy.predict(doc, AlloyEvaluator.EVALUATE_PREDICT_DEFAULT)
           // create eval data point
           val evaluationDataPoint = this.createEvaluationDataPoint(
             uuidStrToDouble, goldSet, predicted, thresholds)
@@ -230,6 +233,8 @@ trait AlloyEvaluator extends MetricHelper {
 object AlloyEvaluator {
   /** constant for use in a notes metric type */
   val GRANULARITY: String = "Granularity"
+  val EVALUATE_PREDICT_DEFAULT: PredictOptions = (new PredictOptionsBuilder)
+    .showTokens().showTokenTags().build
 }
 
 /**
@@ -946,6 +951,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
 
   /**
     * Computes F1 given precision and recall values.
+    *
     * @param precision
     * @param recall
     * @return
@@ -987,6 +993,7 @@ trait EvaluationDataPoint {
 
 /**
   * Class that handles classification related
+  *
   * @param predicted
   * @param gold
   * @param rawProbabilities
@@ -998,6 +1005,7 @@ case class ClassificationEvaluationDataPoint(predicted: Array[Double],
 
 /**
   * Houses counts/stats for a single data point for span evaluation.
+  *
   * @param predicted
   * @param gold
   * @param rawProbabilities

@@ -7,6 +7,7 @@ import com.idibon.ml.common
 import com.idibon.ml.common.{EmbeddedEngine}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.{PredictOptions, Label, Classification}
+import com.idibon.ml.train.alloy.evaluation.{ClassificationEvaluationDataPoint, EvaluationDataPoint, AlloyEvaluator}
 import com.idibon.ml.train.datagenerator.json.{LabelName, Annotation}
 import org.json4s
 import org.json4s.JsonAST.JObject

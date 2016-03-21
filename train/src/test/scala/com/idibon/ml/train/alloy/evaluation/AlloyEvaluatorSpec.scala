@@ -1,5 +1,4 @@
-package com.idibon.ml.train.alloy
-
+package com.idibon.ml.train.alloy.evaluation
 
 import java.util
 
@@ -8,10 +7,11 @@ import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.feature._
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import com.idibon.ml.predict.crf.BIOType
-import com.idibon.ml.predict.{Span, PredictOptions, Label, Classification}
 import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.predict.{Classification, Label, PredictOptions, Span}
+import com.idibon.ml.train.alloy.{DataSetInfo, TrainingDataSet, DummyAlloyEvaluator}
 import com.idibon.ml.train.datagenerator.crf.BIOTagger
-import com.idibon.ml.train.datagenerator.json.{LabelName, Annotation}
+import com.idibon.ml.train.datagenerator.json.{Annotation, LabelName}
 import org.json4s.JsonAST.JObject
 import org.json4s.native.JsonMethods._
 import org.scalatest._

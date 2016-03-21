@@ -1,5 +1,7 @@
 package com.idibon.ml.train.alloy
 
+import com.idibon.ml.train.alloy.evaluation.{NoOpEvaluator, AlloyEvaluator}
+
 import scala.concurrent._
 import scala.concurrent.duration._
 
