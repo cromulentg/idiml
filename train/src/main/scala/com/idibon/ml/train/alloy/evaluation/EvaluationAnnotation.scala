@@ -42,6 +42,11 @@ case class EvaluationAnnotation(label: LabelName, isPositive: Boolean,
   def inside(x: Int): Boolean = {
     offset.map(offs => x >= offs && x < end.get).getOrElse(true)
   }
+
+  /** Helper method to return tokens matched up with their tags **/
+  def getTokensNTags(): Seq[(Token, BIOType.Value)] = {
+    tokens.getOrElse(Seq()).zip(tokenTags.getOrElse(Seq()))
+  }
 }
 
 case class LabelName(name: String)

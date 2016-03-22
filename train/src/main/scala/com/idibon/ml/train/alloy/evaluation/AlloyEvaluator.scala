@@ -631,30 +631,24 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
          -- gold miss = fn
      */
     var predictedTags: Seq[(Token, BIOType.Value)] = spans
-      .flatMap(span => span.tokens.zip(span.tags))
+      .flatMap(span => span.getTokenNTags())
       .sortBy(t => t._1.offset)
-    var goldTags: Seq[(Token, BIOType.Value)] = goldSet
-      .map({ case (_, anns) =>
-        val tokenzNTagz = anns
-          .flatMap(a => a.tokens)
-          .zip(anns.flatMap(a => a.tokenTags))
-          .flatMap({ case (toks, tagz) => toks.zip(tagz) })
-        tokenzNTagz
-      }).flatten.toSeq.sortBy(x => x._1.offset)
-    val store = collection.mutable.Map[String, (Int, Int, Int)]()
+    var goldTags: Seq[(Token, BIOType.Value)] = goldSet.toSeq
+      .flatMap({ case (_, anns) => anns.flatMap(a => a.getTokensNTags())})
+      .sortBy(x => x._1.offset)
+
+    val store = collection.mutable.Map[String, StatsCounter]()
 
     while (predictedTags.nonEmpty && goldTags.nonEmpty) {
       val (pTok, pTag) = predictedTags.head
       val (gTok, gTag) = goldTags.head
       if (pTok.offset < gTok.offset) {
         // if we're not at the same token -- prediction is before
-        val (tp, fp, fn) = store.getOrElse(pTag.toString, (0, 0, 0))
-        store(pTag.toString()) = (tp, fp + 1, fn)
+        store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
         predictedTags = predictedTags.tail
       } else if (gTok.offset < pTok.offset) {
         // gold is before
-        val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
-        store(gTag.toString()) = (tp, fp, fn + 1)
+        store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
         goldTags = goldTags.tail
       } else {
         // we're at the same token
@@ -662,34 +656,25 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
         require(pTok.content.equals(gTok.content), "Token content should be the same at the same offset.")
         if (pTag == gTag) {
           // our tags are equal
-          val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
-          store(gTag.toString()) = (tp + 1, fp, fn)
+          store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).tp += 1
         } else {
           // our tags differ
           // else we have a B & I, or I & B. So for predicted it's a fp, for gold it's a fn.
-          val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
-          store(gTag.toString()) = (tp, fp, fn + 1)
-          val (tp1, fp1, fn1) = store.getOrElse(pTag.toString, (0, 0, 0))
-          store(pTag.toString()) = (tp1, fp1 + 1, fn1)
+          store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
+          store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
         }
         goldTags = goldTags.tail
         predictedTags = predictedTags.tail
       }
     }
     // get stragglers
-    if (predictedTags.nonEmpty) {
-      predictedTags.foreach({ case (tok, pTag) =>
-        val (tp, fp, fn) = store.getOrElse(pTag.toString, (0, 0, 0))
-        store(pTag.toString()) = (tp, fp + 1, fn)
-      })
-    }
-    if (goldTags.nonEmpty) {
-      goldTags.foreach({ case (tok, gTag) =>
-        val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
-        store(gTag.toString()) = (tp, fp, fn + 1)
-      })
-    }
-    store.map({ case (tagName, (tp, fp, fn)) => new TokenTagDataPoint(tagName, tp, fp, fn) }).toSeq
+    predictedTags.foreach({ case (tok, pTag) =>
+      store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
+    })
+    goldTags.foreach({ case (tok, gTag) =>
+      store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
+    })
+    store.map({ case (tagName, sc) => new TokenTagDataPoint(tagName, sc.tp, sc.fp, sc.fn) }).toSeq
   }
 
   /**
@@ -1075,6 +1060,8 @@ trait StatsCounts {
 
   def fn: Int
 }
+
+case class StatsCounter(var tp: Int, var fp: Int, var fn: Int) extends StatsCounts
 
 case class TokenDataPoint(doubleLabel: Double, tp: Int, fp: Int, fn: Int) extends StatsCounts
 

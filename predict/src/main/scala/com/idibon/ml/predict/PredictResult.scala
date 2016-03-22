@@ -208,6 +208,11 @@ case class Span(override val label: String,
     saveTokens(output)
     saveTokenTags(output)
   }
+
+  /** Helper method to return tokens and their tags together **/
+  def getTokenNTags(): Seq[(Token, BIOType.Value)] = {
+    tokens.zip(tags)
+  }
 }
 
 /** Paired builder class for Classification */
