@@ -11,7 +11,6 @@ import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.predict.{Classification, Label, PredictOptions, Span}
 import com.idibon.ml.train.alloy.{DataSetInfo, TrainingDataSet, DummyAlloyEvaluator}
 import com.idibon.ml.train.datagenerator.crf.BIOTagger
-import com.idibon.ml.train.datagenerator.json.{Annotation, LabelName}
 import org.json4s.JsonAST.JObject
 import org.json4s.native.JsonMethods._
 import org.scalatest._
@@ -36,7 +35,7 @@ class AlloyEvaluatorSpec extends FunSpec
         new Classification("n", 0.3f, 1, 0, Seq())
       ).asJava
       val actual = me.createEvaluationDataPoint(
-        Map("m" -> 0.0, "n" -> 1.0), Map("m"->Seq(Annotation(LabelName("m"), true, None, None))),
+        Map("m" -> 0.0, "n" -> 1.0), Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None))),
         classifications, Map("m" -> 0.5f))
       val expected = (Array(0.0), Array(0.0))
       actual.predicted(0) shouldBe expected._1(0)
@@ -91,8 +90,8 @@ class AlloyEvaluatorSpec extends FunSpec
       ).asJava
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
-        Map("m"->Seq(Annotation(LabelName("m"), true, None, None)),
-          "n"->Seq(Annotation(LabelName("n"), true, None, None))),
+        Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
+          "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))),
         classifications, Map("m" -> 0.5f))
       val expected = (Array(1.0), Array(0.0, 1.0))
       actual.predicted(0) shouldBe expected._1(0)
@@ -107,8 +106,8 @@ class AlloyEvaluatorSpec extends FunSpec
       ).asJava
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
-        Map("m"->Seq(Annotation(LabelName("m"), true, None, None)),
-          "n"->Seq(Annotation(LabelName("n"), true, None, None))),
+        Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
+          "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))),
         classifications, Map("m" -> 0.3f))
       val expected = (Array(0.0), Array(0.0, 1.0))
       actual.predicted(0) shouldBe expected._1(0)
@@ -123,8 +122,8 @@ class AlloyEvaluatorSpec extends FunSpec
       ).asJava
       val actual = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
-        Map("m"->Seq(Annotation(LabelName("m"), true, None, None)),
-          "n"->Seq(Annotation(LabelName("n"), true, None, None))
+        Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
+          "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))
         ), classifications, Map("m" -> 0.5f))
       val expected = (Array(), Array(0.0, 1.0))
       actual.predicted.length shouldBe expected._1.length
@@ -213,7 +212,7 @@ class AlloyEvaluatorSpec extends FunSpec
            {"label": {"name": "b"}, "isPositive": false}]}
               """)
       val actual = e.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Annotation]()
+      actual shouldBe Map[String, EvaluationAnnotation]()
     }
     it("handles mutli label data data") {
       val e = new MultiClassMetricsEvaluator(engine, 0f)
@@ -226,9 +225,9 @@ class AlloyEvaluatorSpec extends FunSpec
             {"label": {"name": "d"}, "isPositive": false},
           ]}""")
       val actual = e.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Seq[Annotation]](
-        "a" -> Seq(Annotation(LabelName("a"), true, None, None)),
-        "c" -> Seq(Annotation(LabelName("c"), true, None, None)))
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "a" -> Seq(EvaluationAnnotation(LabelName("a"), true, None, None)),
+        "c" -> Seq(EvaluationAnnotation(LabelName("c"), true, None, None)))
     }
     it("handles mutually exclusive label data data") {
       val e = new MultiClassMetricsEvaluator(engine, 0f)
@@ -241,8 +240,8 @@ class AlloyEvaluatorSpec extends FunSpec
             {"label": {"name": "d"}, "isPositive": true},
           ]}""")
       val actual = e.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Seq[Annotation]](
-        "d" -> Seq(Annotation(LabelName("d"), true, None, None)))
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "d" -> Seq(EvaluationAnnotation(LabelName("d"), true, None, None)))
     }
 
     it("generates evaluation points handles empty gold set") {
@@ -322,7 +321,7 @@ class AlloyEvaluatorSpec extends FunSpec
     before {
       bIOTagger = new JunkBIOTagger()
     }
-    it("gold set creation creates proper annotations") {
+    it("gold set creation creates proper EvaluationAnnotations") {
       val onePos =
         parse("""
           {"content": "\n   John Paul Walsh, an engineer who
@@ -338,25 +337,29 @@ class AlloyEvaluatorSpec extends FunSpec
           ]}""").extract[JObject]
       val e = new BIOSpanMetricsEvaluator(engine, bIOTagger)
       val actual = e.getGoldSet(onePos)
-      actual shouldBe Map(
+      val expected = Map(
         "8a3b40db-4502-48e8-a675-d3ef1c03c74e" -> Seq(
-          Annotation(LabelName("8a3b40db-4502-48e8-a675-d3ef1c03c74e"), true, Some(4), Some(13),
+          EvaluationAnnotation(LabelName("8a3b40db-4502-48e8-a675-d3ef1c03c74e"), true, Some(4), Some(13),
             Some(List(Token("John", Tag.Word, 4, 4), Token("Paul", Tag.Word, 9, 4), Token("Walsh", Tag.Word, 14, 5))),
             Some(List(BIOType.BEGIN, BIOType.INSIDE, BIOType.INSIDE)))),
         "6f5a5c01-4888-4792-af14-79d29ce9ff60" -> Seq(
-          Annotation(LabelName("6f5a5c01-4888-4792-af14-79d29ce9ff60"), true, Some(24), Some(8),
+          EvaluationAnnotation(LabelName("6f5a5c01-4888-4792-af14-79d29ce9ff60"), true, Some(24), Some(8),
             Some(List(Token("engineer", Tag.Word, 24, 8))), Some(List(BIOType.BEGIN))),
-          Annotation(LabelName("6f5a5c01-4888-4792-af14-79d29ce9ff60"), true, Some(55), Some(9),
+          EvaluationAnnotation(LabelName("6f5a5c01-4888-4792-af14-79d29ce9ff60"), true, Some(55), Some(9),
             Some(List(Token("scientist", Tag.Word, 55, 9))), Some(List(BIOType.BEGIN)))),
-      "666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c" -> Seq(
-        Annotation(LabelName("666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c"), true, Some(68), Some(13),
-          Some(List(Token("Cape", Tag.Word, 68, 4), Token("Canaveral", Tag.Word, 73, 9))), Some(List(BIOType.BEGIN, BIOType.INSIDE))),
-        Annotation(LabelName("666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c"), true, Some(124), Some(3),
-          Some(List(Token("U.S", Tag.Word, 124, 3))), Some(List(BIOType.BEGIN))))
+        "666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c" -> Seq(
+          EvaluationAnnotation(LabelName("666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c"), true, Some(68), Some(13),
+            Some(List(Token("Cape", Tag.Word, 68, 4), Token("Canaveral", Tag.Word, 73, 9))), Some(List(BIOType.BEGIN, BIOType.INSIDE))),
+          EvaluationAnnotation(LabelName("666f5d3e-5d3e-4f0c-b0d7-fd85ee835b6c"), true, Some(124), Some(3),
+            Some(List(Token("U.S", Tag.Word, 124, 3))), Some(List(BIOType.BEGIN))))
       )
+      actual.foreach({case (key, value) =>
+        value.sortBy(x => x.offset) shouldBe expected(key)
+      })
+      actual.size shouldBe expected.size
     }
 
-    it("gold set creation filters negative annotations & zero length annotations") {
+    it("gold set creation filters negative EvaluationAnnotations & zero length EvaluationAnnotations") {
       val onePos =
         parse("""
           {"content": "\n   John Paul Walsh, an engineer who

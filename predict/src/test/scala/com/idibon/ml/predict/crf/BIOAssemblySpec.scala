@@ -4,7 +4,7 @@ import com.idibon.ml.feature.language.LanguageCode
 import com.idibon.ml.feature.tokenizer.{Token, TokenTransformer, Tag}
 import com.idibon.ml.feature.contenttype.{ContentType, ContentTypeCode}
 import com.idibon.ml.feature.StringFeature
-import com.idibon.ml.predict.{PredictOptions, Span}
+import com.idibon.ml.predict.{PredictOptionsBuilder, PredictOptions, Span}
 
 import com.ibm.icu.util.ULocale
 import org.scalatest.{Matchers, FunSpec}
@@ -18,22 +18,24 @@ class BIOAssemblySpec extends FunSpec with Matchers with BIOAssembly {
 
   def tag(x: String*) = (x.map(v => BIOTag(v) -> 1.0))
 
+  val predictWithTags = (new PredictOptionsBuilder()).showTokens().showTokenTags().build()
+
   it("should support empty lists") {
-    assemble(Seq(), Seq(), PredictOptions.DEFAULT) shouldBe Seq()
+    assemble(Seq(), Seq(), predictWithTags) shouldBe Seq()
   }
 
   it("should return an empty list if all tokens are outside") {
     val tokens = tokenize("hello, world")
-    assemble(tokenize("hello, world"), tag("O", "O", "O"), PredictOptions.DEFAULT) shouldBe Seq()
+    assemble(tokenize("hello, world"), tag("O", "O", "O"), predictWithTags) shouldBe Seq()
   }
 
   it("should skip over invalid INSIDE tags") {
-    assemble(tokenize("hello, world"), tag("I0", "I0", "B0"), PredictOptions.DEFAULT) shouldBe Seq(
+    assemble(tokenize("hello, world"), tag("I0", "I0", "B0"), predictWithTags) shouldBe Seq(
       Span("0", 1.0f, 0, 7, 5, Seq(Token("world", Tag.Word, 7, 5)), Seq(BIOType.BEGIN)))
   }
 
   it("should return single-token spans") {
-    assemble(tokenize("hello, world"), tag("B0", "B0", "B1"), PredictOptions.DEFAULT) shouldBe Seq(
+    assemble(tokenize("hello, world"), tag("B0", "B0", "B1"), predictWithTags) shouldBe Seq(
       Span("0", 1.0f, 0, 0, 5, Seq(Token("hello", Tag.Word, 0, 5)), Seq(BIOType.BEGIN)),
       Span("0", 1.0f, 0, 5, 1, Seq(Token(",", Tag.Punctuation, 5, 1)), Seq(BIOType.BEGIN)),
       Span("1", 1.0f, 0, 7, 5, Seq(Token("world", Tag.Word, 7, 5)), Seq(BIOType.BEGIN))
@@ -42,7 +44,7 @@ class BIOAssemblySpec extends FunSpec with Matchers with BIOAssembly {
 
   it("should assemble complex spans") {
     assemble(tokenize("the quick brown fox jumped over the lazy dog"),
-      tag("O", "BNP", "INP", "INP", "BV", "O", "O", "BNP", "INP"), PredictOptions.DEFAULT) shouldBe Seq(
+      tag("O", "BNP", "INP", "INP", "BV", "O", "O", "BNP", "INP"), predictWithTags) shouldBe Seq(
         Span("NP", 1.0f, 0, 4, 15,
           Seq(Token("quick", Tag.Word,4,5), Token("brown", Tag.Word,10,5), Token("fox", Tag.Word,16,3)),
           Seq(BIOType.BEGIN, BIOType.INSIDE, BIOType.INSIDE)),
@@ -54,7 +56,7 @@ class BIOAssemblySpec extends FunSpec with Matchers with BIOAssembly {
 
   it("should die if the lists have different lengths") {
     intercept[IllegalArgumentException] {
-      assemble(tokenize("hello, world"), tag("O"), PredictOptions.DEFAULT)
+      assemble(tokenize("hello, world"), tag("O"), predictWithTags)
     }
   }
 

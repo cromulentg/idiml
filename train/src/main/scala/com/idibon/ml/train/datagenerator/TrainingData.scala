@@ -5,8 +5,6 @@ import com.idibon.ml.feature.tokenizer.Token
 /** Defines various document training data types */
 package json {
 
-  import com.idibon.ml.predict.crf.BIOType
-
   /** The JSON schema for documents processed by the data generators
     *
     * Documents may include additional fields (e.g., metadata) used by
@@ -26,13 +24,9 @@ package json {
     * @param isPositive true for positive training items
     * @param offset start of the span (span annotations)
     * @param length length of the span (span annotations)
-    * @param tokens tokens that make up the span.
-    * @param tokenTags token tags that make up the tokens provided.
     */
   case class Annotation(label: LabelName, isPositive: Boolean,
-    offset: Option[Int], length: Option[Int],
-    tokens: Option[Seq[Token]] = None,
-    tokenTags: Option[Seq[BIOType.Value]] = None) {
+    offset: Option[Int], length: Option[Int]) {
     /** True if the annotation is a valid span annotation */
     def isSpan = offset.isDefined && length.isDefined
 

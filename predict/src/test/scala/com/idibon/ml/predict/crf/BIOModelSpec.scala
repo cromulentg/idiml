@@ -1,6 +1,5 @@
 package com.idibon.ml.predict.crf
 
-import java.io._
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 
 import scala.util.Random
@@ -63,7 +62,8 @@ class BIOModelSpec extends FunSpec with Matchers {
     val confidence = model.predict(Seq(Vectors.dense(0.0, 0.0, 0.0, 1.0, 0.0))).head._2
 
     loaded.predict(Document.document("content" -> "features"),
-      PredictOptions.DEFAULT) shouldBe Seq(Span("0", confidence.toFloat, 0, 0, 8,
+      (new PredictOptionsBuilder().showTokens().showTokenTags().build())) shouldBe
+      Seq(Span("0", confidence.toFloat, 0, 0, 8,
       Seq(Token("features",Tag.Word,0,8)), Seq(BIOType.BEGIN)))
   }
 }

@@ -3,8 +3,8 @@ package com.idibon.ml.train.alloy
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Engine
 import com.idibon.ml.predict.{Classification, PredictOptions}
-import com.idibon.ml.train.alloy.evaluation.{EvaluationDataPoint, AlloyEvaluator}
-import com.idibon.ml.train.datagenerator.json.{Annotation, Document}
+import com.idibon.ml.train.alloy.evaluation.{EvaluationAnnotation, EvaluationDataPoint, AlloyEvaluator}
+import com.idibon.ml.train.datagenerator.json.{Document}
 import org.json4s.JsonAST.{JObject}
 import scala.collection.JavaConversions._
 
@@ -79,12 +79,15 @@ class TrainAlloyWithEvaluation(name: String,
     * @param jsValue
     * @return
     */
-  def getGoldSet(jsValue: JObject): Map[String, Seq[Annotation]] = {
+  def getGoldSet(jsValue: JObject): Map[String, Seq[EvaluationAnnotation]] = {
     implicit val formats = org.json4s.DefaultFormats
     val document = jsValue.extract[Document]
     document.annotations
       .filter({ case (annot) => annot.isPositive })
-      .map({ case (annot) => (annot.label.name, Seq(annot)) })
-      .toMap
+      .map({ case (annot) => (annot.label.name,
+        Seq(
+          new EvaluationAnnotation(
+            annot.label.name, annot.isPositive, annot.offset, annot.length, None, None)))
+      }).toMap
   }
 }

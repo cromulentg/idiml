@@ -7,8 +7,7 @@ import com.idibon.ml.common
 import com.idibon.ml.common.{EmbeddedEngine}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.{PredictOptions, Label, Classification}
-import com.idibon.ml.train.alloy.evaluation.{ClassificationEvaluationDataPoint, EvaluationDataPoint, AlloyEvaluator}
-import com.idibon.ml.train.datagenerator.json.{LabelName, Annotation}
+import com.idibon.ml.train.alloy.evaluation._
 import org.json4s
 import org.json4s.JsonAST.JObject
 import org.json4s._
@@ -36,7 +35,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
            {"label": {"name": "b"}, "isPositive": false}]}
         """)
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Annotation]()
+      actual shouldBe Map[String, EvaluationAnnotation]()
     }
     it("handles mutli label data data") {
       val allNegs =
@@ -48,9 +47,9 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
             {"label": {"name": "d"}, "isPositive": false},
           ]}""")
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Seq[Annotation]](
-        "a" -> Seq(Annotation(LabelName("a"), true, None, None)),
-        "c" -> Seq(Annotation(LabelName("c"), true, None, None)))
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "a" -> Seq(EvaluationAnnotation(LabelName("a"), true, None, None)),
+        "c" -> Seq(EvaluationAnnotation(LabelName("c"), true, None, None)))
     }
     it("handles mutually exclusive label data data") {
       val allNegs =
@@ -62,8 +61,8 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
             {"label": {"name": "d"}, "isPositive": true},
           ]}""")
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Map[String, Seq[Annotation]](
-        "d" -> Seq(Annotation(LabelName("d"), true, None, None)))
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "d" -> Seq(EvaluationAnnotation(LabelName("d"), true, None, None)))
     }
   }
   describe("evaluate tests") {
@@ -148,7 +147,7 @@ class DummyAlloy extends Alloy[Classification] {
 class DummyAlloyEvaluator extends AlloyEvaluator {
   override val engine: common.Engine = null
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[Annotation]],
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     new ClassificationEvaluationDataPoint(Array(1.0), Array(1.0), Seq())

@@ -12,7 +12,7 @@ import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.predict.{Classification, PredictOptions, PredictOptionsBuilder, Span}
 import com.idibon.ml.train.alloy.TrainingDataSet
 import com.idibon.ml.train.datagenerator.crf.BIOTagger
-import com.idibon.ml.train.datagenerator.json.{Annotation, Document}
+import com.idibon.ml.train.datagenerator.json.{Document}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics, MultilabelMetrics}
 import org.apache.spark.sql.functions._
 import org.json4s.JsonAST.JObject
@@ -40,7 +40,7 @@ trait AlloyEvaluator extends MetricHelper {
     * @param thresholds
     */
   def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                goldSet: Map[String, Seq[Annotation]],
+                                goldSet: Map[String, Seq[EvaluationAnnotation]],
                                 classifications: util.List[_],
                                 thresholds: Map[String, Float]): EvaluationDataPoint
 
@@ -220,13 +220,16 @@ trait AlloyEvaluator extends MetricHelper {
     * @param jsValue
     * @return
     */
-  def getGoldSet(jsValue: JObject): Map[String, Seq[Annotation]] = {
+  def getGoldSet(jsValue: JObject): Map[String, Seq[EvaluationAnnotation]] = {
     implicit val formats = org.json4s.DefaultFormats
     val document = jsValue.extract[Document]
     document.annotations
       .filter({ case (annot) => annot.isPositive })
-      .map({ case (annot) => (annot.label.name, Seq(annot)) })
-      .toMap
+      .map({ case (annot) => (annot.label.name,
+        Seq(
+         new EvaluationAnnotation(
+           annot.label.name, annot.isPositive, annot.offset, annot.length, None, None)))
+      }).toMap
   }
 }
 
@@ -266,7 +269,7 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
     * @param thresholds
     */
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[Annotation]],
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabel = goldSet.map({case (gl, _) => labelToDouble(gl)}).head
@@ -356,7 +359,7 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
     * @param thresholds
     */
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[Annotation]],
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabels = goldSet.map({case (gl, _) => labelToDouble(gl)}).toArray
@@ -420,7 +423,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @param jsValue
     * @return
     */
-  override def getGoldSet(jsValue: JObject): Map[String, Seq[Annotation]] = {
+  override def getGoldSet(jsValue: JObject): Map[String, Seq[EvaluationAnnotation]] = {
     implicit val formats = org.json4s.DefaultFormats
     val document = jsValue.extract[Document]
     val anns = document.annotations
@@ -442,8 +445,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
       val start = tokenz.head.offset
       val length = tokenz.map(tok => tok.length).sum
       val tagz = bioLabelz.map(b => b.bio)
-      new Annotation(
-        ann.label, ann.isPositive, Some(start), Some(length), Some(tokenz), Some(tagz))
+      new EvaluationAnnotation(
+        ann.label.name, ann.isPositive, Some(start), Some(length), Some(tokenz), Some(tagz))
     })
     // create map of label to sequence of annotations
     newAnnotations
@@ -460,7 +463,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @param thresholds
     */
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[Annotation]],
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
@@ -498,7 +501,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     *         (gold classes, correctly guessed))
     */
   def exactMatchEvalDataPoint(labelToDouble: Map[String, Double],
-                              goldSet: Map[String, Seq[Annotation]],
+                              goldSet: Map[String, Seq[EvaluationAnnotation]],
                               spans: Seq[Span]) = {
     val numberGuessesCorrect: Iterable[(Double, Int, Float)] = spans.map(s => {
       val matches = goldSet.getOrElse(s.label, Seq()).filter(a => {
@@ -532,7 +535,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @return a seq of (double label -> (tp, fp, tn) counts)
     */
   def tokenEvalDataPoint(labelToDouble: Map[String, Double],
-                         goldSet: Map[String, Seq[Annotation]],
+                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                          spans: Seq[Span]) = {
     /*
     1. predicted: label -> sequence of tokens
@@ -596,7 +599,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @return a map of (tag name -> (tp, fp, tn) counts)
     */
   def tokenTagEvalDataPoint(labelToDouble: Map[String, Double],
-                            goldSet: Map[String, Seq[Annotation]],
+                            goldSet: Map[String, Seq[EvaluationAnnotation]],
                             spans: Seq[Span]) = {
     /*
     1. predicted: label -> sequence of tokensTags
@@ -969,7 +972,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
 case class NoOpEvaluator() extends AlloyEvaluator {
   override val engine: Engine = null
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[Annotation]],
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     new ClassificationEvaluationDataPoint(Array(), Array(), Seq())
