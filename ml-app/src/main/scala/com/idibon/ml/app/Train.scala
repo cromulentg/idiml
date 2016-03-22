@@ -136,9 +136,10 @@ object Train extends Tool with StrictLogging {
     * @param forgeConfig trainer and furnace configuration data
     * @param readTrainingData function to load training data
     */
-  private[this] def alloyTrainer2(engine: Engine, alloyName: String,
-                                  alloyConfig: AlloyConfiguration, forgeConfig: ForgeConfiguration,
-                                  readTrainingData: Option[TrainingData]): Alloy[_] = {
+  private[this] def alloyTrainer2(
+    engine: Engine, alloyName: String,
+    alloyConfig: AlloyConfiguration, forgeConfig: ForgeConfiguration,
+    readTrainingData: Option[TrainingData]): Alloy[_] = {
 
     val labels = alloyConfig.uuid_to_label.map({ case (uuid, name) =>
       new Label(uuid, name)
