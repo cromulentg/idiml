@@ -1,3 +1,8 @@
+plugins {
+  // license report
+  id "com.github.hierynomus.license" version "0.12.1"
+}
+
 // Common configuration for all subprojects listed in settings.gradle
 apply plugin: 'idea'
 
@@ -144,6 +149,10 @@ subprojects {
     testRuntime "org.slf4j:slf4j-simple:${project.ext.slf4jVersion}"
 
     runtime "org.slf4j:log4j-over-slf4j:1.7.13"
+  }
+
+  downloadLicenses {
+    dependencyConfiguration = 'testRuntime'
   }
 
   // Add a task to every sub-project that downloads the dependencies
