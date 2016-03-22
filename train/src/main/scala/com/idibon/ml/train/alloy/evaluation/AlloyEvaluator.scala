@@ -28,7 +28,7 @@ import scala.collection.JavaConversions._
   */
 trait AlloyEvaluator extends MetricHelper {
 
-  val engine: Engine  // we have a dependence on this if we use Spark's metrics computation.
+  val engine: Engine // we have a dependence on this if we use Spark's metrics computation.
   /**
     * Creates a tuple of (prediction(s), label(s)).
     * This is because this is the raw data point that spark's internal metrics
@@ -121,14 +121,14 @@ trait AlloyEvaluator extends MetricHelper {
                                  metricClass: MetricClass.Value): Seq[LabelFloatMetric] = {
     val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
     val byLabel = points.flatMap(e => {
-      e.rawProbabilities.map({case (dblLabel, prob) =>
+      e.rawProbabilities.map({ case (dblLabel, prob) =>
         val binaryLabel = if (e.gold.contains(dblLabel)) 1.0 else 0.0
         (dblLabel, prob, binaryLabel)
       })
-    }).groupBy({case (dblLabel, prob, binaryLabel) => dblLabel})
-    byLabel.map({case (label, grouped) =>
+    }).groupBy({ case (dblLabel, prob, binaryLabel) => dblLabel })
+    byLabel.map({ case (label, grouped) =>
       val bestThreshold = computeBestF1Threshold(engine, sqlContext,
-        grouped.map({case (dblLabel, prob, binaryLabel) => (prob.toDouble, binaryLabel)}))
+        grouped.map({ case (dblLabel, prob, binaryLabel) => (prob.toDouble, binaryLabel) }))
       new LabelFloatMetric(
         MetricTypes.LabelBestF1Threshold, metricClass, doubleToLabel(label), bestThreshold)
     }).toSeq
@@ -162,8 +162,8 @@ trait AlloyEvaluator extends MetricHelper {
   /**
     * Evalautes an alloy using the train & test sets in the passed in data set.
     *
-    * @param name the name to give the training summaries
-    * @param alloy the alloy to test
+    * @param name    the name to give the training summaries
+    * @param alloy   the alloy to test
     * @param dataSet the data set to get data from
     * @return a sequence of training summaries
     */
@@ -183,16 +183,16 @@ trait AlloyEvaluator extends MetricHelper {
     val trainDataPoints = generateEvaluationPoints(dataSet.train, alloy, uuidStrToDouble, thresholds)
     val trainDPs = this.createTrainingSummary(engine, trainDataPoints, uuidStrToDouble, s"$foldName-TRAIN", dataSet.info.portion)
     val result = Seq(testDPs, trainDPs)
-    result.collect({case Some(ts) => ts}).flatten
+    result.collect({ case Some(ts) => ts }).flatten
   }
 
   /**
     * Helper method to create evaluation data points.
     *
-    * @param docs the documents to use for getting gold data and evaluating on.
-    * @param alloy the alloy to test
+    * @param docs            the documents to use for getting gold data and evaluating on.
+    * @param alloy           the alloy to test
     * @param uuidStrToDouble map of UUID to double label for computing metrics.
-    * @param thresholds map of thresholds of UUID to threshold
+    * @param thresholds      map of thresholds of UUID to threshold
     * @return a sequence of EvaluationDataPoints
     */
   def generateEvaluationPoints(docs: () => TraversableOnce[JObject],
@@ -227,8 +227,8 @@ trait AlloyEvaluator extends MetricHelper {
       .filter({ case (annot) => annot.isPositive })
       .map({ case (annot) => (annot.label.name,
         Seq(
-         new EvaluationAnnotation(
-           annot.label.name, annot.isPositive, annot.offset, annot.length, None, None)))
+          new EvaluationAnnotation(
+            annot.label.name, annot.isPositive, annot.offset, annot.length, None, None)))
       }).toMap
   }
 }
@@ -272,7 +272,7 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
-    val goldLabel = goldSet.map({case (gl, _) => labelToDouble(gl)}).head
+    val goldLabel = goldSet.map({ case (gl, _) => labelToDouble(gl) }).head
     val maxLabel: Classification = getMaxLabel(classifications, thresholds)
     val rawProbabilities = classifications
       .map(c => c.asInstanceOf[Classification])
@@ -362,7 +362,7 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
-    val goldLabels = goldSet.map({case (gl, _) => labelToDouble(gl)}).toArray
+    val goldLabels = goldSet.map({ case (gl, _) => labelToDouble(gl) }).toArray
     val predictedLabels = // filter to only those over threshold -- this could potentially be empty.
       classifications.map(c => c.asInstanceOf[Classification]).filter(c => {
         c.probability >= thresholds.getOrDefault(c.label, defaultThreshold)
@@ -418,7 +418,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * Returns the gold set for span evaluation.
     *
     * This uses the passed in BIOTagger to map annotations to possible tokens
-    *  & tags to use for evaluation.
+    * & tags to use for evaluation.
     *
     * @param jsValue
     * @return
@@ -435,12 +435,12 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     val tokenTags = bioGenerator.getTokenTags(tokens, document)
     val newAnnotations = tokenTags
       // filter Outside tags -- they don't have annotations
-      .collect({case (tok, tag: BIOLabel, Some(ann)) => (tok, tag, ann)})
+      .collect({ case (tok, tag: BIOLabel, Some(ann)) => (tok, tag, ann) })
       // group by annotation so we can stick everything in the right annotation
-      .groupBy({case (tok, tag, ann) => ann})
+      .groupBy({ case (tok, tag, ann) => ann })
       // create new annotations based off possible tokens and tags returned
-      .map({case (ann, grouped) =>
-      val sortedGroup = grouped.toSeq.sortBy({case (tok, _, _) => tok.offset})
+      .map({ case (ann, grouped) =>
+      val sortedGroup = grouped.toSeq.sortBy({ case (tok, _, _) => tok.offset })
       val (tokenz, bioLabelz, _) = sortedGroup.unzip3
       val start = tokenz.head.offset
       val length = tokenz.map(tok => tok.length).sum
@@ -451,7 +451,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     // create map of label to sequence of annotations
     newAnnotations
       .groupBy(a => a.label.name)
-      .map({case (label, anns) => (label, anns.toSeq)})
+      .map({ case (label, anns) => (label, anns.toSeq) })
   }
 
   /**
@@ -468,8 +468,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
     val (numberGuessesCorrect,
-         numberGoldCorrect,
-         predictedProbabilities) = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
+    numberGoldCorrect,
+    predictedProbabilities) = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
       They are arrays of doubles - where the first half are the classes of the labels predicted,
@@ -512,7 +512,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     })
     val byLabel = spans.groupBy(s => s.label)
     // note: don't flat map this because the compiler creates a map, rather than a sequence...
-    val numberGoldCorrect: Iterable[(Double, Int)] = goldSet.flatMap({case (label, annotations) =>
+    val numberGoldCorrect: Iterable[(Double, Int)] = goldSet.flatMap({ case (label, annotations) =>
       annotations.map(a => {
         val matches = byLabel.getOrElse(label, Seq()).filter(s => {
           s.offset == a.offset.get && s.length == a.length.get
@@ -531,13 +531,13 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     *
     * The algorithm is basically comparing the predicted sequence with the gold sequence.
     * This entails checking:
-    *  1) that we're looking at the right offsets on a token basis
-    *  2) and if we are, are we looking at the right token label or not
+    * 1) that we're looking at the right offsets on a token basis
+    * 2) and if we are, are we looking at the right token label or not
     *
     * Then depending on how #1 or #2 are violated or not, we increment:
-    *   - true positives if we match properly
-    *   - false positives if a prediction misses
-    *   - false negatives if we miss predicting a gold
+    * - true positives if we match properly
+    * - false positives if a prediction misses
+    * - false negatives if we miss predicting a gold
     *
     * @param labelToDouble
     * @param goldSet
@@ -558,14 +558,14 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
      */
     val predictedTokensByLabel = spans
       .groupBy(s => s.label)
-      .map({case (label, span) =>
+      .map({ case (label, span) =>
         (label, span.flatMap(s => s.tokens).sortBy(t => t.offset))
       })
     val goldTokensByLabel = goldSet
-      .map({case (label, anns) =>
+      .map({ case (label, anns) =>
         (label, anns.flatMap(a => a.tokens).flatten.sortBy(t => t.offset))
       })
-    labelToDouble.map({case (label, doubleValue) =>
+    labelToDouble.map({ case (label, doubleValue) =>
       // have to handle missing labels not being present
       var predicted = predictedTokensByLabel.getOrElse(label, Seq())
       var gold = goldTokensByLabel.getOrElse(label, Seq())
@@ -605,13 +605,13 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     *
     * The algorithm is basically comparing the predicted sequence with the gold sequence.
     * This entails checking:
-    *  1) that we're looking at the right offsets on a token basis
-    *  2) and if we are, are we looking at the right tag or not
+    * 1) that we're looking at the right offsets on a token basis
+    * 2) and if we are, are we looking at the right tag or not
     *
     * Then depending on how #1 or #2 are violated or not, we increment:
-    *   - true positives if we match properly
-    *   - false positives if a prediction misses
-    *   - false negatives if we miss predicting a gold
+    * - true positives if we match properly
+    * - false positives if a prediction misses
+    * - false negatives if we miss predicting a gold
     *
     * @param labelToDouble
     * @param goldSet
@@ -634,35 +634,40 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
       .flatMap(span => span.tokens.zip(span.tags))
       .sortBy(t => t._1.offset)
     var goldTags: Seq[(Token, BIOType.Value)] = goldSet
-      .map({case (_, anns) =>
+      .map({ case (_, anns) =>
         val tokenzNTagz = anns
           .flatMap(a => a.tokens)
           .zip(anns.flatMap(a => a.tokenTags))
-          .flatMap({case (toks, tagz) => toks.zip(tagz)})
+          .flatMap({ case (toks, tagz) => toks.zip(tagz) })
         tokenzNTagz
       }).flatten.toSeq.sortBy(x => x._1.offset)
     val store = collection.mutable.Map[String, (Int, Int, Int)]()
 
-    while(predictedTags.nonEmpty && goldTags.nonEmpty) {
+    while (predictedTags.nonEmpty && goldTags.nonEmpty) {
       val (pTok, pTag) = predictedTags.head
       val (gTok, gTag) = goldTags.head
-      if (pTok.offset < gTok.offset) { // if we're not at the same token -- prediction is before
-      val (tp, fp, fn) = store.getOrElse(pTag.toString, (0, 0, 0))
+      if (pTok.offset < gTok.offset) {
+        // if we're not at the same token -- prediction is before
+        val (tp, fp, fn) = store.getOrElse(pTag.toString, (0, 0, 0))
         store(pTag.toString()) = (tp, fp + 1, fn)
         predictedTags = predictedTags.tail
-      } else if (gTok.offset < pTok.offset) { // gold is before
-      val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
+      } else if (gTok.offset < pTok.offset) {
+        // gold is before
+        val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
         store(gTag.toString()) = (tp, fp, fn + 1)
         goldTags = goldTags.tail
-      } else { // we're at the same token
+      } else {
+        // we're at the same token
         require(pTok.length == gTok.length, "Token lengths should be the same at the same offset.")
         require(pTok.content.equals(gTok.content), "Token content should be the same at the same offset.")
-        if (pTag == gTag) { // our tags are equal
-        val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
+        if (pTag == gTag) {
+          // our tags are equal
+          val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
           store(gTag.toString()) = (tp + 1, fp, fn)
-        } else {  // our tags differ
-        // else we have a B & I, or I & B. So for predicted it's a fp, for gold it's a fn.
-        val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
+        } else {
+          // our tags differ
+          // else we have a B & I, or I & B. So for predicted it's a fp, for gold it's a fn.
+          val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
           store(gTag.toString()) = (tp, fp, fn + 1)
           val (tp1, fp1, fn1) = store.getOrElse(pTag.toString, (0, 0, 0))
           store(pTag.toString()) = (tp1, fp1 + 1, fn1)
@@ -673,18 +678,18 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     }
     // get stragglers
     if (predictedTags.nonEmpty) {
-      predictedTags.foreach({case (tok, pTag) =>
+      predictedTags.foreach({ case (tok, pTag) =>
         val (tp, fp, fn) = store.getOrElse(pTag.toString, (0, 0, 0))
         store(pTag.toString()) = (tp, fp + 1, fn)
       })
     }
     if (goldTags.nonEmpty) {
-      goldTags.foreach({case (tok, gTag) =>
+      goldTags.foreach({ case (tok, gTag) =>
         val (tp, fp, fn) = store.getOrElse(gTag.toString, (0, 0, 0))
         store(gTag.toString()) = (tp, fp, fn + 1)
       })
     }
-    store.map({case (tagName, (tp, fp, fn)) => new TokenTagDataPoint(tagName, tp, fp, fn)}).toSeq
+    store.map({ case (tagName, (tp, fp, fn)) => new TokenTagDataPoint(tagName, tp, fp, fn) }).toSeq
   }
 
   /**
@@ -745,8 +750,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     val metricsByTag = createPRF1Metrics(computePRF1Metrics(totalsByTag))
     val microMetrics: Seq[Metric with Buildable[_, _]] = computeMicroMetrics(totalsByTag)
     val macroMetrics: Seq[Metric with Buildable[_, _]] = computeMacroMetrics(metricsByTag)
-    val tagMetrics: Seq[Metric with Buildable[_, _]] =  metricsByTag
-      .flatMap{case (label, (p, r, f1)) => Seq(p, r, f1)}.toSeq
+    val tagMetrics: Seq[Metric with Buildable[_, _]] = metricsByTag
+      .flatMap { case (label, (p, r, f1)) => Seq(p, r, f1) }.toSeq
     tagMetrics ++ microMetrics ++ macroMetrics
   }
 
@@ -758,8 +763,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @return
     */
   def sumGrouped[T](grouped: Map[T, Seq[StatsCounts]]) = {
-    grouped.map({case (key, sequence) =>
-      val (trueP, falseP, falseN) = sequence.foldRight((0, 0, 0))({case (seq, (ttp, tfp, tfn)) =>
+    grouped.map({ case (key, sequence) =>
+      val (trueP, falseP, falseN) = sequence.foldRight((0, 0, 0))({ case (seq, (ttp, tfp, tfn)) =>
         (seq.tp + ttp, seq.fp + tfp, seq.fn + tfn)
       })
       (key, (trueP, falseP, falseN))
@@ -773,10 +778,18 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @tparam T
     * @return
     */
-  def computePRF1Metrics[T](totals:  Map[T, (Int, Int, Int)]) = {
-    totals.filter({case (k, (tp, fp, fn)) => (tp + fp + fn) > 0}).map({case (key, (tp, fp, fn)) =>
-      val precision = if (tp + fp == 0) { 0f } else {tp.toFloat / (tp.toFloat + fp.toFloat)}
-      val recall = if (tp + fn == 0) { 0f } else {tp.toFloat / (tp.toFloat + fn.toFloat)}
+  def computePRF1Metrics[T](totals: Map[T, (Int, Int, Int)]) = {
+    totals.filter({ case (k, (tp, fp, fn)) => (tp + fp + fn) > 0 }).map({ case (key, (tp, fp, fn)) =>
+      val precision = if (tp + fp == 0) {
+        0f
+      } else {
+        tp.toFloat / (tp.toFloat + fp.toFloat)
+      }
+      val recall = if (tp + fn == 0) {
+        0f
+      } else {
+        tp.toFloat / (tp.toFloat + fn.toFloat)
+      }
       val f1 = computeF1(precision, recall)
       (key, (precision, recall, f1))
     })
@@ -789,10 +802,10 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @param mClass
     * @return
     */
-  def createPRF1Metrics(metrics:  Map[String, (Float, Float, Float)],
+  def createPRF1Metrics(metrics: Map[String, (Float, Float, Float)],
                         mClass: MetricClass.Value = MetricClass.Multiclass) = {
     metrics
-      .map({case (label, (precision, recall, f1Val)) =>
+      .map({ case (label, (precision, recall, f1Val)) =>
         val p = new LabelFloatMetric(MetricTypes.LabelPrecision, mClass, label, precision)
         val r = new LabelFloatMetric(MetricTypes.LabelRecall, mClass, label, recall)
         val f1m = new LabelFloatMetric(MetricTypes.LabelF1, mClass, label, f1Val)
@@ -834,7 +847,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @param mClass
     * @return
     */
-  def computeMacroMetrics(metrics:  Map[_, (LabelFloatMetric, LabelFloatMetric, LabelFloatMetric)],
+  def computeMacroMetrics(metrics: Map[_, (LabelFloatMetric, LabelFloatMetric, LabelFloatMetric)],
                           mClass: MetricClass.Value = MetricClass.Multiclass) = {
     // unzip to just get 3 lists that we then individually sum over
     val (macroPRaw, macroRRaw, macroF1Raw) = metrics.values.unzip3
@@ -867,7 +880,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     val microMetrics: Seq[Metric with Buildable[_, _]] = computeMicroMetrics(totalsByLabel)
     val macroMetrics: Seq[Metric with Buildable[_, _]] = computeMacroMetrics(metricsByLabel)
     val labelMetrics: Seq[Metric with Buildable[_, _]] = metricsByLabel
-      .flatMap{case (label, (p, r, f1)) => Seq(p, r, f1)}.toSeq
+      .flatMap { case (label, (p, r, f1)) => Seq(p, r, f1) }.toSeq
     labelMetrics ++ microMetrics ++ macroMetrics
   }
 
@@ -894,16 +907,16 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     }).unzip
     val predictedByLabel = predictedVals
       .flatten
-      .groupBy({case (label, wasCorrect) => label})
-      .map({case (label, grouped) =>
+      .groupBy({ case (label, wasCorrect) => label })
+      .map({ case (label, grouped) =>
         val correct = grouped.map(_._2.toInt).sum
         val size = grouped.size
         (label, (correct, size))
       })
     val goldByLabel = goldVals
       .flatten
-      .groupBy({case (label, wasCorrect) => label})
-      .map({case (label, grouped) =>
+      .groupBy({ case (label, wasCorrect) => label })
+      .map({ case (label, grouped) =>
         val correct = grouped.map(_._2.toInt).sum
         val size = grouped.size
         (label, (correct, size))
@@ -930,7 +943,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                goldByLabel: Map[Double, (Int, Int)],
                                dbleToLabel: Map[Double, String],
                                mClass: MetricClass.Value = MetricClass.Multiclass): Seq[Metric with Buildable[_, _]] = {
-    predictedByLabel.map({case (label, (correct, size)) =>
+    predictedByLabel.map({ case (label, (correct, size)) =>
       val (_, goldSize) = goldByLabel(label)
       val precision = correct.toFloat / size.toFloat
       val recall = correct.toFloat / goldSize.toFloat
@@ -944,10 +957,10 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
 
   /**
     * Computes micro P & R & F1 given:
-    *    - counts by label that:
-    *     -- represent how many predictions were correct
-    *     -- represent how many golds were corrrect
-    *    calculates the micro P & R & F1 over everything.
+    * - counts by label that:
+    * -- represent how many predictions were correct
+    * -- represent how many golds were corrrect
+    * calculates the micro P & R & F1 over everything.
     *
     * @param predictedByLabel
     * @param goldByLabel
@@ -957,11 +970,11 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
   def microPrecisionRecallF1(predictedByLabel: Map[Double, (Int, Int)],
                              goldByLabel: Map[Double, (Int, Int)],
                              mClass: MetricClass.Value = MetricClass.Multiclass) = {
-    val precisionCounts = predictedByLabel.foldRight((0, 0))({case ((_, (correct, size)), (totalCorrect, totalSize)) =>
+    val precisionCounts = predictedByLabel.foldRight((0, 0))({ case ((_, (correct, size)), (totalCorrect, totalSize)) =>
       (correct + totalCorrect, size + totalSize)
     })
     val precision = precisionCounts._1.toFloat / precisionCounts._2.toFloat
-    val recallCounts = goldByLabel.foldRight((0, 0))({case ((_, (correct, size)), (totalCorrect, totalSize)) =>
+    val recallCounts = goldByLabel.foldRight((0, 0))({ case ((_, (correct, size)), (totalCorrect, totalSize)) =>
       (correct + totalCorrect, size + totalSize)
     })
     val recall = recallCounts._1.toFloat / recallCounts._2.toFloat
@@ -982,7 +995,9 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
   def computeF1(precision: Float, recall: Float): Float = {
     if (precision + recall != 0f) {
       2.0f * (precision * recall) / (precision + recall)
-    } else { 0f }
+    } else {
+      0f
+    }
   }
 }
 
@@ -991,12 +1006,14 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
   */
 case class NoOpEvaluator() extends AlloyEvaluator {
   override val engine: Engine = null
+
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     new ClassificationEvaluationDataPoint(Array(), Array(), Seq())
   }
+
   override def createTrainingSummary(engine: Engine,
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
@@ -1010,7 +1027,9 @@ case class NoOpEvaluator() extends AlloyEvaluator {
   */
 trait EvaluationDataPoint {
   def predicted: Array[Double]
+
   def gold: Array[Double]
+
   def rawProbabilities: Seq[(Double, Float)]
 }
 
@@ -1044,15 +1063,19 @@ case class SpanEvaluationDataPoint(predicted: Array[Double],
 
 /**
   * Has:
-  *  True positive
-  *  False positive
-  *  False Negative
+  * True positive
+  * False positive
+  * False Negative
   * Counts
   */
 trait StatsCounts {
   def tp: Int
+
   def fp: Int
+
   def fn: Int
 }
+
 case class TokenDataPoint(doubleLabel: Double, tp: Int, fp: Int, fn: Int) extends StatsCounts
+
 case class TokenTagDataPoint(tagName: String, tp: Int, fp: Int, fn: Int) extends StatsCounts
