@@ -2,6 +2,7 @@ package com.idibon.ml.train.alloy
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.Engine
+import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.{Classification, PredictOptions}
 import com.idibon.ml.train.alloy.evaluation.{EvaluationAnnotation, EvaluationDataPoint, AlloyEvaluator}
 import com.idibon.ml.train.datagenerator.json.{Document}

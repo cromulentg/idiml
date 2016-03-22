@@ -58,7 +58,7 @@ trait AlloyEvaluator extends MetricHelper {
                             dataPoints: Seq[EvaluationDataPoint],
                             labelToDouble: Map[String, Double],
                             summaryName: String,
-                            portion: Double = 1.0): Option[Seq[TrainingSummary]]
+                            portion: Double = 1.0): Seq[TrainingSummary]
 
 
   /**
@@ -178,12 +178,14 @@ trait AlloyEvaluator extends MetricHelper {
     val testDataPoints = generateEvaluationPoints(dataSet.test, alloy, uuidStrToDouble, thresholds)
     val testDPs = if (testDataPoints.nonEmpty) {
       this.createTrainingSummary(engine, testDataPoints, uuidStrToDouble, s"$foldName-TEST", dataSet.info.portion)
-    } else None
+    } else {
+      Seq()
+    }
     //train set
     val trainDataPoints = generateEvaluationPoints(dataSet.train, alloy, uuidStrToDouble, thresholds)
     val trainDPs = this.createTrainingSummary(engine, trainDataPoints, uuidStrToDouble, s"$foldName-TRAIN", dataSet.info.portion)
     val result = Seq(testDPs, trainDPs)
-    result.collect({ case Some(ts) => ts }).flatten
+    result.flatten
   }
 
   /**
@@ -211,7 +213,7 @@ trait AlloyEvaluator extends MetricHelper {
           Some(evaluationDataPoint)
         }
       }
-    }).toSeq.collect({ case Some(evalPoint) => evalPoint })
+    }).flatten.toSeq
   }
 
   /**
@@ -224,9 +226,9 @@ trait AlloyEvaluator extends MetricHelper {
     implicit val formats = org.json4s.DefaultFormats
     val document = jsValue.extract[Document]
     document.annotations
-      .filter({ case (annot) => annot.isPositive })
-      .map({ case (annot) => (annot.label.name,
-        Seq(
+      .filter(_.isPositive)
+      .map(annot => {
+        (annot.label.name, Seq(
           new EvaluationAnnotation(
             annot.label.name, annot.isPositive, annot.offset, annot.length, None, None)))
       }).toMap
@@ -236,7 +238,7 @@ trait AlloyEvaluator extends MetricHelper {
 object AlloyEvaluator {
   /** constant for use in a notes metric type */
   val GRANULARITY: String = "Granularity"
-  val EVALUATE_PREDICT_DEFAULT: PredictOptions = (new PredictOptionsBuilder)
+  val EVALUATE_PREDICT_DEFAULT: PredictOptions = new PredictOptionsBuilder()
     .showTokens().showTokenTags().build
 }
 
@@ -325,12 +327,12 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
-                                     portion: Double = 1.0): Option[Seq[TrainingSummary]] = {
+                                     portion: Double = 1.0): Seq[TrainingSummary] = {
     val labeledPoints = dataPoints.map(e => (e.predicted.head, e.gold.head))
     val predictionRDDs = engine.sparkContext.parallelize(labeledPoints)
     val multiClass = new MulticlassMetrics(predictionRDDs)
     val metrics = createMultiClassMetrics(multiClass, labelToDouble.map(x => (x._2, x._1)))
-    Some(Seq(
+    Seq(
       new TrainingSummary(
         summaryName,
         metrics ++
@@ -338,7 +340,7 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
             new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat),
             new PropertyMetric(MetricTypes.Notes, MetricClass.Multiclass,
               Seq((AlloyEvaluator.GRANULARITY, Granularity.Document.toString)))) ++
-          createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multiclass))))
+          createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multiclass)))
   }
 }
 
@@ -387,12 +389,12 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
-                                     portion: Double = 1.0): Option[Seq[TrainingSummary]] = {
+                                     portion: Double = 1.0): Seq[TrainingSummary] = {
     val labeledPoints = dataPoints.map(e => (e.predicted, e.gold))
     val predictionRDDs = engine.sparkContext.parallelize(labeledPoints)
     val multiLabel = new MultilabelMetrics(predictionRDDs)
     val metrics = createMultilabelMetrics(multiLabel, labelToDouble.map(x => (x._2, x._1)))
-    Some(Seq(
+    Seq(
       new TrainingSummary(
         summaryName,
         metrics ++
@@ -400,7 +402,7 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
             new FloatMetric(MetricTypes.Portion, MetricClass.Multilabel, portion.toFloat),
             new PropertyMetric(MetricTypes.Notes, MetricClass.Multilabel,
               Seq((AlloyEvaluator.GRANULARITY, Granularity.Document.toString)))) ++
-          createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multilabel))))
+          createPerLabelMetricsFromProbabilities(engine, labelToDouble, dataPoints, MetricClass.Multilabel)))
   }
 }
 
@@ -434,7 +436,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     // create token tag pairing from annotations
     val tokenTags = bioGenerator.getTokenTags(tokens, document)
     val newAnnotations = tokenTags
-      // filter Outside tags -- they don't have annotations
+      // just collect tags with an annotation -- OUTSIDE tags don't have annotations
       .collect({ case (tok, tag: BIOLabel, Some(ann)) => (tok, tag, ann) })
       // group by annotation so we can stick everything in the right annotation
       .groupBy({ case (tok, tag, ann) => ann })
@@ -467,9 +469,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
-    val (numberGuessesCorrect,
-    numberGoldCorrect,
-    predictedProbabilities) = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
+    val (numberGuessesCorrect, numberGoldCorrect,predictedProbabilities) =
+      exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
       They are arrays of doubles - where the first half are the classes of the labels predicted,
@@ -530,11 +531,9 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * Creates data points for token evaluation.
     *
     * The algorithm is basically comparing the predicted sequence with the gold sequence.
-    * This entails checking:
-    * 1) that we're looking at the right offsets on a token basis
-    * 2) and if we are, are we looking at the right token label or not
+    * First we group by label, and then check the predicted and gold tokens based on token offsets.
     *
-    * Then depending on how #1 or #2 are violated or not, we increment:
+    * Then depending on how things match up, we increment:
     * - true positives if we match properly
     * - false positives if a prediction misses
     * - false negatives if we miss predicting a gold
@@ -567,48 +566,69 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
       })
     labelToDouble.map({ case (label, doubleValue) =>
       // have to handle missing labels not being present
-      var predicted = predictedTokensByLabel.getOrElse(label, Seq())
-      var gold = goldTokensByLabel.getOrElse(label, Seq())
-      // true positives -- the number of tokens guessed correctly
-      // false positives -- the number of tokens we guessed that aren't in the gold
-      // false negatives -- the number of tokens we missed guessing that are in gold
-      var (tp, fp, fn) = (0, 0, 0)
-      while (predicted.nonEmpty && gold.nonEmpty) {
-        val p = predicted.head
-        val g = gold.head
-        if (p.offset < g.offset) {
-          fp += 1
-          predicted = predicted.tail
-        } else if (g.offset < p.offset) {
-          fn += 1
-          gold = gold.tail
-        } else {
-          require(p.length == g.length, "Token lengths should be the same at the same offset.")
-          require(p.content.equals(g.content), "Token content should be the same at the same offset.")
-          tp += 1
-          gold = gold.tail
-          predicted = predicted.tail
-        }
-      }
-      if (predicted.nonEmpty) {
-        fp += predicted.size
-      }
-      if (gold.nonEmpty) {
-        fn += gold.size
-      }
+      val predicted = predictedTokensByLabel.getOrElse(label, Seq())
+      val gold = goldTokensByLabel.getOrElse(label, Seq())
+      val (tp, fp, fn) = tokenDPHelper(predicted, gold)
       new TokenDataPoint(doubleValue, tp, fp, fn)
     }).toSeq
+  }
+
+  /**
+    * This is a helper function to compare a sequence of tokens.
+    *
+    * We assume that we have already prefiltered all tokens to a single label/value that
+    * they represent. Otherwise The algorithm is basically comparing the predicted sequence
+    * with the gold sequence.
+    *
+    * This entails checking the offsets, namely:
+    * 1) that we're advancing over the right list based on the offset
+    * 2) and that we're incrementing the right case based on things matching or not.
+    *
+    * @param predictedSeq predicted sequence of tokens to compare
+    * @param goldSeq gold sequence of tokens to compare
+    * @return (true positive count, false positive count, false negative count)
+    */
+  def tokenDPHelper(predictedSeq: Seq[Token], goldSeq: Seq[Token]) = {
+    var predicted = predictedSeq
+    var gold = goldSeq
+    val sc = StatsCounter(0, 0, 0)
+
+    while (predicted.nonEmpty && gold.nonEmpty) {
+      val pHead = predicted.head
+      val gHead = gold.head
+      if (pHead.offset < gHead.offset) {
+        // prediction is before
+        sc.fp += 1
+        predicted = predicted.tail
+      } else if (gHead.offset < pHead.offset) {
+        // gold is before
+        sc.fn += 1
+        gold = gold.tail
+      } else {
+        // we're at the same spot
+        require(pHead.length == gHead.length, "Token lengths should be the same at the same offset.")
+        require(pHead.content.equals(gHead.content), "Token content should be the same at the same offset.")
+        sc.tp += 1
+        gold = gold.tail
+        predicted = predicted.tail
+      }
+    }
+    sc.fp += predicted.size
+    sc.fn += gold.size
+    // true positives -- the number of tokens guessed correctly
+    // false positives -- the number of tokens we guessed that aren't in the gold
+    // false negatives -- the number of tokens we missed guessing that are in gold
+    (sc.tp, sc.fp, sc.fn)
   }
 
   /**
     * Creates data points for token tag evaluation.
     *
     * The algorithm is basically comparing the predicted sequence with the gold sequence.
-    * This entails checking:
-    * 1) that we're looking at the right offsets on a token basis
-    * 2) and if we are, are we looking at the right tag or not
+    * First we group by the tag, and then check the predicted and gold tokens & tags
+    * based on token offsets.
     *
-    * Then depending on how #1 or #2 are violated or not, we increment:
+    * Then depending on how things match up, we increment:
     * - true positives if we match properly
     * - false positives if a prediction misses
     * - false negatives if we miss predicting a gold
@@ -622,59 +642,34 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                             goldSet: Map[String, Seq[EvaluationAnnotation]],
                             spans: Seq[Span]) = {
     /*
-    1. predicted: label -> sequence of tokensTags
-    2. gold: label -> sequence of tokensTags
-    3. then for each label:
+    Create:
+    1. predicted: tag -> sequence of (token, tags)
+    2. gold: tag -> sequence of (token, tags)
+    3. then for each tag:
         - compare heads of lists:
          -- match == tp
          -- predicted miss == fp
          -- gold miss = fn
      */
-    var predictedTags: Seq[(Token, BIOType.Value)] = spans
+    val predictedTags: Map[BIOType.Value, Seq[(Token, BIOType.Value)]] = spans
       .flatMap(span => span.getTokenNTags())
       .sortBy(t => t._1.offset)
-    var goldTags: Seq[(Token, BIOType.Value)] = goldSet.toSeq
+      .groupBy({case (token, tag) => tag})
+
+    val goldTags: Map[BIOType.Value, Seq[(Token, BIOType.Value)]] = goldSet.toSeq
       .flatMap({ case (_, anns) => anns.flatMap(a => a.getTokensNTags())})
       .sortBy(x => x._1.offset)
+      .groupBy({case (token, tag) => tag})
 
-    val store = collection.mutable.Map[String, StatsCounter]()
-
-    while (predictedTags.nonEmpty && goldTags.nonEmpty) {
-      val (pTok, pTag) = predictedTags.head
-      val (gTok, gTag) = goldTags.head
-      if (pTok.offset < gTok.offset) {
-        // if we're not at the same token -- prediction is before
-        store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
-        predictedTags = predictedTags.tail
-      } else if (gTok.offset < pTok.offset) {
-        // gold is before
-        store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
-        goldTags = goldTags.tail
-      } else {
-        // we're at the same token
-        require(pTok.length == gTok.length, "Token lengths should be the same at the same offset.")
-        require(pTok.content.equals(gTok.content), "Token content should be the same at the same offset.")
-        if (pTag == gTag) {
-          // our tags are equal
-          store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).tp += 1
-        } else {
-          // our tags differ
-          // else we have a B & I, or I & B. So for predicted it's a fp, for gold it's a fn.
-          store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
-          store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
-        }
-        goldTags = goldTags.tail
-        predictedTags = predictedTags.tail
-      }
-    }
-    // get stragglers
-    predictedTags.foreach({ case (tok, pTag) =>
-      store.getOrElseUpdate(pTag.toString, StatsCounter(0, 0, 0)).fp += 1
-    })
-    goldTags.foreach({ case (tok, gTag) =>
-      store.getOrElseUpdate(gTag.toString, StatsCounter(0, 0, 0)).fn += 1
-    })
-    store.map({ case (tagName, sc) => new TokenTagDataPoint(tagName, sc.tp, sc.fp, sc.fn) }).toSeq
+    BIOType.values.map(bio => {
+      val predicted = predictedTags.getOrElse(bio, Seq())
+      val gold = goldTags.getOrElse(bio, Seq())
+      val (tp, fp, fn) = tokenDPHelper(
+        predicted.map({case (token, _) => token}),
+        gold.map({case (token, _) => token}))
+      new TokenTagDataPoint(bio.toString, tp, fp, fn)
+      // remove all zeros
+    }).toSeq.filter(t => t.fn > 0 || t.fp > 0 || t.tp > 0)
   }
 
   /**
@@ -692,7 +687,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
   override def createTrainingSummary(engine: Engine,
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
-                                     summaryName: String, portion: Double): Option[Seq[TrainingSummary]] = {
+                                     summaryName: String, portion: Double): Seq[TrainingSummary] = {
     val dbleToLabel = labelToDouble.map(x => (x._2, x._1))
     val exactSummary = new TrainingSummary(summaryName,
       exactMatchEval(dataPoints.map(dp => (dp.predicted, dp.gold)), dbleToLabel) ++
@@ -720,7 +715,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
         MetricTypes.Notes,
         MetricClass.Multiclass,
         Seq((AlloyEvaluator.GRANULARITY, Granularity.TokenTag.toString)))))
-    Some(Seq(exactSummary, tokenSummary, tokenTagSummary))
+    Seq(exactSummary, tokenSummary, tokenTagSummary)
   }
 
   /**
@@ -1003,7 +998,7 @@ case class NoOpEvaluator() extends AlloyEvaluator {
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
-                                     portion: Double): Option[Seq[TrainingSummary]] = None
+                                     portion: Double): Seq[TrainingSummary] = Seq()
 }
 
 /**

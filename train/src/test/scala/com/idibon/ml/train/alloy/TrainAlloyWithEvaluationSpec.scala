@@ -123,7 +123,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
           new DataSetInfo(0, 0.0, Map()),
           null, () => Seq(onePos)),
         new DummyAlloyEvaluator())
-      val Some(Seq(actual)) = trainer(null, None)
+      val Seq(actual) = trainer(null, None)
       actual.identifier shouldBe "test"
       actual.metrics shouldBe Seq()
     }
@@ -157,8 +157,8 @@ class DummyAlloyEvaluator extends AlloyEvaluator {
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
-                                     portion: Double): Option[Seq[TrainingSummary]] = {
-    Some(Seq(new TrainingSummary("test", Seq())))
+                                     portion: Double): Seq[TrainingSummary] = {
+    Seq(new TrainingSummary("test", Seq()))
   }
 }
 class DummyTrainer extends AlloyTrainer {

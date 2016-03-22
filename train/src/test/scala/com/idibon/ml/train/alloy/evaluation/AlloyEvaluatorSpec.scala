@@ -70,7 +70,7 @@ class AlloyEvaluatorSpec extends FunSpec
     }
     it("createTrainingSummary works as expected") {
       val me = new MultiClassMetricsEvaluator(null, 0.7f)
-      val Some(Seq(actual)) = me.createTrainingSummary(engine, Seq(
+      val Seq(actual) = me.createTrainingSummary(engine, Seq(
                 new ClassificationEvaluationDataPoint(Array(1.0), Array(1.0), Seq()),
                 new ClassificationEvaluationDataPoint(Array(0.0), Array(0.0), Seq())
               ), Map("a" -> 1.0, "b" -> 0.0), "name")
@@ -132,7 +132,7 @@ class AlloyEvaluatorSpec extends FunSpec
     }
     it("createTrainingSummary works as expected") {
       val me = new MultiLabelMetricsEvaluator(null, 0.7f)
-      val Some(Seq(actual)) = me.createTrainingSummary(engine, Seq(
+      val Seq(actual) = me.createTrainingSummary(engine, Seq(
                 new ClassificationEvaluationDataPoint(Array(1.0), Array(1.0), Seq()),
                 new ClassificationEvaluationDataPoint(Array(0.0), Array(0.0), Seq())
               ), Map("a" -> 1.0, "b" -> 0.0), "name")
@@ -394,7 +394,7 @@ class AlloyEvaluatorSpec extends FunSpec
       val expected = SpanEvaluationDataPoint(
         Array(1.0, 1.0), Array(0.0, 1.0, 0.0, 1.0), Seq((1.0, 0.5f)),
         Seq(TokenDataPoint(0.0, 0, 0, 3), TokenDataPoint(1.0, 1, 0, 0)),
-        Seq(TokenTagDataPoint("INSIDE", 0, 0, 2), TokenTagDataPoint("BEGIN", 1, 0, 1)))
+        Seq(TokenTagDataPoint("BEGIN", 1, 0, 1), TokenTagDataPoint("INSIDE", 0, 0, 2)))
       actual.predicted shouldBe expected.predicted
       actual.gold shouldBe expected.gold
       actual.rawProbabilities shouldBe expected.rawProbabilities
@@ -601,7 +601,7 @@ class AlloyEvaluatorSpec extends FunSpec
           Seq(new TokenTagDataPoint("a", 1, 3, 2), new TokenTagDataPoint("b", 1, 3, 2))
         ))
       val e = new BIOSpanMetricsEvaluator(engine, bIOTagger)
-      val Some(actual) = e.createTrainingSummary(engine, dps, Map("a" -> 0.0, "b" -> 1.0), "test", 1.0)
+      val actual = e.createTrainingSummary(engine, dps, Map("a" -> 0.0, "b" -> 1.0), "test", 1.0)
       actual.size shouldBe 3
       actual.map(ts => {
         val Some(notes) = ts.metrics.find(p => p.metricType == MetricTypes.Notes)
@@ -833,7 +833,7 @@ class AlloyEvaluatorSpec extends FunSpec
     }
     it("doesn't break creating training summaries") {
       val n = new NoOpEvaluator()
-      n.createTrainingSummary(null, Seq(), null, "", 0.0) shouldBe None
+      n.createTrainingSummary(null, Seq(), null, "", 0.0) shouldBe Seq()
     }
   }
 }
