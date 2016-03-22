@@ -60,22 +60,26 @@ trait BIOAssembly {
   }
 
   /**
-    * Grabs the appropriate tokens and tags from a start token, and an interable
-    * of tokens & tags...
+    * Returns tokens & tags based on the predict options passed.
+    *
+    * If the tokens predict option is passed, returns them.
+    * If the token tags prediction option is passed, returns them.
     *
     * @param startTok
     * @param inside
     * @param predictOptions
-    * @return
+    * @return tuple of possible empty sequences, representing tokens & token tags.
     */
   def getTokensAndTags(startTok: Token,
                        inside: Iterable[(Token, (BIOTag, Double))],
                        predictOptions: PredictOptions): (Seq[Token], Seq[BIOType.Value]) = {
+    // grab tokens if we need to
     val tokens = if (predictOptions.includeTokens) {
-      Seq(startTok) ++ inside.map({case (t, (b, p)) => t})
+      Seq(startTok) ++ inside.map({case (token, _) => token})
     } else Seq()
+    // grab token tags if we need to
     val tokenTags = if (predictOptions.includeTokenTags) {
-      Seq(BIOType.BEGIN) ++ inside.map({case (t, (b, p)) => b.bio})
+      Seq(BIOType.BEGIN) ++ inside.map({case (_, (bio, _)) => bio.bio})
     } else Seq()
     (tokens, tokenTags)
   }
