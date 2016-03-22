@@ -419,7 +419,12 @@ class AlloyEvaluatorSpec extends FunSpec
         Seq(Token("engineer", Tag.Word, 24, 8)),
         Seq(BIOType.BEGIN))
       val actual = e.exactMatchEvalDataPoint(l2d, gs, Seq(s))
-      actual shouldBe ((Seq(1.0), Seq(1)), (Seq(0.0, 1.0), Seq(0, 1)), Seq((1.0, 0.5)))
+      val expected = ExactMatchCounts(
+        PredictedMatchCounts(Seq(1.0), Seq(1)),
+        GoldMatchCounts(Seq(0.0, 1.0), Seq(0, 1)),
+        Seq(PredictedProbability(1.0, 0.5f))
+      )
+      actual shouldBe expected
     }
 
     it("handles wrong label in exact match data point creation in exactMatchEvalDataPoint") {
@@ -438,7 +443,12 @@ class AlloyEvaluatorSpec extends FunSpec
         Seq(Token("engineer", Tag.Word, 24, 8)),
         Seq(BIOType.BEGIN))
       val actual = e.exactMatchEvalDataPoint(l2d, gs, Seq(s))
-      actual shouldBe ((Seq(0.0), Seq(0)), (Seq(1.0, 0.0), Seq(0, 0)), Seq((0.0, 0.5)))
+      val expected = ExactMatchCounts(
+        PredictedMatchCounts(Seq(0.0), Seq(0)),
+        GoldMatchCounts(Seq(1.0, 0.0), Seq(0, 0)),
+        Seq(PredictedProbability(0.0, 0.5f))
+      )
+      actual shouldBe expected
     }
 
     it("handles wrong length but matching label in exactMatchEvalDataPoint") {
@@ -457,7 +467,12 @@ class AlloyEvaluatorSpec extends FunSpec
         Seq(Token("engineer", Tag.Word, 24, 10)),
         Seq(BIOType.BEGIN))
       val actual = e.exactMatchEvalDataPoint(l2d, gs, Seq(s))
-      actual shouldBe ((Seq(1.0), Seq(0)), (Seq(1.0, 0.0), Seq(0, 0)), Seq((1.0, 0.5)))
+      val expected = ExactMatchCounts(
+        PredictedMatchCounts(Seq(1.0), Seq(0)),
+        GoldMatchCounts(Seq(1.0, 0.0), Seq(0, 0)),
+        Seq(PredictedProbability(1.0, 0.5f))
+      )
+      actual shouldBe expected
     }
 
     it("handles exact token match in tokenEvalDataPoint") {

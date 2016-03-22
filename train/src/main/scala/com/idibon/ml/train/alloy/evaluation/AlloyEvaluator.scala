@@ -469,21 +469,21 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                          classifications: util.List[_],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
-    val (numberGuessesCorrect, numberGoldCorrect,predictedProbabilities) =
-      exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
+    val exactMatchCounts = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
       They are arrays of doubles - where the first half are the classes of the labels predicted,
       while the second half is a 0 or 1 indicating whether that was correct or not.
       So from predicted we can compute tp & fp. While from gold we can compute tp & fn.
      */
-    val predicted = numberGuessesCorrect._1 ++ numberGuessesCorrect._2.map(_.toDouble)
-    val gold = numberGoldCorrect._1 ++ numberGoldCorrect._2.map(_.toDouble)
+    val predicted = exactMatchCounts.pmc.labels ++ exactMatchCounts.pmc.count.map(_.toDouble)
+    val gold = exactMatchCounts.gmc.classes ++ exactMatchCounts.gmc.count.map(_.toDouble)
     // token & token tag datapoints are just counts of
     // tag/doubleLabel -> (true pos, false pos, false neg) counts.
     val tokenDP: Seq[TokenDataPoint] = tokenEvalDataPoint(labelToDouble, goldSet, spans)
     val tokenTagDP: Seq[TokenTagDataPoint] = tokenTagEvalDataPoint(labelToDouble, goldSet, spans)
-    new SpanEvaluationDataPoint(predicted.toArray, gold.toArray, predictedProbabilities, tokenDP, tokenTagDP)
+    val predictedProbability = exactMatchCounts.pp.map(p => (p.label, p.probability))
+    new SpanEvaluationDataPoint(predicted.toArray, gold.toArray, predictedProbability, tokenDP, tokenTagDP)
   }
 
   /**
@@ -524,7 +524,12 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     })
     val (doubleLabel, matches, probabilities) = numberGuessesCorrect.unzip3
     val predictedProbabilities = doubleLabel.zip(probabilities)
-    ((doubleLabel, matches), numberGoldCorrect.unzip, predictedProbabilities.toSeq)
+      .map({case (label, prob) => PredictedProbability(label, prob)}).toSeq
+    val numGoldCorrect = numberGoldCorrect.unzip
+    ExactMatchCounts(
+      PredictedMatchCounts(doubleLabel, matches),
+      GoldMatchCounts(numGoldCorrect._1, numGoldCorrect._2),
+      predictedProbabilities)
   }
 
   /**
@@ -690,31 +695,31 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                      summaryName: String, portion: Double): Seq[TrainingSummary] = {
     val dbleToLabel = labelToDouble.map(x => (x._2, x._1))
     val exactSummary = new TrainingSummary(summaryName,
-      exactMatchEval(dataPoints.map(dp => (dp.predicted, dp.gold)), dbleToLabel) ++
-        Seq(new PropertyMetric(
+      exactMatchEval(dataPoints.map(dp => (dp.predicted, dp.gold)), dbleToLabel) :+
+        new PropertyMetric(
           MetricTypes.Notes,
           MetricClass.Multiclass,
-          Seq((AlloyEvaluator.GRANULARITY, Granularity.Span.toString)))))
+          Seq((AlloyEvaluator.GRANULARITY, Granularity.Span.toString))))
     val tokenMetrics = tokenMatchEval(dataPoints
       .map(dp => dp.asInstanceOf[SpanEvaluationDataPoint])
       .flatMap(dp => dp.tokenDP), labelToDouble)
     val tokenSummary = new TrainingSummary(
       summaryName,
-      tokenMetrics ++
-        Seq(new PropertyMetric(
+      tokenMetrics :+
+        new PropertyMetric(
           MetricTypes.Notes,
           MetricClass.Multiclass,
-          Seq((AlloyEvaluator.GRANULARITY, Granularity.Token.toString)))))
+          Seq((AlloyEvaluator.GRANULARITY, Granularity.Token.toString))))
     val tokenTagMetrics = tokenTagMatchEval(dataPoints
       .map(dp => dp.asInstanceOf[SpanEvaluationDataPoint])
       .flatMap(dp => dp.tokenTagDP))
     val tokenTagSummary = new TrainingSummary(
       summaryName,
-      tokenTagMetrics
-        ++ Seq(new PropertyMetric(
+      tokenTagMetrics :+
+        new PropertyMetric(
         MetricTypes.Notes,
         MetricClass.Multiclass,
-        Seq((AlloyEvaluator.GRANULARITY, Granularity.TokenTag.toString)))))
+        Seq((AlloyEvaluator.GRANULARITY, Granularity.TokenTag.toString))))
     Seq(exactSummary, tokenSummary, tokenTagSummary)
   }
 
@@ -1056,8 +1061,20 @@ trait StatsCounts {
   def fn: Int
 }
 
+/*
+ Helper classes for making objects that get passed around easier to understand.
+ */
+
 case class StatsCounter(var tp: Int, var fp: Int, var fn: Int) extends StatsCounts
 
 case class TokenDataPoint(doubleLabel: Double, tp: Int, fp: Int, fn: Int) extends StatsCounts
 
 case class TokenTagDataPoint(tagName: String, tp: Int, fp: Int, fn: Int) extends StatsCounts
+
+case class ExactMatchCounts(pmc: PredictedMatchCounts,
+                            gmc: GoldMatchCounts,
+                            pp: Seq[PredictedProbability])
+
+case class PredictedMatchCounts(labels: Iterable[Double], count: Iterable[Int])
+case class GoldMatchCounts(classes: Iterable[Double], count: Iterable[Int])
+case class PredictedProbability(label: Double, probability: Float)
