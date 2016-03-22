@@ -118,26 +118,5 @@ class CrossValidatingAlloyForgeSpec extends FunSpec
         case n: LabelFloatMetric => (n.label, n.metricType)
       }) shouldBe expected.metrics
     }
-
-    it("gets correct min probability") {
-      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
-        0.4f, 0.5f, 0.88f, 0.9f
-      ))
-      val trainer = new CrossValidatingAlloyForge[Classification](
-        engine, "test", Seq(), null, 0, 0.0, 1L)
-      val actual = trainer.computeMinProbability(fl)
-      val expected = new LabelFloatMetric(MetricTypes.LabelMinConfidence, MetricClass.Binary, "x", 0.4f)
-      actual shouldBe expected
-    }
-    it("gets correct max probability") {
-      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
-        0.4f, 0.5f, 0.88f, 0.9f
-      ))
-      val trainer = new CrossValidatingAlloyForge[Classification](
-        engine, "test", Seq(), null, 0, 0.0, 1L)
-      val actual = trainer.computeMaxProbability(fl)
-      val expected = new LabelFloatMetric(MetricTypes.LabelMaxConfidence, MetricClass.Binary, "x", 0.9f)
-      actual shouldBe expected
-    }
   }
 }

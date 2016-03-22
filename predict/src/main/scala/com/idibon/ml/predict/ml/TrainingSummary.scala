@@ -2,7 +2,8 @@ package com.idibon.ml.predict.ml
 
 import com.idibon.ml.alloy.Codec
 import com.idibon.ml.feature.{FeatureOutputStream, FeatureInputStream, Builder, Buildable}
-import com.idibon.ml.predict.ml.metrics.Metric
+import com.idibon.ml.predict.ml.metrics.MetricClass.MetricClass
+import com.idibon.ml.predict.ml.metrics._
 
 /**
   * Class that wraps results for an individual PredictModel.
@@ -28,6 +29,28 @@ case class TrainingSummary(identifier: String, metrics: Seq[Metric with Buildabl
       sb.append(m.toString()).append("\n")
     })
     sb.mkString
+  }
+}
+
+object TrainingSummary {
+
+  /**
+    * Averages a bunch of training summaries.
+    *
+    * Groups metrics by type and uses the static metric average function to average them.
+    *
+    * @param name the name to give the new summary
+    * @param summaries the sequence of training summaries to get metrics from to average.
+    * @param mClass the metric class to give the new metrics.
+    * @return a training summary with "averaged" metrics
+    */
+  def averageSummaries(name: String, summaries: Seq[TrainingSummary], mClass: MetricClass) = {
+    val allMetrics = summaries.flatMap(ts => ts.metrics)
+    val groupedMetrics = allMetrics.groupBy(m => m.metricType)
+    val averagedMetrics = groupedMetrics.flatMap({ case (metricType, metrics) =>
+      Metric.average(metrics, Some(mClass))
+    }).toSeq
+    new TrainingSummary(name, averagedMetrics)
   }
 }
 

@@ -130,6 +130,29 @@ object LabelFloatMetric {
       new LabelFloatMetric(labelMetrics.head.mType, newMetricClass, labelMetrics.head.label, avg)
     }).toSeq
   }
+
+  /**
+    * Helper method to get the max probability seen and create a metric from it.
+    *
+    * @param metric
+    * @return
+    */
+  def computeMaxProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMaxConfidence, metric.metricClass, metric.label, metric.points.max)
+  }
+
+
+  /**
+    * Helper method to get the min probability seen and create a metric from it.
+    *
+    * @param metric
+    * @return
+    */
+  def computeMinProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMinConfidence, metric.metricClass, metric.label, metric.points.min)
+  }
 }
 
 /**
@@ -424,7 +447,7 @@ object PropertyMetric {
     */
   def clone(metrics: Seq[PropertyMetric], metricClass: Option[MetricClass.Value] = None): Seq[PropertyMetric] = {
     metrics.map(m => {
-      val mClass = if (metricClass.isDefined) metricClass.get else m.mClass
+      val mClass = metricClass.getOrElse(m.mClass)
       new PropertyMetric(m.mType, mClass, m.properties)
     })
   }

@@ -58,27 +58,24 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
   extends AlloyForge[T] with HasAlloyForges[T] with KFoldDataSetCreator with StrictLogging {
 
   override val forges: Seq[AlloyForge[T]] = Seq(forge)
-  /**
-    * Method to orchestrate cross validation.
+
+
+  /** Initiate a batch training process across all models to produce the Alloy
     *
-    * @param alloyName the name to give the final alloy.
-    * @param options the training options with the training data to use.
-    * @param evaluator the alloy evaluator to use for fold evaluation.
-    * @param labelToDouble maps labels to double values for metrics computation use.
+    * @param options configuration options
+    * @param evaluator the evaluator used to measure the underlying alloy.
     * @return an alloy -- with the stats inside as training summaries.
     */
-  def doCrossValidation(alloyName: String,
-                        options: TrainOptions,
-                        evaluator: AlloyEvaluator,
-                        labelToDouble: Map[Label, Double]): Alloy[T] = {
+  override def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T] =  {
     import ExecutionContext.Implicits.global
+    val labelToDouble = labels.zipWithIndex.map({ case (label, index) => (label, index.toDouble) }).toMap
     // create folds -- i.e. data sets
     val folds = createFoldDataSets(options.dataSet.train, numFolds, portion, foldSeed, labelToDouble)
     // get training summaries from alloy
-    val summaries = crossValidate(alloyName, evaluator, folds, options)
+    val summaries = crossValidate(name, evaluator, folds, options)
     // average the results
     val resultsAverage = averageMetrics(s"$name${CrossValidatingAlloyForge.SUFFIX}", summaries)
-    logger.info(s"Xval results for - $alloyName:\n ${resultsAverage.toString}")
+    logger.info(s"Xval results for - $name:\n ${resultsAverage.toString}")
     if (skipFinalTraining) {
       // create new alloy with just xval summaries -- no model!
       new BaseAlloy[T](name, labels, Map()) with HasTrainingSummary {
@@ -93,9 +90,9 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
         .map(a => {
           // get training summary
           val finalAlloyTrainingSummary = HasTrainingSummary.getSummaries[T](a)
-            .map(ts => new TrainingSummary(s"$alloyName-${ts.identifier}", ts.metrics))
+            .map(ts => new TrainingSummary(s"$name-${ts.identifier}", ts.metrics))
           // create new alloy with combined summaries
-          new BaseAlloy[T](alloyName, labels, a.models) with HasTrainingSummary {
+          new BaseAlloy[T](name, labels, a.models) with HasTrainingSummary {
             override def getTrainingSummaries = {
               Some(resultsAverage ++ finalAlloyTrainingSummary)
             }
@@ -134,32 +131,74 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
   def averageMetrics(summaryName: String,
                      trainingSummaries: Seq[TrainingSummary]): Seq[TrainingSummary] = {
     // split by notes
-    val byGranularity = trainingSummaries.groupBy(ts => {
-      // get the granularity out
-      ts.metrics
-        .filter(m => m.metricType == MetricTypes.Notes)
-        .collect({case p: PropertyMetric => p})
-        .find(p => p.properties.filter({case (key, value) => key.equals(AlloyEvaluator.GRANULARITY)}).nonEmpty)
-        .map(p => p.properties.filter({case (key, value) => key.equals(AlloyEvaluator.GRANULARITY)}).head)
-        .getOrElse("n/a")
-    })
-    byGranularity.map({case (graularity, summaries) =>
-      val allMetrics = summaries.flatMap(ts => ts.metrics)
-      val groupedMetrics = allMetrics.groupBy(m => m.metricType)
-      val averagedMetrics = groupedMetrics.flatMap({ case (metricType, metrics) =>
-        Metric.average(metrics, Some(MetricClass.Alloy))
-      }).toSeq
-      val processedMetrics = averagedMetrics.flatMap(metric => {
-        val metricType = metric.metricType
-        (metric, metricType) match {
-          case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) =>
-            Seq[Metric with Buildable[_, _]](
-              computeProbabilityDeciles(m), computeMinProbability(m), computeMaxProbability(m))
-          case _ => Seq[Metric with Buildable[_, _]](metric)
-        }
-      })
-      new TrainingSummary(summaryName, processedMetrics)
+    val byGranularity = trainingSummaries.groupBy(ts => getGranularity(ts)) // get the granularity out
+    byGranularity.map({case (_, summaries) =>
+      // average the training summaries
+      val averagedSummmary = TrainingSummary.averageSummaries(summaryName, summaries, MetricClass.Alloy)
+      // create additional metrics
+      val extraMetrics = createAdditionalMetrics(averagedSummmary.metrics)
+      // filter unwanted metrics
+      val filteredMetrics = filterUnwantedMetrics(averagedSummmary.metrics)
+      // create summary
+      new TrainingSummary(summaryName, filteredMetrics ++ extraMetrics)
     }).toSeq
+  }
+
+  /**
+    * Filters unwanted metrics that cross validation wants to remove.
+    *
+    * Specifically it removes MetricTypes.LabelProbabilities metrics.
+    *
+    * @param metrics metrics to filter
+    * @return a filtered list of metrics
+    */
+  def filterUnwantedMetrics(metrics: Seq[Metric with Buildable[_, _]]) = {
+    metrics.filterNot(metric => {
+      val mType = metric.metricType
+      (metric, mType) match {
+        case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) => true
+        case _ => false
+      }
+    })
+  }
+
+  /**
+    * Helper method to inspect a training summary and get the granularity out.
+    *
+    * @param ts the training summary to inspect
+    * @return a string value representing the granularity
+    */
+  private def getGranularity(ts: TrainingSummary): String = {
+    ts.metrics
+      .filter(m => m.metricType == MetricTypes.Notes)
+      .collect({ case p: PropertyMetric => p })
+      .find(p => p.properties
+        .filter({ case (key, value) => key.equals(AlloyEvaluator.GRANULARITY) }).nonEmpty)
+      .map(p => p.properties
+        .filter({ case (key, value) => key.equals(AlloyEvaluator.GRANULARITY) }).head._2)
+      .getOrElse("n/a")
+  }
+
+  /**
+    * Creates additional metrics that cross validation wants to add to the training summary.
+    *
+    * Namely, adds:
+    *  - max probability
+    *  - min probabilty
+    *  - computed deciles
+    *
+    * @param metrics the metrics to use as a base
+    * @return
+    */
+  def createAdditionalMetrics(metrics: Seq[Metric with Buildable[_, _]]) = {
+    metrics.filter(metric => metric.metricType ==  MetricTypes.LabelProbabilities)
+      .collect({case (m: LabelFloatListMetric) => m})
+      .flatMap(m => {
+        Seq[Metric with Buildable[_, _]](
+          computeProbabilityDeciles(m),
+          LabelFloatMetric.computeMinProbability(m),
+          LabelFloatMetric.computeMaxProbability(m))
+      })
   }
 
   /**
@@ -191,41 +230,8 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
   }
 
   /**
-    * Helper method to get the min probability seen and create a metric from it.
-    *
-    * @param metric
-    * @return
-    */
-  def computeMinProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
-    new LabelFloatMetric(
-      MetricTypes.LabelMinConfidence, metric.metricClass, metric.label, metric.points.min)
-  }
-
-  /**
-    * Helper method to get the max probability seen and create a metric from it.
-    *
-    * @param metric
-    * @return
-    */
-  def computeMaxProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
-    new LabelFloatMetric(
-      MetricTypes.LabelMaxConfidence, metric.metricClass, metric.label, metric.points.max)
-  }
-
-  /** Initiate a batch training process across all models to produce the Alloy
-    *
-    * @param options configuration options
-    * @param evaluator the evaluator used to measure the underlying alloy.
-    * @return an asynchronous training Future with the Alloy
-    */
-  override def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T] =  {
-
-    val labelToDouble = labels.zipWithIndex.map({ case (label, index) => (label, index.toDouble) }).toMap
-    doCrossValidation(name, options, evaluator, labelToDouble)
-  }
-
-  /**
     * Gets the evaluator for this alloy.
+    *
     * @param engine
     * @param taskType
     * @return
@@ -248,7 +254,7 @@ object CrossValidatingSpanAlloyForge extends ((Engine, String, Seq[Label], JObje
     implicit val formats = org.json4s.DefaultFormats
     val config = json.extract[CrossValidatingAlloyForgeConfig]
     //TODO: check version
-    val forge = AlloyForge.apply[Span](engine, config.forgeName, name, labels, config.forgeConfig)
+    val forge = AlloyForge[Span](engine, config.forgeName, name, labels, config.forgeConfig)
     val numFolds = config.numFolds
     val portion = config.portion
     val foldSeed = config.foldSeed

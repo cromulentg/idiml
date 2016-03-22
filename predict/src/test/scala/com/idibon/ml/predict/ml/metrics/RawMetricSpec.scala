@@ -223,4 +223,22 @@ class AverageMetricSpec extends FunSpec with Matchers
       actual shouldBe expected
     }
   }
+  describe("min & max test") {
+    it("gets correct min probability") {
+      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
+        0.4f, 0.5f, 0.88f, 0.9f
+      ))
+      val actual = LabelFloatMetric.computeMinProbability(fl)
+      val expected = new LabelFloatMetric(MetricTypes.LabelMinConfidence, MetricClass.Binary, "x", 0.4f)
+      actual shouldBe expected
+    }
+    it("gets correct max probability") {
+      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
+        0.4f, 0.5f, 0.88f, 0.9f
+      ))
+      val actual = LabelFloatMetric.computeMaxProbability(fl)
+      val expected = new LabelFloatMetric(MetricTypes.LabelMaxConfidence, MetricClass.Binary, "x", 0.9f)
+      actual shouldBe expected
+    }
+  }
 }
