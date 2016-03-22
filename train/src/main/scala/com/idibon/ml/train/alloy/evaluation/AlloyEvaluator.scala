@@ -259,7 +259,7 @@ object Granularity extends Enumeration {
   */
 case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThreshold: Float) extends AlloyEvaluator {
   /**
-    * Creates a tuple of (prediction(s), label(s)).
+    * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
     * This is because this is the raw data point that spark's internal metrics
     * classes use, which we use to compute statistics from.
     *
@@ -529,6 +529,16 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
   /**
     * Creates data points for token evaluation.
     *
+    * The algorithm is basically comparing the predicted sequence with the gold sequence.
+    * This entails checking:
+    *  1) that we're looking at the right offsets on a token basis
+    *  2) and if we are, are we looking at the right token label or not
+    *
+    * Then depending on how #1 or #2 are violated or not, we increment:
+    *   - true positives if we match properly
+    *   - false positives if a prediction misses
+    *   - false negatives if we miss predicting a gold
+    *
     * @param labelToDouble
     * @param goldSet
     * @param spans
@@ -592,6 +602,16 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
 
   /**
     * Creates data points for token tag evaluation.
+    *
+    * The algorithm is basically comparing the predicted sequence with the gold sequence.
+    * This entails checking:
+    *  1) that we're looking at the right offsets on a token basis
+    *  2) and if we are, are we looking at the right tag or not
+    *
+    * Then depending on how #1 or #2 are violated or not, we increment:
+    *   - true positives if we match properly
+    *   - false positives if a prediction misses
+    *   - false negatives if we miss predicting a gold
     *
     * @param labelToDouble
     * @param goldSet
@@ -789,11 +809,13 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     */
   def computeMicroMetrics(totals: Map[_, (Int, Int, Int)],
                           mClass: MetricClass.Value = MetricClass.Multiclass) = {
-    val (ttp, tfp, tfn) = totals.values.foldRight((0f, 0f, 0f))({case (((p, r, f1)), (totalP, totalR, totalF1)) =>
-      (p + totalP, r + totalR, f1 + totalF1)
-    })
-    val microP = ttp.toFloat / (ttp.toFloat + tfp.toFloat)
-    val microR = ttp.toFloat / (ttp.toFloat + tfn.toFloat)
+    // unzip into lists
+    val (tP, fP, fN) = totals.values.unzip3
+    // sum those lists
+    val (tPsum, fPSum, fNSum) = (tP.sum, fP.sum, fN.sum)
+    // compute
+    val microP = tPsum.toFloat / (tPsum.toFloat + fPSum.toFloat)
+    val microR = tPsum.toFloat / (tPsum.toFloat + fNSum.toFloat)
     val microF1 = computeF1(microP, microR)
     Seq(
       new FloatMetric(MetricTypes.MicroPrecision, mClass, microP),
@@ -814,13 +836,11 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     */
   def computeMacroMetrics(metrics:  Map[_, (LabelFloatMetric, LabelFloatMetric, LabelFloatMetric)],
                           mClass: MetricClass.Value = MetricClass.Multiclass) = {
-    val macroSums = metrics.values
-      .foldRight((0f, 0f, 0f))({ case ((p, r, f1m), (totalP, totalR, totalF1)) =>
-        (p.float + totalP, r.float + totalR, f1m.float + totalF1)
-      })
-    val macroP = macroSums._1 / metrics.size.toFloat
-    val macroR = macroSums._2 / metrics.size.toFloat
-    val macroF1 = macroSums._3 / metrics.size.toFloat
+    // unzip to just get 3 lists that we then individually sum over
+    val (macroPRaw, macroRRaw, macroF1Raw) = metrics.values.unzip3
+    val macroP = macroPRaw.map(_.float).sum / metrics.size.toFloat
+    val macroR = macroRRaw.map(_.float).sum / metrics.size.toFloat
+    val macroF1 = macroF1Raw.map(_.float).sum / metrics.size.toFloat
     Seq(
       new FloatMetric(MetricTypes.MacroPrecision, mClass, macroP),
       new FloatMetric(MetricTypes.MacroRecall, mClass, macroR),
@@ -960,7 +980,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     * @return
     */
   def computeF1(precision: Float, recall: Float): Float = {
-    if (precision + recall > 0f || precision + recall < 0f) {
+    if (precision + recall != 0f) {
       2.0f * (precision * recall) / (precision + recall)
     } else { 0f }
   }
