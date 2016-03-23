@@ -75,7 +75,8 @@ object BasicTrain {
           .addDocuments(lazyFileReader(trainingDataFile)())
         val trainer = AlloyForge[Span](engine, alloyConfig.forgeName, alloyName, labels,
           alloyConfig.forgeConfig)
-        Await.result(trainer.forge(options.build(labels), new NoOpEvaluator()), Duration.Inf)
+        val evaluator = trainer.getEvaluator(engine, "extraction.bio_ner")
+        Await.result(trainer.forge(options.build(labels), evaluator), Duration.Inf)
       }
       case _ => {
         val trainer = AlloyFactory.getTrainer(engine, alloyConfig.trainerConfig)

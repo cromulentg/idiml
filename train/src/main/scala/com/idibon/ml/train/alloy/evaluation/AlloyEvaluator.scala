@@ -593,8 +593,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
       (labelToDouble(s.label), matches.size, s.probability)
     })
     val byLabel = spans.groupBy(s => s.label)
-    // note: don't flat map this because the compiler creates a map, rather than a sequence...
-    val numberGoldCorrect: Iterable[(Double, Int)] = goldSet.flatMap({ case (label, annotations) =>
+    // note: don't flat map straight from the map because the compiler creates a map, rather than a sequence...
+    val numberGoldCorrect: Seq[(Double, Int)] = goldSet.toSeq.flatMap({ case (label, annotations) =>
       annotations.map(a => {
         val matches = byLabel.getOrElse(label, Seq()).filter(s => {
           s.offset == a.offset.get && s.length == a.length.get
