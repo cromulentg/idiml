@@ -153,13 +153,9 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
     * @return a filtered list of metrics
     */
   def filterUnwantedMetrics(metrics: Seq[Metric with Buildable[_, _]]) = {
-    metrics.filterNot(metric => {
-      val mType = metric.metricType
-      (metric, mType) match {
-        case (m: LabelFloatListMetric, MetricTypes.LabelProbabilities) => true
-        case _ => false
-      }
-    })
+    metrics.filterNot(metric =>
+      metric.isInstanceOf[LabelFloatListMetric] &&
+        metric.metricType == MetricTypes.LabelProbabilities)
   }
 
   /**
