@@ -475,6 +475,32 @@ class AlloyEvaluatorSpec extends FunSpec
       actual shouldBe expected
     }
 
+    it("makes sure number of gold is done correctly and not affected by bad flatmap in exactMatchEvalDataPoint") {
+      val onePos =
+        parse("""
+          {"content": "\n   John Paul Walsh, an engineer, went to town.",
+          "metadata":{"iso_639_1":"en"},
+          "annotations":[
+          {"label":{"name":"a"},"isPositive":true,"offset":4,"length":13},
+          {"label":{"name":"b"},"isPositive":true,"offset":24,"length":8},
+          {"label":{"name":"b"},"isPositive":true,"offset":35,"length":4},
+          {"label":{"name":"b"},"isPositive":true,"offset":44,"length":4}
+          ]}""").extract[JObject]
+      val e = new BIOSpanMetricsEvaluator(engine, bIOTagger)
+      val l2d = Map("a" -> 0.0, "b" -> 1.0)
+      val gs = e.getGoldSet(onePos)
+      val s = Span("b", 0.5f, 0, 24, 10,
+        Seq(Token("engineer", Tag.Word, 24, 10)),
+        Seq(BIOType.BEGIN))
+      val actual = e.exactMatchEvalDataPoint(l2d, gs, Seq(s))
+      val expected = ExactMatchCounts(
+        PredictedMatchCounts(Seq(1.0), Seq(0)),
+        GoldMatchCounts(Seq(1.0, 1.0, 1.0, 0.0), Seq(0, 0, 0, 0)),
+        Seq(PredictedProbability(1.0, 0.5f))
+      )
+      actual shouldBe expected
+    }
+
     it("handles exact token match in tokenEvalDataPoint") {
       val onePos =
         parse("""
