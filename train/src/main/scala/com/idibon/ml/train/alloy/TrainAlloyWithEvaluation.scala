@@ -60,17 +60,11 @@ class TrainAlloyWithEvaluation(name: String,
   def evaluate(trained: Alloy[Classification],
                thresholds: Map[String, Float]): Seq[EvaluationDataPoint] = {
     dataSet.test().map(doc => {
-      val goldSet = getGoldSet(doc)
-      goldSet.isEmpty match {
-        case true => None
-        case false => {
-          val predicted = trained.predict(doc, PredictOptions.DEFAULT)
-          // create eval data point
-          val evaluationDataPoint = trainingSummaryCreator.createEvaluationDataPoint(
-            uuidStrToDouble, goldSet, predicted, thresholds)
-          Some(evaluationDataPoint)
-        }
-      }
+      val goldSet: Map[String, Seq[EvaluationAnnotation]] = getGoldSet(doc)
+      val predicted = trained.predict(doc, PredictOptions.DEFAULT)
+      // create eval data point
+      trainingSummaryCreator.createEvaluationDataPoint(
+        uuidStrToDouble, goldSet, predicted, thresholds)
     }).toSeq.collect({ case Some(evalPoint) => evalPoint })
   }
 

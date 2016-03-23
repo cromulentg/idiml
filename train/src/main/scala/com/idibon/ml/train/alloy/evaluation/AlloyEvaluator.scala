@@ -42,7 +42,7 @@ trait AlloyEvaluator extends MetricHelper {
   def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                 goldSet: Map[String, Seq[EvaluationAnnotation]],
                                 classifications: util.List[_],
-                                thresholds: Map[String, Float]): EvaluationDataPoint
+                                thresholds: Map[String, Float]): Option[EvaluationDataPoint]
 
   /**
     * Creates a training summary from a sequence of data points.
@@ -203,16 +203,9 @@ trait AlloyEvaluator extends MetricHelper {
                                thresholds: Map[String, Float]) = {
     docs().map(doc => {
       val goldSet = getGoldSet(doc)
-      goldSet.isEmpty match {
-        case true => None
-        case false => {
-          val predicted = alloy.predict(doc, AlloyEvaluator.EVALUATE_PREDICT_DEFAULT)
-          // create eval data point
-          val evaluationDataPoint = this.createEvaluationDataPoint(
-            uuidStrToDouble, goldSet, predicted, thresholds)
-          Some(evaluationDataPoint)
-        }
-      }
+      val predicted = alloy.predict(doc, AlloyEvaluator.EVALUATE_PREDICT_DEFAULT)
+      // create eval data point
+      this.createEvaluationDataPoint(uuidStrToDouble, goldSet, predicted, thresholds)
     }).flatten.toSeq
   }
 
@@ -274,7 +267,7 @@ trait ClassificationEvaluator {
   def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                 goldSet: Map[String, Seq[EvaluationAnnotation]],
                                 classifications: util.List[_],
-                                thresholds: Map[String, Float]): EvaluationDataPoint = {
+                                thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
     doCreateEvaluationDataPoint(
       labelToDouble, goldSet, classifications.map(_.asInstanceOf[Classification]), thresholds)
   }
@@ -293,7 +286,7 @@ trait ClassificationEvaluator {
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                   goldSet: Map[String, Seq[EvaluationAnnotation]],
                                   classifications: Seq[Classification],
-                                  thresholds: Map[String, Float]): EvaluationDataPoint
+                                  thresholds: Map[String, Float]): Option[EvaluationDataPoint]
 }
 
 /**
@@ -316,7 +309,7 @@ trait SpanEvaluator {
   def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                 goldSet: Map[String, Seq[EvaluationAnnotation]],
                                 classifications: util.List[_],
-                                thresholds: Map[String, Float]): EvaluationDataPoint = {
+                                thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
     doCreateEvaluationDataPoint(
       labelToDouble, goldSet, classifications.map(_.asInstanceOf[Span]), thresholds)
   }
@@ -335,7 +328,7 @@ trait SpanEvaluator {
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                   goldSet: Map[String, Seq[EvaluationAnnotation]],
                                   span: Seq[Span],
-                                  thresholds: Map[String, Float]): EvaluationDataPoint
+                                  thresholds: Map[String, Float]): Option[EvaluationDataPoint]
 }
 
 /**
@@ -358,13 +351,15 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                            goldSet: Map[String, Seq[EvaluationAnnotation]],
                                            classifications: Seq[Classification],
-                                           thresholds: Map[String, Float]): EvaluationDataPoint = {
+                                           thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
+    // degenerate case -- we should always have a positive polarity item for the multi-class case.
+    if (goldSet.isEmpty) return None
     val goldLabel = goldSet.map({ case (gl, _) => labelToDouble(gl) }).head
     val maxLabel: Classification = getMaxLabel(classifications, thresholds)
     val rawProbabilities = classifications
       .map(c => (labelToDouble(c.label), c.probability))
-    new ClassificationEvaluationDataPoint(
-      Array[Double](labelToDouble(maxLabel.label)), Array[Double](goldLabel), rawProbabilities)
+    Some(new ClassificationEvaluationDataPoint(
+      Array[Double](labelToDouble(maxLabel.label)), Array[Double](goldLabel), rawProbabilities))
   }
 
   /**
@@ -448,7 +443,7 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: Seq[Classification],
-                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
+                                         thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
     val goldLabels = goldSet.map({ case (gl, _) => labelToDouble(gl) }).toArray
     val predictedLabels = // filter to only those over threshold -- this could potentially be empty.
       classifications.filter(c => {
@@ -456,7 +451,7 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
       }).map(c => labelToDouble(c.label)).toArray
     val rawProbabilities = classifications
       .map(c => (labelToDouble(c.label), c.probability)).toSeq
-    new ClassificationEvaluationDataPoint(predictedLabels, goldLabels, rawProbabilities)
+    Some(new ClassificationEvaluationDataPoint(predictedLabels, goldLabels, rawProbabilities))
   }
 
   /**
@@ -551,7 +546,8 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                            goldSet: Map[String, Seq[EvaluationAnnotation]],
                                            spans: Seq[Span],
-                                           thresholds: Map[String, Float]): EvaluationDataPoint = {
+                                           thresholds: Map[String, Float]):
+  Option[EvaluationDataPoint] = {
     val exactMatchCounts = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
@@ -566,7 +562,9 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
     val tokenDP: Seq[TokenDataPoint] = tokenEvalDataPoint(labelToDouble, goldSet, spans)
     val tokenTagDP: Seq[TokenTagDataPoint] = tokenTagEvalDataPoint(labelToDouble, goldSet, spans)
     val predictedProbability = exactMatchCounts.pp.map(p => (p.label, p.probability))
-    new SpanEvaluationDataPoint(predicted.toArray, gold.toArray, predictedProbability, tokenDP, tokenTagDP)
+    Some(
+      new SpanEvaluationDataPoint(
+        predicted.toArray, gold.toArray, predictedProbability, tokenDP, tokenTagDP))
   }
 
   /**
@@ -1076,8 +1074,8 @@ case class NoOpEvaluator() extends AlloyEvaluator {
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
                                          classifications: util.List[_],
-                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
-    new ClassificationEvaluationDataPoint(Array(), Array(), Seq())
+                                         thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
+    Some(new ClassificationEvaluationDataPoint(Array(), Array(), Seq()))
   }
 
   override def createTrainingSummary(engine: Engine,

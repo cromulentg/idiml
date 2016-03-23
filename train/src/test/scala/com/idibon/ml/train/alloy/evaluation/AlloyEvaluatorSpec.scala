@@ -34,7 +34,7 @@ class AlloyEvaluatorSpec extends FunSpec
         new Classification("m", 0.35f, 1, 0, Seq()),
         new Classification("n", 0.3f, 1, 0, Seq())
       ).asJava
-      val actual = me.createEvaluationDataPoint(
+      val Some(actual) = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0), Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None))),
         classifications, Map("m" -> 0.5f))
       val expected = (Array(0.0), Array(0.0))
@@ -88,7 +88,7 @@ class AlloyEvaluatorSpec extends FunSpec
         new Classification("m", 0.35f, 1, 0, Seq()),
         new Classification("n", 0.3f, 1, 0, Seq())
       ).asJava
-      val actual = me.createEvaluationDataPoint(
+      val Some(actual) = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
         Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
           "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))),
@@ -104,7 +104,7 @@ class AlloyEvaluatorSpec extends FunSpec
         new Classification("m", 0.35f, 1, 0, Seq()),
         new Classification("n", 0.3f, 1, 0, Seq())
       ).asJava
-      val actual = me.createEvaluationDataPoint(
+      val Some(actual) = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
         Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
           "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))),
@@ -120,7 +120,7 @@ class AlloyEvaluatorSpec extends FunSpec
         new Classification("m", 0.35f, 1, 0, Seq()),
         new Classification("n", 0.3f, 1, 0, Seq())
       ).asJava
-      val actual = me.createEvaluationDataPoint(
+      val Some(actual) = me.createEvaluationDataPoint(
         Map("m" -> 0.0, "n" -> 1.0),
         Map("m"->Seq(EvaluationAnnotation(LabelName("m"), true, None, None)),
           "n"->Seq(EvaluationAnnotation(LabelName("n"), true, None, None))
@@ -390,7 +390,7 @@ class AlloyEvaluatorSpec extends FunSpec
       val gs = e.getGoldSet(onePos)
       val c = List(Span("6f5a5c01-4888-4792-af14-79d29ce9ff60", 0.5f, 0, 24, 8, Seq(Token("engineer", Tag.Word, 24, 8)),
         Seq(BIOType.BEGIN))).asJava
-      val actual = e.createEvaluationDataPoint(l2d, gs, c, Map())
+      val Some(actual) = e.createEvaluationDataPoint(l2d, gs, c, Map())
       val expected = SpanEvaluationDataPoint(
         Array(1.0, 1.0), Array(0.0, 1.0, 0.0, 1.0), Seq((1.0, 0.5f)),
         Seq(TokenDataPoint(0.0, 0, 0, 3), TokenDataPoint(1.0, 1, 0, 0)),
@@ -840,7 +840,7 @@ class AlloyEvaluatorSpec extends FunSpec
   describe("NOOP tests") {
     it("doesn't break creating data points") {
       val n = new NoOpEvaluator()
-      val actual = n.createEvaluationDataPoint(Map(), Map(), null, null)
+      val Some(actual) = n.createEvaluationDataPoint(Map(), Map(), null, null)
       val expected = new ClassificationEvaluationDataPoint(Array(), Array(), Seq())
       actual.gold.length shouldBe expected.gold.length
       actual.predicted.length shouldBe expected.predicted.length
