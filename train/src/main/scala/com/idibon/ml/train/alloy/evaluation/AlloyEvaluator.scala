@@ -544,9 +544,9 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
     * @param thresholds
     */
   def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                           goldSet: Map[String, Seq[EvaluationAnnotation]],
-                                           spans: Seq[Span],
-                                           thresholds: Map[String, Float]):
+                                  goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                  spans: Seq[Span],
+                                  thresholds: Map[String, Float]):
   Option[EvaluationDataPoint] = {
     val exactMatchCounts = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
@@ -776,6 +776,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
                                      summaryName: String, portion: Double): Seq[TrainingSummary] = {
     val dbleToLabel = labelToDouble.map(x => (x._2, x._1))
     val exactSummary = new TrainingSummary(summaryName,
+      new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat) +:
       new PropertyMetric(
         MetricTypes.Notes,
         MetricClass.Multiclass,
@@ -786,6 +787,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
       .flatMap(dp => dp.tokenDP), labelToDouble)
     val tokenSummary = new TrainingSummary(
       summaryName,
+      new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat) +:
       new PropertyMetric(
         MetricTypes.Notes,
         MetricClass.Multiclass,
@@ -795,6 +797,7 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
       .flatMap(dp => dp.tokenTagDP))
     val tokenTagSummary = new TrainingSummary(
       summaryName,
+      new FloatMetric(MetricTypes.Portion, MetricClass.Multiclass, portion.toFloat) +:
       new PropertyMetric(
         MetricTypes.Notes,
         MetricClass.Multiclass,
