@@ -255,11 +255,12 @@ object Granularity extends Enumeration {
 }
 
 /**
-  * This handles the mutually exclusive label case.
+  * Trait for creating classification based data points.
   *
-  * @param defaultThreshold
+  * Takes care of making sure we're dealing with classifications.
   */
-case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThreshold: Float) extends AlloyEvaluator {
+trait ClassificationEvaluator {
+
   /**
     * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
     * This is because this is the raw data point that spark's internal metrics
@@ -270,15 +271,98 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
     * @param classifications
     * @param thresholds
     */
-  override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
-                                         classifications: util.List[_],
-                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
+  def createEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                classifications: util.List[_],
+                                thresholds: Map[String, Float]): EvaluationDataPoint = {
+    doCreateEvaluationDataPoint(
+      labelToDouble, goldSet, classifications.map(_.asInstanceOf[Classification]), thresholds)
+  }
+
+  /**
+    * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
+    * This is because this is the raw data point that spark's internal metrics
+    * classes use, which we use to compute statistics from.
+    *
+    * @param labelToDouble
+    * @param goldSet
+    * @param classifications
+    * @param thresholds
+    * @return
+    */
+  def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                  goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                  classifications: Seq[Classification],
+                                  thresholds: Map[String, Float]): EvaluationDataPoint
+}
+
+/**
+  * Trait for creating span based data points.
+  *
+  * Takes care of making sure we're dealing with spans.
+  */
+trait SpanEvaluator {
+
+  /**
+    * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
+    * This is because this is the raw data point that spark's internal metrics
+    * classes use, which we use to compute statistics from.
+    *
+    * @param labelToDouble
+    * @param goldSet
+    * @param classifications
+    * @param thresholds
+    */
+  def createEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                classifications: util.List[_],
+                                thresholds: Map[String, Float]): EvaluationDataPoint = {
+    doCreateEvaluationDataPoint(
+      labelToDouble, goldSet, classifications.map(_.asInstanceOf[Span]), thresholds)
+  }
+
+  /**
+    * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
+    * This is because this is the raw data point that spark's internal metrics
+    * classes use, which we use to compute statistics from.
+    *
+    * @param labelToDouble
+    * @param goldSet
+    * @param span
+    * @param thresholds
+    * @return
+    */
+  def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                  goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                  span: Seq[Span],
+                                  thresholds: Map[String, Float]): EvaluationDataPoint
+}
+
+/**
+  * This handles the mutually exclusive label case.
+  *
+  * @param defaultThreshold
+  */
+case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThreshold: Float)
+  extends AlloyEvaluator with ClassificationEvaluator {
+  /**
+    * Creates a tuple of (prediction(s), label(s), Seq(raw probabilities)).
+    * This is because this is the raw data point that spark's internal metrics
+    * classes use, which we use to compute statistics from.
+    *
+    * @param labelToDouble
+    * @param goldSet
+    * @param classifications
+    * @param thresholds
+    */
+  def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                           goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                           classifications: Seq[Classification],
+                                           thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabel = goldSet.map({ case (gl, _) => labelToDouble(gl) }).head
     val maxLabel: Classification = getMaxLabel(classifications, thresholds)
     val rawProbabilities = classifications
-      .map(c => c.asInstanceOf[Classification])
-      .map(c => (labelToDouble(c.label), c.probability)).toSeq
+      .map(c => (labelToDouble(c.label), c.probability))
     new ClassificationEvaluationDataPoint(
       Array[Double](labelToDouble(maxLabel.label)), Array[Double](goldLabel), rawProbabilities)
   }
@@ -349,7 +433,8 @@ case class MultiClassMetricsEvaluator(override val engine: Engine, defaultThresh
   *
   * @param defaultThreshold
   */
-case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThreshold: Float) extends AlloyEvaluator {
+case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThreshold: Float)
+  extends AlloyEvaluator with ClassificationEvaluator {
   /**
     * Creates a tuple of (prediction(s), label(s)).
     * This is because this is the raw data point that spark's internal metrics
@@ -360,17 +445,16 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
     * @param classifications
     * @param thresholds
     */
-  override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
+  def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
                                          goldSet: Map[String, Seq[EvaluationAnnotation]],
-                                         classifications: util.List[_],
+                                         classifications: Seq[Classification],
                                          thresholds: Map[String, Float]): EvaluationDataPoint = {
     val goldLabels = goldSet.map({ case (gl, _) => labelToDouble(gl) }).toArray
     val predictedLabels = // filter to only those over threshold -- this could potentially be empty.
-      classifications.map(c => c.asInstanceOf[Classification]).filter(c => {
+      classifications.filter(c => {
         c.probability >= thresholds.getOrDefault(c.label, defaultThreshold)
       }).map(c => labelToDouble(c.label)).toArray
     val rawProbabilities = classifications
-      .map(c => c.asInstanceOf[Classification])
       .map(c => (labelToDouble(c.label), c.probability)).toSeq
     new ClassificationEvaluationDataPoint(predictedLabels, goldLabels, rawProbabilities)
   }
@@ -413,8 +497,8 @@ case class MultiLabelMetricsEvaluator(override val engine: Engine, defaultThresh
   * @param bioGenerator the token & tag generator that the alloy/furnace used to generate the sequence
   *                     of possible tokens & tags from annotations.
   */
-case class BIOSpanMetricsEvaluator(override val engine: Engine,
-                                   bioGenerator: BIOTagger) extends AlloyEvaluator {
+case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BIOTagger)
+  extends AlloyEvaluator with SpanEvaluator {
 
   /**
     * Returns the gold set for span evaluation.
@@ -461,14 +545,13 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
     *
     * @param labelToDouble
     * @param goldSet
-    * @param classifications
+    * @param spans
     * @param thresholds
     */
-  override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
-                                         classifications: util.List[_],
-                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
-    val spans = classifications.map(c => c.asInstanceOf[Span]).toSeq
+  def doCreateEvaluationDataPoint(labelToDouble: Map[String, Double],
+                                           goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                           spans: Seq[Span],
+                                           thresholds: Map[String, Float]): EvaluationDataPoint = {
     val exactMatchCounts = exactMatchEvalDataPoint(labelToDouble, goldSet, spans)
     /*
       Predicted & gold here are for exact matches.
@@ -695,31 +778,29 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine,
                                      summaryName: String, portion: Double): Seq[TrainingSummary] = {
     val dbleToLabel = labelToDouble.map(x => (x._2, x._1))
     val exactSummary = new TrainingSummary(summaryName,
-      exactMatchEval(dataPoints.map(dp => (dp.predicted, dp.gold)), dbleToLabel) :+
-        new PropertyMetric(
-          MetricTypes.Notes,
-          MetricClass.Multiclass,
-          Seq((AlloyEvaluator.GRANULARITY, Granularity.Span.toString))))
+      new PropertyMetric(
+        MetricTypes.Notes,
+        MetricClass.Multiclass,
+        Seq((AlloyEvaluator.GRANULARITY, Granularity.Span.toString))) +:
+        exactMatchEval(dataPoints.map(dp => (dp.predicted, dp.gold)), dbleToLabel))
     val tokenMetrics = tokenMatchEval(dataPoints
       .map(dp => dp.asInstanceOf[SpanEvaluationDataPoint])
       .flatMap(dp => dp.tokenDP), labelToDouble)
     val tokenSummary = new TrainingSummary(
       summaryName,
-      tokenMetrics :+
-        new PropertyMetric(
-          MetricTypes.Notes,
-          MetricClass.Multiclass,
-          Seq((AlloyEvaluator.GRANULARITY, Granularity.Token.toString))))
+      new PropertyMetric(
+        MetricTypes.Notes,
+        MetricClass.Multiclass,
+        Seq((AlloyEvaluator.GRANULARITY, Granularity.Token.toString))) +: tokenMetrics)
     val tokenTagMetrics = tokenTagMatchEval(dataPoints
       .map(dp => dp.asInstanceOf[SpanEvaluationDataPoint])
       .flatMap(dp => dp.tokenTagDP))
     val tokenTagSummary = new TrainingSummary(
       summaryName,
-      tokenTagMetrics :+
-        new PropertyMetric(
+      new PropertyMetric(
         MetricTypes.Notes,
         MetricClass.Multiclass,
-        Seq((AlloyEvaluator.GRANULARITY, Granularity.TokenTag.toString))))
+        Seq((AlloyEvaluator.GRANULARITY, Granularity.TokenTag.toString))) +: tokenTagMetrics)
     Seq(exactSummary, tokenSummary, tokenTagSummary)
   }
 
