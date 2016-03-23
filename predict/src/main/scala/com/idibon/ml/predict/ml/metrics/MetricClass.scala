@@ -5,7 +5,7 @@ package com.idibon.ml.predict.ml.metrics
  */
 
 /**
-  * When paird with a metric type, tells us where it came from.
+  * When paired with a metric type, tells us where it came from.
   *
   * Note: don't change the names of metrics, since this will break
   * backwards compatibility as we serialize the names. You should feel

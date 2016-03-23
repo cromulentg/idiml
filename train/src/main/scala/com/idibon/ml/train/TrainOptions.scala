@@ -1,5 +1,8 @@
 package com.idibon.ml.train
 
+import com.idibon.ml.predict.Label
+import com.idibon.ml.train.alloy.{DataSetInfo, TrainingDataSet}
+
 import scala.concurrent.duration.{SECONDS, Duration}
 import scala.collection.mutable.ListBuffer
 
@@ -8,10 +11,10 @@ import org.json4s.JObject
 /** Configures various run-time training behaviors.
   *
   * @param maxTrainTime the maximum time allowed for each train calls
-  * @param documents documents to use as training data
+  * @param dataSet the dataset to use as training data (and also testing)
   */
 case class TrainOptions(maxTrainTime: Duration,
-  documents: () => TraversableOnce[JObject])
+                        dataSet: TrainingDataSet)
 
 object TrainOptions {
 
@@ -68,8 +71,10 @@ class TrainOptionsBuilder {
     *
     * @return TrainOptions
     */
-  def build(): TrainOptions = {
-    TrainOptions(this.maxTrainTime, this.documentIterator _)
+  def build(labels: Seq[Label]): TrainOptions = {
+    val labelToDouble = labels.zipWithIndex.map({ case (label, index) => (label, index.toDouble) }).toMap
+    TrainOptions(this.maxTrainTime,
+      new TrainingDataSet(new DataSetInfo(0, 1.0, labelToDouble), () => this.documentIterator))
   }
 
   private[this] var maxTrainTime: Duration = Duration.Inf

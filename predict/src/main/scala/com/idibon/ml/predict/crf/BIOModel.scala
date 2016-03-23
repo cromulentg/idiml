@@ -8,7 +8,6 @@ import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 import com.idibon.ml.alloy.Alloy
 
 import org.apache.spark.mllib.linalg.Vector
-import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 
 /** Performs entity recognition using ConLL-style B/I/O sequence tags
@@ -34,7 +33,7 @@ class BIOModel(model: FactorieCRF,
      * within a mutated document object for the pipelines */
     val tokens = sequencer(doc.json)
     val tagsWithConfidence = model.predict(extractor(doc.json, tokens).flatten)
-    assemble(tokens.flatten, tagsWithConfidence)
+    assemble(tokens.flatten, tagsWithConfidence, options)
   }
 
   def getEvaluationMetric(): Double = ???

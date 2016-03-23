@@ -1,5 +1,7 @@
 package com.idibon.ml.train.datagenerator.crf
 
+import com.idibon.ml.feature.tokenizer.{Tag, Token}
+
 import scala.language.implicitConversions
 
 import com.idibon.ml.feature._
@@ -116,5 +118,16 @@ class BIOTaggerSpec extends FunSpec with Matchers with BIOTagger with BeforeAndA
       BIOTag("O") -> Vectors.dense(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
       BIOTag("Bnp") -> Vectors.dense(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0),
       BIOTag("Inp") -> Vectors.dense(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)))
+  }
+
+  it("should return correct tokens, tag and annotations; skipping negative and 0 length annotations.") {
+    val doc = Document("a document", List(Annotation("foo", false, 0, 1),
+      Annotation("foo", true, 0, 1), Annotation("foo", true, 4, -4),
+      Annotation("foo", true, 3, 0)))
+    prime(doc)
+    val tokens = sequenceGenerator(doc)
+    getTokenTags(tokens, doc) shouldBe Seq(
+      (Token("a", Tag.Word, 0, 1), BIOTag("Bfoo"), Some(doc.annotations(1))),
+      (Token("document", Tag.Word, 2, 8), BIOTag("O"), None))
   }
 }

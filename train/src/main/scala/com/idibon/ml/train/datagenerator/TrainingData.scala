@@ -1,6 +1,5 @@
 package com.idibon.ml.train.datagenerator
 
-import org.json4s.JObject
 import com.idibon.ml.feature.tokenizer.Token
 
 /** Defines various document training data types */

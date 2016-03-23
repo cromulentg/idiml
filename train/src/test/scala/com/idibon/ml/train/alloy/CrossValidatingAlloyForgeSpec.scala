@@ -1,40 +1,19 @@
 package com.idibon.ml.train.alloy
 
-import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy}
 import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.feature.Buildable
-import com.idibon.ml.predict.{Classification, Label}
+import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
-import com.idibon.ml.train.alloy.evaluation.{MultiLabelMetricsEvaluator, MultiClassMetricsEvaluator}
-import org.json4s.JsonAST.JObject
-import org.json4s._
-import org.json4s.native.JsonMethods._
 import org.scalatest._
 
-import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
-
 /**
-  * Tests the Cross Validation Alloy Trainer
+  * Tests the Cross Validating Alloy Forge
   */
-class CrossValidatingAlloyTrainerSpec extends FunSpec
+class CrossValidatingAlloyForgeSpec extends FunSpec
   with Matchers with BeforeAndAfter with ParallelTestExecution with BeforeAndAfterAll {
 
   val engine = new EmbeddedEngine
-
-  describe("getTrainingSummaryCreator tests"){
-    it("creates MultiClassMetricsEvaluator") {
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.getTrainingSummaryCreator(AlloyTrainer.DOCUMENT_MUTUALLY_EXCLUSIVE, 4)
-      actual shouldBe new MultiClassMetricsEvaluator(null, 0.25f)
-    }
-    it("creates MultiLabelMetricsEvaluator") {
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.getTrainingSummaryCreator(AlloyTrainer.DOCUMENT_MULTI_LABEL, 4)
-      actual shouldBe new MultiLabelMetricsEvaluator(null, 0.5f)
-    }
-  }
 
   describe("average metrics tests") {
     it("creates averages correctly") {
@@ -50,8 +29,9 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
           new FloatMetric(MetricTypes.Recall, MetricClass.Binary, 0.98f)
         ))
       )
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.averageMetrics("testsummary", trainingSummaries)
+      val trainer = new CrossValidatingAlloyForge[Classification](
+        engine, "test", Seq(), null, 0, 0.0, 1L)
+      val Seq(actual) = trainer.averageMetrics("testsummary", trainingSummaries)
       val expected = new TrainingSummary("testsummary", Seq(
         new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.99f),
         new FloatMetric(MetricTypes.Precision, MetricClass.Alloy, 0.99f),
@@ -80,8 +60,9 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
           ))
         ))
       )
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.averageMetrics("testsummary", trainingSummaries)
+      val trainer = new CrossValidatingAlloyForge[Classification](
+        engine, "test", Seq(), null, 0, 0.0, 1L)
+      val Seq(actual) = trainer.averageMetrics("testsummary", trainingSummaries)
       val expected = new TrainingSummary("testsummary", Seq[Metric with Buildable[_, _]](
         new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "x", Seq(
           (1.0f, 0.14f), (2.0f, 0.15f), (3.0f, 0.188f), (4.0f, 0.19f), (5.0f, 0.4f),
@@ -118,8 +99,9 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
             (0 until 50).map(x => x.toFloat / 100.0f))
         ))
       )
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.averageMetrics("testsummary", trainingSummaries)
+      val trainer = new CrossValidatingAlloyForge[Classification](
+        engine, "test", Seq(), null, 0, 0.0, 1L)
+      val Seq(actual) = trainer.averageMetrics("testsummary", trainingSummaries)
       val expected = new TrainingSummary("testsummary", Seq[Metric with Buildable[_, _]](
         new LabelPointsMetric(MetricTypes.LabelConfidenceDeciles, MetricClass.Alloy, "x",
           (1 to 9).map(i => (i.toFloat, (i.toFloat * 10.0f - 1.0f) / 100.0f ))),
@@ -135,25 +117,6 @@ class CrossValidatingAlloyTrainerSpec extends FunSpec
         case m: LabelPointsMetric => (m.label, m.metricType)
         case n: LabelFloatMetric => (n.label, n.metricType)
       }) shouldBe expected.metrics
-    }
-
-    it("gets correct min probability") {
-      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
-        0.4f, 0.5f, 0.88f, 0.9f
-      ))
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.computeMinProbability(fl)
-      val expected = new LabelFloatMetric(MetricTypes.LabelMinConfidence, MetricClass.Binary, "x", 0.4f)
-      actual shouldBe expected
-    }
-    it("gets correct max probability") {
-      val fl = new LabelFloatListMetric(MetricTypes.LabelProbabilities, MetricClass.Binary, "x", Seq(
-        0.4f, 0.5f, 0.88f, 0.9f
-      ))
-      val trainer = new CrossValidatingAlloyTrainerBuilder().build(engine)
-      val actual = trainer.computeMaxProbability(fl)
-      val expected = new LabelFloatMetric(MetricTypes.LabelMaxConfidence, MetricClass.Binary, "x", 0.9f)
-      actual shouldBe expected
     }
   }
 }

@@ -4,9 +4,10 @@ import java.util
 
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common
-import com.idibon.ml.common.EmbeddedEngine
+import com.idibon.ml.common.{EmbeddedEngine}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.{PredictOptions, Label, Classification}
+import com.idibon.ml.train.alloy.evaluation._
 import org.json4s
 import org.json4s.JsonAST.JObject
 import org.json4s._
@@ -30,35 +31,38 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
     it("handles degenerate all negatives without breaking") {
       val allNegs =
         parse("""
-          {"annotations": [{"label": {"name": "a"}, "isPositive": false},
+          {"content": "", "annotations": [{"label": {"name": "a"}, "isPositive": false},
            {"label": {"name": "b"}, "isPositive": false}]}
         """)
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Set[String]()
+      actual shouldBe Map[String, EvaluationAnnotation]()
     }
     it("handles mutli label data data") {
       val allNegs =
         parse("""
-          {"annotations": [
+            {"content": "", "annotations": [
             {"label": {"name": "a"}, "isPositive": true},
             {"label": {"name": "b"}, "isPositive": false},
             {"label": {"name": "c"}, "isPositive": true},
             {"label": {"name": "d"}, "isPositive": false},
           ]}""")
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Set[String]("a", "c")
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "a" -> Seq(EvaluationAnnotation(LabelName("a"), true, None, None)),
+        "c" -> Seq(EvaluationAnnotation(LabelName("c"), true, None, None)))
     }
     it("handles mutually exclusive label data data") {
       val allNegs =
         parse("""
-          {"annotations": [
+          {"content": "", "annotations": [
             {"label": {"name": "a"}, "isPositive": false},
             {"label": {"name": "b"}, "isPositive": false},
             {"label": {"name": "c"}, "isPositive": false},
             {"label": {"name": "d"}, "isPositive": true},
           ]}""")
       val actual = trainer.getGoldSet(allNegs.extract[JObject])
-      actual shouldBe Set[String]("d")
+      actual shouldBe Map[String, Seq[EvaluationAnnotation]](
+        "d" -> Seq(EvaluationAnnotation(LabelName("d"), true, None, None)))
     }
   }
   describe("evaluate tests") {
@@ -66,7 +70,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
     it("handles empty gold set"){
       val allNegs =
         parse("""
-          {"annotations": [
+          {"content": "", "annotations": [
             {"label": {"name": "a"}, "isPositive": false},
             {"label": {"name": "b"}, "isPositive": false},
             {"label": {"name": "c"}, "isPositive": false},
@@ -75,7 +79,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
       val trainer = new TrainAlloyWithEvaluation(
         "a", engine, null, new TrainingDataSet(
           new DataSetInfo(0, 0.0, Map()),
-          null, () => Seq(allNegs)), null)
+          null, () => Seq(allNegs)), new DummyAlloyEvaluator())
       val dummy = new DummyAlloy()
       val actual = trainer.evaluate(dummy, Map("a" -> 0.3f))
       actual shouldBe Seq()
@@ -83,7 +87,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
     it("works as intended") {
       val onePos =
         parse("""
-          {"annotations": [
+          {"content": "", "annotations": [
             {"label": {"name": "a"}, "isPositive": false},
             {"label": {"name": "b"}, "isPositive": false},
             {"label": {"name": "c"}, "isPositive": false},
@@ -92,7 +96,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
       val trainer = new TrainAlloyWithEvaluation(
         "a", engine, null, new TrainingDataSet(
           new DataSetInfo(0, 0.0, Map()),
-          null, () => Seq(onePos)), new DummyTrainingSummaryCreator())
+          null, () => Seq(onePos)), new DummyAlloyEvaluator())
       val dummy = new DummyAlloy()
       val actual = trainer.evaluate(dummy, Map("a" -> 0.3f))
       actual.size shouldBe 1
@@ -105,7 +109,7 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
     it("runs through everything using the dummy objects") {
       val onePos =
         parse("""
-          {"annotations": [
+          {"content": "", "annotations": [
             {"label": {"name": "a"}, "isPositive": false},
             {"label": {"name": "b"}, "isPositive": false},
             {"label": {"name": "c"}, "isPositive": false},
@@ -118,8 +122,8 @@ class TrainAlloyWithEvaluationSpec extends FunSpec
         new TrainingDataSet(
           new DataSetInfo(0, 0.0, Map()),
           null, () => Seq(onePos)),
-        new DummyTrainingSummaryCreator())
-      val actual = trainer(null, None)
+        new DummyAlloyEvaluator())
+      val Seq(actual) = trainer(null, None)
       actual.identifier shouldBe "test"
       actual.metrics shouldBe Seq()
     }
@@ -140,20 +144,22 @@ class DummyAlloy extends Alloy[Classification] {
 
   override def translateUUID(uuid: String): Label = ???
 }
-class DummyTrainingSummaryCreator extends TrainingSummaryCreator {
+class DummyAlloyEvaluator extends AlloyEvaluator {
+  override val engine: common.Engine = null
   override def createEvaluationDataPoint(labelToDouble: Map[String, Double],
-                                         goldSet: Set[String],
-                                         classifications: util.List[Classification],
-                                         thresholds: Map[String, Float]): EvaluationDataPoint = {
-    new EvaluationDataPoint(Array(1.0), Array(1.0), Seq())
+                                         goldSet: Map[String, Seq[EvaluationAnnotation]],
+                                         classifications: util.List[_],
+                                         thresholds: Map[String, Float]): Option[EvaluationDataPoint] = {
+    if (goldSet.isEmpty) None
+    else Some(new ClassificationEvaluationDataPoint(Array(1.0), Array(1.0), Seq()))
   }
 
   override def createTrainingSummary(engine: common.Engine,
                                      dataPoints: Seq[EvaluationDataPoint],
                                      labelToDouble: Map[String, Double],
                                      summaryName: String,
-                                     portion: Double): TrainingSummary = {
-    new TrainingSummary("test", Seq())
+                                     portion: Double): Seq[TrainingSummary] = {
+    Seq(new TrainingSummary("test", Seq()))
   }
 }
 class DummyTrainer extends AlloyTrainer {

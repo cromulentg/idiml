@@ -104,20 +104,35 @@ public enum MetricTypes {
      */
     LearningCurveLabelRecall(LabelPointsMetric.class),
     /**
-     * The average of individual label F1s in the non-mutually
-     * exclusive case.
+     * The average of individual label F1s.
+     */
+    MacroF1(FloatMetric.class),
+    /**
+     * The average of individual label Precisions.
+     */
+    MacroPrecision(FloatMetric.class),
+    /**
+     * The average of individual Recalls.
+     */
+    MacroRecall(FloatMetric.class),
+    /**
+     * Computed from global counts of tp, fp & fn.
      */
     MicroF1(FloatMetric.class),
     /**
-     * The average of individual label Precision in the non-mutually
-     * exclusive case.
+     * Computed from global counts of tp & fp.
      */
     MicroPrecision(FloatMetric.class),
     /**
-     * The average of individual label Recall in the non-mutually
-     * exclusive case.
+     * Computed from global counts of tp & fn.
      */
     MicroRecall(FloatMetric.class),
+    /**
+     * Where we store stuff about metrics -- our hacky way of encoding more about
+     * the grouped metrics than changing the training summary class and
+     * not adding more metric class types.
+     */
+    Notes(PropertyMetric.class),
     /**
      * Hacky way to encode portion. i.e. if in included in a sequence
      * of metrics, it'll be assumed that the value in `portion` will

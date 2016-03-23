@@ -130,6 +130,29 @@ object LabelFloatMetric {
       new LabelFloatMetric(labelMetrics.head.mType, newMetricClass, labelMetrics.head.label, avg)
     }).toSeq
   }
+
+  /**
+    * Helper method to get the max probability seen and create a metric from it.
+    *
+    * @param metric
+    * @return
+    */
+  def computeMaxProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMaxConfidence, metric.metricClass, metric.label, metric.points.max)
+  }
+
+
+  /**
+    * Helper method to get the min probability seen and create a metric from it.
+    *
+    * @param metric
+    * @return
+    */
+  def computeMinProbability(metric: LabelFloatListMetric): LabelFloatMetric = {
+    new LabelFloatMetric(
+      MetricTypes.LabelMinConfidence, metric.metricClass, metric.label, metric.points.min)
+  }
 }
 
 /**
@@ -415,6 +438,21 @@ class PropertyMetricBuilder extends Builder[PropertyMetric] {
   }
 }
 
+object PropertyMetric {
+  /**
+    * Clones the metrics, and optionally allows you to provide a new metricClass to seed them with.
+    * @param metrics
+    * @param metricClass
+    * @return
+    */
+  def clone(metrics: Seq[PropertyMetric], metricClass: Option[MetricClass.Value] = None): Seq[PropertyMetric] = {
+    metrics.map(m => {
+      val mClass = metricClass.getOrElse(m.mClass)
+      new PropertyMetric(m.mType, mClass, m.properties)
+    })
+  }
+}
+
 
 /**
   * Creates metrics that represent a confusion matrix.
@@ -513,7 +551,8 @@ object Metric {
       case m: LabelPointsMetric => LabelPointsMetric.average(metrics.asInstanceOf[Seq[LabelPointsMetric]], metricClass)
       case m: LabelFloatListMetric => // doesn't make sense to average, so concatenate the list
         LabelFloatListMetric.concat(metrics.asInstanceOf[Seq[LabelFloatListMetric]], metricClass)
-      case m: PropertyMetric => metrics // no average defined
+      case m: PropertyMetric => // no average defined -- but remove duplicates & make alloy metric class
+        PropertyMetric.clone(metrics.distinct.asInstanceOf[Seq[PropertyMetric]], metricClass)
         // sum confusion matrix since average doesn't make sense
       case m: ConfusionMatrixMetric => Seq(ConfusionMatrixMetric.sum(metrics.asInstanceOf[Seq[ConfusionMatrixMetric]], metricClass))
     }
