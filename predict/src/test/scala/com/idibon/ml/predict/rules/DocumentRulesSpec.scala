@@ -162,13 +162,13 @@ class DocumentRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
 
   describe("isRegexRule") {
     it("correctly identifies regular expression") {
-      DocumentRules.isRegexRule("/str[ij]ng/") shouldBe true
+      RulesHelpers.isRegexRule("/str[ij]ng/") shouldBe true
     }
 
     it("correctly identifies non-regular expression") {
-      DocumentRules.isRegexRule("/str[ij]ng") shouldBe false
-      DocumentRules.isRegexRule("str[ij]ng") shouldBe false
-      DocumentRules.isRegexRule(null) shouldBe false
+      RulesHelpers.isRegexRule("/str[ij]ng") shouldBe false
+      RulesHelpers.isRegexRule("str[ij]ng") shouldBe false
+      RulesHelpers.isRegexRule(null) shouldBe false
     }
   }
 

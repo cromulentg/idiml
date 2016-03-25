@@ -1,7 +1,6 @@
 package com.idibon.ml.predict.rules
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.regex.{Matcher, Pattern}
+import java.util.regex.{Matcher}
 
 import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.alloy.Codec
@@ -14,36 +13,25 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonDSL.WithDouble._
 
-import scala.util.{Failure, Try}
+import scala.util.{Try}
 
 /**
   * Class taking care of Document rule models. This could become a trait potentially...
+  *
   * @param label the name of the label these rules are for
   * @param rules a list of tuples of rule & weights.
   */
 case class DocumentRules(label: String, rules: List[(String, Float)])
-    extends PredictModel[Classification] with StrictLogging
+    extends PredictModel[Classification] with StrictLogging with RuleStorage
     with Archivable[DocumentRules, DocumentRulesLoader] {
 
-  // log a warning message if any of the rules has an invalid weight
-  rules.filter(r => !DocumentRules.isValidWeight(r._2))
-    .foreach({ case (phrase, weight) => {
-      logger.warn(s"[$this] ignoring invalid weight $weight for $phrase")
-    }})
-
+  def getLogger = logger
   val reifiedType = classOf[DocumentRules]
-
-  val ruleWeightMap = rules.filter(r => DocumentRules.isValidWeight(r._2)).toMap
-  val rulesCache = DocumentRules.compileRules(ruleWeightMap.map(_._1))
-
-  // log a warning message if any of the rules fail to compile
-  rulesCache.filter(_._2.isFailure).foreach({ case (p, r) => {
-    logger.warn(s"[$this] unable to compile $p: ${r.failed.get.getMessage}")
-  }})
 
   /**
     * The model will use a subset of features passed in. This method
     * should return the ones used.
+    *
     * @return Vector (likely SparseVector) where indices correspond to features
     *         that were used.
     */
@@ -73,7 +61,6 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
   override def save(writer: Writer): Option[JObject] = {
     // render the list into a json list of maps.
     val jsonString = compact(render(rules))
-    logger.debug(jsonString)
     // create output stream to write to
     val output = writer.resource(DocumentRules.RULE_RESOURCE_NAME)
     try {
@@ -104,6 +91,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
 
   /**
     * Predicts on a piece of content.
+    *
     * @param content
     * @param significantFeatures
     * @return
@@ -185,6 +173,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
 
   /**
     * Finds all the matches and returns their starting and ending indexes.
+    *
     * @param matcher the already matched pattern object.
     * @return a list of integer tuples - (startIndex, endIndex)
     */
@@ -202,6 +191,7 @@ case class DocumentRules(label: String, rules: List[(String, Float)])
   /**
     * Method to get counts of rules matching.
     * For documents we only care about counts.
+    *
     * @param content the content to match rules against
     * @return immutable map of rule count matches
     */
@@ -253,37 +243,4 @@ class DocumentRulesLoader extends ArchiveLoader[DocumentRules] {
 /** Constants for DocumentRules */
 private[this] object DocumentRules {
   val RULE_RESOURCE_NAME: String = "rules.json"
-
-  /** Tests if the user-provided rule weight is valid
-    *
-    * @param w - weight
-    * @return true if the weight is in the valid range, false otherwise
-    */
-  def isValidWeight(w: Float) = w >= 0.0 && w <= 1.0
-
-  /**
-    * Helper method to answer the question, whether the rule is a regular expression or not.
-    * @param rule
-    * @return
-    */
-  def isRegexRule(rule: String): Boolean = {
-    rule != null && rule.startsWith("/") && rule.endsWith("/") && rule.length() > 2
-  }
-
-  /** Tries to precompile rule phrases to Pattern instances
-    *
-    * @param rules - rule phrases to compile
-    * @return A map from the raw rule phrase to the compilation results
-    */
-  def compileRules(rules: Iterable[String]) = {
-    rules.par.map(phrase => {
-      val pattern = Try({
-        if (isRegexRule(phrase))
-          Pattern.compile(phrase.substring(1, phrase.length() - 1))
-        else
-          Pattern.compile(phrase, Pattern.LITERAL | Pattern.CASE_INSENSITIVE)
-      })
-      (phrase, pattern)
-    }).toList
-  }
 }
