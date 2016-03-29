@@ -25,12 +25,13 @@ private[tokenizer] class Trie[T <: Enumeration](values: T, trie: CharsTrie) {
     */
   def matches(text: UCharacterIterator): Option[(T#Value, Int)] = {
     trie.reset()
-    val x: Option[(T#Value, Int)] = None
+    var best: Option[(T#Value, Int)] = None
     Stream.continually(text.nextCodePoint)
-      .takeWhile(u => trie.nextForCodePoint(u).hasNext())
-      .foldLeft(x)({ case (best, codePoint) => trie.current.hasValue() match {
-        case true => Some(values(trie.getValue()), text.getIndex())
-        case _ => best
-      }})
+      .takeWhile(u => {
+        if (trie.nextForCodePoint(u).hasValue())
+          best = Some(values(trie.getValue()), text.getIndex())
+        trie.current.hasNext()
+      }).force
+    best
   }
 }
