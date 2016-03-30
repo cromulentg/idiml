@@ -3,12 +3,11 @@ package com.idibon.ml.feature.tokenizer
 import scala.collection.mutable.HashSet
 import scala.util.Try
 import java.io.{BufferedReader, InputStreamReader}
-import java.text.CharacterIterator
 
 import com.idibon.ml.feature.tokenizer.Unicode._
 
-import com.ibm.icu.text.{BreakIterator, FilteredBreakIteratorBuilder,
-  UCharacterIterator, UForwardCharacterIterator}
+import com.ibm.icu.text.{BreakIterator, UCharacterIterator,
+  UForwardCharacterIterator}
 import com.ibm.icu.util.{BytesTrie, CharsTrie, CharsTrieBuilder,
   StringTrieBuilder, ULocale}
 import com.ibm.icu.lang.UCharacter
@@ -23,22 +22,14 @@ import com.typesafe.scalalogging.StrictLogging
   * atomic units with a single boundary, rather than detecting numerous
   * intra-URI boundaries
   */
-class WebWordBreakIterator(delegate: BreakIterator) extends BreakIterator {
-
-  // cache the character iterator across boundaries
-  private [this] var _characters: UCharacterIterator = null
+class WebWordBreakIterator(delegate: BreakIterator)
+    extends BreakIteratorDelegate(delegate) {
 
   // shallow-copy the trie of special boundaries
   private [this] val trie = WebWordBreakIterator.TRIE.clone
 
   // URI parser state machine
   private [this] val uriState = new URIStateMachine
-
-  /* work-around Scala bug SI-6760, where public interface declarations
-   * don't override protected implementations in super-classes. normally
-   * not a problem, except for the known-awful Java Cloneable interface */
-  private [this] val publicClone =
-    classOf[CharacterIterator].getDeclaredMethod("clone")
 
   /** Returns the position of the next boundary
     *
@@ -53,13 +44,13 @@ class WebWordBreakIterator(delegate: BreakIterator) extends BreakIterator {
      * properly advance the delegate's state to a boundary at or past the
      * boundary detected in this class */
     val result = trie.matches(_characters).flatMap(_ match {
-      case (TrieResult.URI_HIERARCHICAL, boundary) =>
+      case (WebWord.URI_HIERARCHICAL, boundary) =>
         hierUriMatch(boundary).map(b => delegate.following(b - 1))
-      case (TrieResult.URI_OPAQUE, boundary) =>
+      case (WebWord.URI_OPAQUE, boundary) =>
         opaqueUriMatch(boundary).map(b => delegate.following(b - 1))
-      case (TrieResult.HTML_DECIMAL_REF, boundary) =>
+      case (WebWord.HTML_DECIMAL_REF, boundary) =>
         htmlRefMatch(boundary, false).map(b => delegate.following(b - 1))
-      case (TrieResult.HTML_HEXADECIMAL_REF, boundary) =>
+      case (WebWord.HTML_HEXADECIMAL_REF, boundary) =>
         htmlRefMatch(boundary, true).map(b => delegate.following(b - 1))
       case (_, boundary) =>
         Some(delegate.following(boundary - 1))
@@ -68,15 +59,6 @@ class WebWordBreakIterator(delegate: BreakIterator) extends BreakIterator {
     // make the character iterator collectable if this is the last boundary
     if (result == BreakIterator.DONE) _characters = null
     result
-  }
-
-  /** Returns a mutable character iterator for analyzing the current text
-    *
-    * Adapted from {@link com.ibm.icu.impl.SimpleFilteredSentenceBreakIterator}
-    */
-  private [this] def getCharacters(): UCharacterIterator = {
-    val base = publicClone.invoke(delegate.getText())
-    UCharacterIterator.getInstance(base.asInstanceOf[CharacterIterator])
   }
 
   /** Returns the boundary of an HTML hexadecimal character reference
@@ -174,90 +156,10 @@ class WebWordBreakIterator(delegate: BreakIterator) extends BreakIterator {
         .force
     }
   }
-
-  /** Move the iterator forward or backward the specified number of boundaries
-    *
-    * {@link com.ibm.icu.text.BreakIterator#next(int)
-    */
-  def next(count: Int): Int = ???
-
-  /** Returns the current position in the analyzed text
-    *
-    * {@link com.ibm.icu.text.BreakIterator#current}
-    */
-  def current: Int = delegate.current
-
-  /** Moves to the first boundary position in the analyzed text
-    *
-    * {@link com.ibm.icu.text.BreakIterator#first}
-    */
-  def first: Int = delegate.first
-
-  /** Moves to the last boundary position in the analyzed text
-    *
-    * {@link com.ibm.icu.text.BreakIterator#last}
-    */
-  def last: Int = delegate.last
-
-  /** Move the iterator to the previous boundary
-    *
-    * {@link com.ibm.icu.text.BreakIterator#previous}
-    */
-  def previous: Int = ???
-
-  /** Move to the first boundary following the specified position
-    *
-    * {@link com.ibm.icu.text.BreakIterator#following}
-    */
-  def following(after: Int): Int = ???
-
-  /** Returns a {@link java.text.CharacterIterator} over the current text
-    *
-    * {@link com.ibm.icu.text.BreakIterator#getText}
-    */
-  def getText: CharacterIterator = delegate.getText
-
-  /** Sets the iterator to analyze a new piece of text.
-    *
-    * {@link com.ibm.icu.text.BreakIterator#setText}
-    * @param text the text to analyze
-    */
-  override def setText(text: String) {
-    delegate.setText(text)
-    _characters = null
-  }
-
-  def setText(text: CharacterIterator) {
-    delegate.setText(text)
-    _characters = null
-  }
-}
-
-/** Maintain tries for forward- and reverse-indexed text */
-private[tokenizer] case class Trie(trie: CharsTrie) {
-  override def clone: Trie = Trie(trie.clone.asInstanceOf[CharsTrie])
-
-  /** Compares the current text position against values in the trie
-    *
-    * Returns the type and length of the matched text if a match is detected.
-    *
-    * @param text iterator to analyze the current text boundary
-    * @return match result, if a match is detected
-    */
-  def matches(text: UCharacterIterator): Option[(TrieResult.Value, Int)] = {
-    trie.reset()
-    val x: Option[(TrieResult.Value, Int)] = None
-    Stream.continually(text.nextCodePoint)
-      .takeWhile(u => trie.nextForCodePoint(u).hasNext())
-      .foldLeft(x)({ case (best, codePoint) => trie.current.hasValue() match {
-        case true => Some(TrieResult(trie.getValue()), text.getIndex())
-        case _ => best
-      }})
-  }
 }
 
 /** Various match states stored with nodes in the CharsTrie */
-object TrieResult extends Enumeration {
+private[tokenizer] object WebWord extends Enumeration {
   val EMOTICON,            // Emoticon (exact match)
     HTML_NAMED_REF,        // Named character reference (exact match)
     HTML_DECIMAL_REF,      // Decimal character reference (prefix match)
@@ -267,28 +169,28 @@ object TrieResult extends Enumeration {
 }
 
 /** Companion object for WebWordBreakIterator */
-object WebWordBreakIterator extends StrictLogging {
+private[tokenizer] object WebWordBreakIterator extends StrictLogging {
 
-  val TRIE: Trie = {
+  val TRIE: Trie[WebWord.type] = {
     val builder = new CharsTrieBuilder()
     val words = HashSet[String]()
 
-    def addTrieEntry(str: String, result: TrieResult.Value) {
+    def addTrieEntry(str: String, result: WebWord.Value) {
       if (words.add(str)) builder.add(str, result.id)
     }
 
     // initialize the trie with some URI schemes
-    addTrieEntry("http://", TrieResult.URI_HIERARCHICAL)
-    addTrieEntry("https://", TrieResult.URI_HIERARCHICAL)
-    addTrieEntry("file://", TrieResult.URI_HIERARCHICAL)
-    addTrieEntry("ftp://", TrieResult.URI_HIERARCHICAL)
-    addTrieEntry("mailto:", TrieResult.URI_OPAQUE)
-    addTrieEntry("tel:", TrieResult.URI_OPAQUE)
-    addTrieEntry("&#x", TrieResult.HTML_HEXADECIMAL_REF)
-    addTrieEntry("&#", TrieResult.HTML_DECIMAL_REF)
+    addTrieEntry("http://", WebWord.URI_HIERARCHICAL)
+    addTrieEntry("https://", WebWord.URI_HIERARCHICAL)
+    addTrieEntry("file://", WebWord.URI_HIERARCHICAL)
+    addTrieEntry("ftp://", WebWord.URI_HIERARCHICAL)
+    addTrieEntry("mailto:", WebWord.URI_OPAQUE)
+    addTrieEntry("tel:", WebWord.URI_OPAQUE)
+    addTrieEntry("&#x", WebWord.HTML_HEXADECIMAL_REF)
+    addTrieEntry("&#", WebWord.HTML_DECIMAL_REF)
 
     readStrings("data/emoticons.txt").foreach(str => {
-      addTrieEntry(str, TrieResult.EMOTICON)
+      addTrieEntry(str, WebWord.EMOTICON)
     })
 
     readStrings("data/character_refs.txt").foreach(str => {
@@ -296,10 +198,10 @@ object WebWordBreakIterator extends StrictLogging {
       val splitPoint = str.indexOf(';')
       /* ignore the code points in the table for now; normalizing to
        * code points probably belongs in BagOfWords transform */
-      addTrieEntry(str.substring(0, splitPoint + 1), TrieResult.HTML_NAMED_REF)
+      addTrieEntry(str.substring(0, splitPoint + 1), WebWord.HTML_NAMED_REF)
     })
 
-    Trie(builder.build(StringTrieBuilder.Option.FAST))
+    new Trie(WebWord, builder.build(StringTrieBuilder.Option.FAST))
   }
 
   /** Reads each line of UTF-8 encoded text file into a set of strings */
