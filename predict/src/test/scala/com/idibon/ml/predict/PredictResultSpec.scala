@@ -1,10 +1,9 @@
 package com.idibon.ml.predict
 
-import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
-
 import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.feature.{FeatureInputStream, FeatureOutputStream}
 
+import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 import org.scalatest.{Matchers, FunSpec}
 
 
@@ -212,18 +211,264 @@ class ClassificationSpec extends FunSpec with Matchers {
 }
 
 class SpanSpec extends FunSpec with Matchers {
-  it("should save and load correctly") {
-    val s = Span("label", 0.75f, 0, 0, 5)
-    val os = new ByteArrayOutputStream
-    val fos = new FeatureOutputStream(os)
-    fos.writeBuildable(s)
-    fos.close
-    val fis = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray))
-    fis.readBuildable.asInstanceOf[Span] shouldBe s
+
+  describe("save and load") {
+    it("should save and load correctly") {
+      val s = Span("label", 0.75f, 0, 0, 5)
+      val os = new ByteArrayOutputStream
+      val fos = new FeatureOutputStream(os)
+      fos.writeBuildable(s)
+      fos.close
+      val fis = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray))
+      fis.readBuildable.asInstanceOf[Span] shouldBe s
+    }
   }
 
-  it("should compute the endpoint correctly") {
-    val s = Span("label", 0.75f, 0, 2, 2)
-    s.end shouldBe 4
+  describe("end point computation") {
+    it("should compute the endpoint correctly") {
+      val s = Span("label", 0.75f, 0, 2, 2)
+      s.end shouldBe 4
+    }
+  }
+
+  describe("choose between rule spans tests") {
+    val chosen = Span("a-label", 0.6f, 2, 2, 2)
+    it("handles chosen having better probability") {
+      val contender = Span("b-label", 0.45f, 2, 2, 2)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe chosen
+    }
+    it("handles contender having better probability"){
+      val contender = Span("b-label", 0.65f, 2, 2, 2)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe contender
+    }
+    it("handles tie breaking on length when chose is longer"){
+      val contender = Span("b-label", 0.4f, 2, 2, 1)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe chosen
+    }
+    it("handles tie breaking on length when contender is longer"){
+      val contender = Span("b-label", 0.4f, 2, 2, 3)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe contender
+    }
+    it("handles tie breaking on label name when chosen has lower label lexiograpically") {
+      val contender = Span("b-label", 0.4f, 2, 2, 2)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe chosen
+    }
+    it("handles tie breaking on label name when contender has lower label lexiograpically"){
+      val contender = Span("a--label", 0.4f, 2, 2, 2)
+      Span.chooseBetweenRuleSpans(chosen, contender) shouldBe contender
+    }
+  }
+  describe("choose rules span greedily tests") {
+    it("handles empty sequence") {
+      val start = Span("a-label", 0.4f, 2, 2, 2)
+      Span.chooseRuleSpanGreedily(start, Seq()) shouldBe start
+    }
+    it("handles single item list") {
+      val start = Span("a-label", 0.4f, 2, 2, 2)
+      val spans = Seq(Span("a-label", 0.5f, 2, 2, 2))
+      Span.chooseRuleSpanGreedily(start, spans) shouldBe start
+    }
+    it("handles multi item list") {
+      val start = Span("a-label", 0.4f, 2, 2, 2)
+      val spans = Seq(Span("b-label", 0.6f, 2, 2, 3), Span("c-label", 0.6f, 2, 2, 4))
+      Span.chooseRuleSpanGreedily(start, spans) shouldBe spans(1)
+    }
+  }
+  describe("choose span tests") {
+    it("handles empty spans") {
+      val start = Span("a-label", 0.4f, 2, 2, 2)
+      Span.chooseSpan(start, Seq()) shouldBe start
+    }
+    it("handles multiple rule spans") {
+      // each is a different label and they overlap
+      val start = Span("a-label", 0.4f, 2, 2, 2)
+      val spans = Seq(Span("b-label", 0.6f, 2, 2, 3), Span("c-label", 0.6f, 2, 2, 4))
+      Span.chooseSpan(start, spans) shouldBe spans(1)
+    }
+    it("handles a prediction span with a rule span") {
+      // prediction as start
+      val predictionStart = Span("a-label", 0.9f, 0, 2, 2)
+      val spans = Seq(Span("b-label", 0.4f, 3, 2, 2))
+      Span.chooseSpan(predictionStart, spans) shouldBe spans(0)
+      // rule as start
+      val ruleStart = Span("a-label", 0.2f, 2, 2, 2)
+      val spansWithPrediction = Seq(Span("b-label", 0.9f, 0, 2, 2))
+      Span.chooseSpan(ruleStart, spansWithPrediction) shouldBe ruleStart
+    }
+    it("handles rule, prediction, rule span overlap") {
+      val ruleStart = Span("a-label", 0.2f, 2, 2, 2)
+      val spansWithPrediction = Seq(Span("b-label", 0.9f, 0, 2, 2), Span("b-label", 0.3f, 3, 2, 5))
+      Span.chooseSpan(ruleStart, spansWithPrediction) shouldBe ruleStart
+    }
+  }
+  describe("get overlapping spans tests"){
+    it("works with empty sequence") {
+      Span.getOverlappingSpans(Span("a", 0.5f, 0, 2, 2), Seq()) shouldBe Seq()
+    }
+    it("works finding overlaps") {
+      val spans = Seq(
+        Span("b-label", 0.9f, 0, 2, 2),
+        Span("z-label", 0.3f, 1, 2, 5),
+        Span("c-label", 0.3f, 1, 8, 10))
+      Span.getOverlappingSpans(Span("a", 0.5f, 0, 0, 3), spans) shouldBe spans.slice(0, 2)
+    }
+    it("works finding no overlaps") {
+      /*
+                10        20        30        40        50
+      012345678901234567890123456789012345678901234567890
+      A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+  "a" ---  offset is 0, end is 3
+  "b-"   --  offset is 3, end is 5
+  "z-"     ----- offset is 5, end is 10
+  "c-"          ---------- offset is 10, end is 20
+       */
+      val spans = Seq(
+        Span("b-label", 0.9f, 2, 3, 2),
+        Span("z-label", 0.3f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      Span.getOverlappingSpans(Span("a", 0.5f, 0, 0, 3), spans) shouldBe Seq()
+    }
+  }
+  describe("greedy reduce tests") {
+    /** Dummy function for unit testing purposes **/
+    def spanChooser(s: Span, spans: Seq[Span]): Span = {
+      (s +: spans).minBy(z => z.label)
+    }
+    it("handles empty components") {
+      Span.greedyReduce(Seq(), spanChooser) shouldBe Seq()
+    }
+    it("handles single item components") {
+      val components = Seq(Span("a", 0.4f, 2, 2, 2))
+      Span.greedyReduce(components, spanChooser) shouldBe components
+    }
+    it("handles no overlaps in components") {
+      val components = Seq(
+        Span("b-label", 0.9f, 2, 3, 2),
+        Span("z-label", 0.3f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      Span.greedyReduce(components, spanChooser) shouldBe components
+    }
+    it("handles an overlap in components") {
+      val components = Seq(
+        Span("a", 0.5f, 0, 0, 3),
+        Span("b-label", 0.9f, 2, 2, 2),
+        Span("z-label", 0.3f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      Span.greedyReduce(components, spanChooser) shouldBe (components(0) +: components.slice(2,4))
+    }
+    it("handles multiple overlaps in components"){
+      val components = Seq(
+        Span("a", 0.5f, 0, 0, 3),
+        Span("b-label", 0.9f, 2, 2, 2),
+        Span("z-label", 0.3f, 2, 5, 6),
+        Span("c-label", 0.8f, 3, 10, 10),
+        Span("d-label", 0.8f, 3, 12, 4)
+      )
+      Span.greedyReduce(components, spanChooser) shouldBe Seq(components(0), components(3))
+    }
+  }
+  describe("unionAndAverageOverlaps tests") {
+    it("handles empty sequence") {
+      Span.unionAndAverageOverlaps(Seq()) shouldBe Seq()
+    }
+    it("handles single item sequence") {
+      val spans = Seq(Span("a", 0.4f, 0, 2, 2))
+      Span.unionAndAverageOverlaps(spans) shouldBe spans
+    }
+    it("handles no overlaps") {
+      val spans = Seq(Span("c-label", 0.9f, 2, 3, 2),
+        Span("c-label", 0.6f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      Span.unionAndAverageOverlaps(spans) shouldBe spans
+    }
+    it("handles single set of overlapping spans") {
+      val spans = Seq(
+        Span("a", 0.5f, 0, 0, 3),
+        Span("a", 0.8f, 2, 2, 4),
+        Span("a", 0.6f, 2, 5, 6),
+        Span("a", 0.7f, 3, 10, 10),
+        Span("a", 0.9f, 3, 12, 4)
+      )
+      Span.unionAndAverageOverlaps(spans) shouldBe Seq(Span("a", 0.7f, 3, 0, 20))
+    }
+    it("handles multiple sets of overlapping spans") {
+      val spans = Seq(
+        Span("a", 0.7f, 0, 0, 3),
+        Span("a", 0.8f, 2, 2, 2),
+        Span("a", 0.6f, 2, 5, 5),
+        Span("a", 0.8f, 3, 10, 10),
+        Span("a", 0.9f, 3, 12, 4)
+      )
+      Span.unionAndAverageOverlaps(spans) shouldBe Seq(
+        Span("a", 0.75f, 2, 0, 4),
+        Span("a", 0.6f, 2, 5, 5),
+        Span("a", 0.85f, 3, 10, 10))
+    }
+  }
+  describe("getContiguousOverlappingSpans tests"){
+    it("handles empty sequence") {
+      Span.getContiguousOverlappingSpans(Span("A", 0.5f, 2, 2, 2), Seq()) shouldBe Seq()
+    }
+    it("handles no contiguous overlap") {
+      val spans = Seq(Span("c-label", 0.9f, 2, 3, 2),
+        Span("c-label", 0.6f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      val start = Span("c-label", 0.5f, 0, 0, 3)
+      Span.getContiguousOverlappingSpans(start, spans) shouldBe Seq()
+    }
+    it("handles single overlap") {
+      val spans = Seq(Span("c-label", 0.9f, 2, 1, 2),
+        Span("c-label", 0.6f, 2, 5, 5),
+        Span("c-label", 0.8f, 3, 10, 10))
+      val start = Span("c-label", 0.5f, 0, 0, 3)
+      Span.getContiguousOverlappingSpans(start, spans) shouldBe spans.slice(0, 1)
+    }
+    it("handles multiple contiguous overlap") {
+      val spans = Seq(
+        Span("a", 0.5f, 0, 1, 3),
+        Span("a", 0.8f, 2, 2, 4),
+        Span("a", 0.6f, 2, 5, 6),
+        Span("a", 0.6f, 2, 6, 9),
+        Span("a", 0.7f, 3, 10, 10),
+        Span("a", 0.9f, 3, 12, 4)
+      )
+      val start = Span("a", 0.5f, 0, 0, 3)
+      Span.getContiguousOverlappingSpans(start, spans) shouldBe spans
+    }
+    it("handles only getting overlapping with start span") {
+      val spans = Seq(
+        Span("a", 0.7f, 0, 1, 3),
+        Span("a", 0.8f, 2, 2, 2),
+        Span("a", 0.6f, 2, 5, 5),
+        Span("a", 0.8f, 3, 10, 10),
+        Span("a", 0.9f, 3, 12, 4)
+      )
+      val start = Span("a", 0.5f, 0, 0, 3)
+      Span.getContiguousOverlappingSpans(start, spans) shouldBe spans.slice(0, 2)
+    }
+
+  }
+  describe("unionAndAverage tests"){
+    it("throws assert exception on empty sequence") {
+      intercept[AssertionError] {
+        Span.unionAndAverage(Seq())
+      }
+    }
+    it("handles single item sequence") {
+      val span = Span("a", 0.5f, 0, 2, 2)
+      Span.unionAndAverage(Seq(span)) shouldBe span
+      val span2 = Span("a", 0.5f, 3, 2, 2)
+      Span.unionAndAverage(Seq(span2)) shouldBe span2
+    }
+    it("handles multiple item sequence") {
+      val spans = Seq(
+        Span("a", 0.5f, 0, 0, 3),
+        Span("a", 0.8f, 2, 2, 4),
+        Span("a", 0.6f, 2, 5, 6),
+        Span("a", 0.7f, 3, 10, 10),
+        Span("a", 0.9f, 3, 12, 4)
+      )
+      Span.unionAndAverage(spans) shouldBe Span("a", 0.7f, 3, 0, 20)
+    }
   }
 }
