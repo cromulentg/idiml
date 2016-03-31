@@ -23,7 +23,7 @@
               {
                 "name":"tokenizer",
                 "class":"com.idibon.ml.feature.tokenizer.ChainTokenTransformer",
-                "config":{"accept":["Word","Punctuation"]}
+                "config":{"accept":["Word","Punctuation","URI"]}
               }
             ],
             "pipeline":[

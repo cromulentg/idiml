@@ -31,7 +31,8 @@
                   "config": {
                     "accept": [
                       "Word",
-                      "Punctuation"
+                      "Punctuation",
+                      "URI"
                     ]
                   }
                 }
