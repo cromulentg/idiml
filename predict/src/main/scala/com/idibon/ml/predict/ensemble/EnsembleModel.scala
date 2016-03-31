@@ -1,8 +1,7 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.alloy.Alloy.{Writer}
-import com.idibon.ml.common.{Archivable}
-import com.idibon.ml.feature.FeaturePipeline
+import com.idibon.ml.alloy.Alloy.{Reader, Writer}
+import com.idibon.ml.common.{ArchiveLoader, Engine, Archivable}
 import com.idibon.ml.predict._
 import com.idibon.ml.predict.ml.TrainingSummary
 import org.json4s._
@@ -20,15 +19,11 @@ import org.json4s._
   *   or one span prediction/label prediction per span of text
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/24/16.
-  *
   * @param models
-  * @param featurePipeline
   * @tparam T
   */
-abstract class EnsembleModel[T <: PredictResult](
-  models: Map[String, PredictModel[T]],
-  override val featurePipeline: Option[FeaturePipeline] = None)
-  extends PredictModel[T] with CanHazPipeline {
+abstract class EnsembleModel[T <: PredictResult](models: Map[String, PredictModel[T]])
+  extends PredictModel[T]{
   override def getEvaluationMetric(): Double = ???
 
   /**
@@ -52,10 +47,8 @@ abstract class EnsembleModel[T <: PredictResult](
     * @return
     */
   override def predict(document: Document, options: PredictOptions): Seq[T] = {
-    /* if a feature pipeline exists for this gang model, apply it to the
-     * document and pass the results and the inversion function to the
-     * subordinate models */
-    val doc = applyPipelineIfPresent(document)
+    /* augment the document if need be */
+    val doc = prePredict(document)
     /* predict against all of the models, concatenate all of the results */
     val predictions = models.par
       .map({ case (label, model) => model.predict(doc, options) })
@@ -64,25 +57,31 @@ abstract class EnsembleModel[T <: PredictResult](
     this.reduce(predictions)
   }
 
+  /**
+    * Placeholder function for subclasses to override if they need to.
+    *
+    * @param document
+    * @return
+    */
+  protected def prePredict(document: Document): Document = document
+
+  /**
+    * Function to reduce the output as appropriate to an atomic level
+    * for that particular predict type.
+    *
+    * @param predictions
+    * @return
+    */
   protected def reduce(predictions: Seq[T]): Seq[T]
 
-  /** Serializes the object within the Alloy
-    *
-    * This is here because it's the same for the base classes.
-    *
-    * Implementations are responsible for persisting any internal state
-    * necessary to re-load the object (for example, feature-to-vector
-    * index mappings) to the provided Alloy.Writer.
-    *
-    * Implementations may return a JObject of configuration data
-    * to include when re-loading the object.
+  /**
+    * Saves the models in this ensemble model to the passed in writer.
     *
     * @param writer destination within Alloy for any resources that
-    *               must be preserved for this object to be reloadable
-    * @return Some[JObject] of configuration data that must be preserved
-    *         to reload the object. None if no configuration is needed
+    *   must be preserved for this object to be reloadable.
+    * @return JObject containing metadata about the models saved.
     */
-  def save(writer: Writer): Option[JObject] = {
+  protected def saveModels(writer:Writer): JObject = {
     implicit val formats = org.json4s.DefaultFormats
     // create list of model types by label
     val modelTypes = models.map({case (label, model) => {
@@ -97,13 +96,36 @@ abstract class EnsembleModel[T <: PredictResult](
           JField("class", JString(typ)))))
       }
     }
-    val labels = JArray(models.map({case (label, _) => JString(label)}).toList)
-    // create JSON config to return
-    val ensembleMetadata = JObject(List(
-      JField("labels", labels),
-      JField("model-meta", JObject(modelMetadata)),
-      savePipelineIfPresent(writer)
-    ))
-    Some(ensembleMetadata)
+    JObject(modelMetadata)
+  }
+}
+
+object EnsembleModel {
+  /**
+    * Helper method to load models from the passed in reader & model metadata.
+    *
+    * @param modelNames sequence of string model names.
+    * @param modelMetaData archived configuration data returned previous call to saveModels.
+    * @param engine implementation of the Engine trait
+    * @param reader location within Alloy for loading any resources
+    *               previous preserved by a call to
+    *               { @link com.idibon.ml.common.Archivable#save}
+    * @return
+    */
+  def load(modelNames: Seq[String],
+           modelMetaData: JObject,
+           engine: Engine,
+           reader: Option[Reader]) = {
+    implicit val formats = org.json4s.DefaultFormats
+    modelNames.map(name => {
+      // get model type
+      val modelType =
+        Class.forName((modelMetaData \ name \ "class").extract[String])
+      // get model metadata JObject
+      val indivMeta = (modelMetaData \ name \ "config").extract[Option[JObject]]
+      (name, ArchiveLoader
+        .reify[PredictModel[Span]](modelType, engine, Some(reader.get.within(name)), indivMeta)
+        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Span]]))
+    }).toMap
   }
 }

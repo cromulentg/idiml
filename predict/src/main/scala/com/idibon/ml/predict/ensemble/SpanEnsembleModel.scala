@@ -1,38 +1,79 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.alloy.Alloy.{Reader}
+import com.idibon.ml.alloy.Alloy.{Writer, Reader}
 import com.idibon.ml.common.{Engine, ArchiveLoader, Archivable}
-import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict._
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
 
+import scala.collection.mutable
+
 /**
   * Span ensemble model implementation.
   *
-  * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/25/16.
+  * This handles delegating predictions to models as well as reducing results
+  * appropriately from the multiple models.
   *
+  * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/25/16.
   * @param models
-  * @param featurePipeline
   */
-class SpanEnsembleModel(models: Map[String, PredictModel[Span]],
-                        override val featurePipeline: Option[FeaturePipeline] = None)
-  extends EnsembleModel[Span](models, featurePipeline)
+class SpanEnsembleModel(models: Map[String, PredictModel[Span]])
+  extends EnsembleModel[Span](models)
   with Archivable[SpanEnsembleModel, SpanEnsembleModelLoader]{
 
   override val reifiedType: Class[_ <: PredictModel[Span]] = classOf[SpanEnsembleModel]
 
-  /** Used to reduce multiple Classifications for a label into a final result */
-  private [this] val _reducer: PredictResultReduction[Span] = ???
-
   /**
-    * Reduces predictions
-    * @param predictions
-    * @return
+    * Reduces predictions.
+    *
+    * Each span of text can only have one span associated with it. So reduce
+    * any overlaps using a greedy approach.
+    *
+    * @param predictions the span predictions to reduce
+    * @return a sequence of spans that dont overlap
     */
-  override protected def reduce(predictions: Seq[Span]): Seq[Span] = ???
+  override protected def reduce(predictions: Seq[Span]): Seq[Span] = {
+    // sort by offset, and tie break on negative length
+    val sorted = predictions.sortBy(p => (p.offset, -p.length)).toList
+    var workspace = sorted
+    val mutableList = mutable.ListBuffer[Span]()
+    while (workspace.nonEmpty) {
+      // grab the head element
+      val head = workspace.head
+      // find overlapping pieces
+      val overlapping = Span.getContiguousOverlappingSpans(head, workspace.tail)
+      // send to reducer
+      val reduced = Span.greedyReduce(head +: overlapping, Span.chooseSpan)
+      // filter < 0.5 Rule Spans & add to mutableList
+      mutableList ++= reduced.filterNot(s => s.isRule && s.probability < 0.5f)
+      // advance over the list
+      workspace = workspace.slice(overlapping.size + 1, workspace.length)
+    }
+    mutableList.toSeq
+  }
 
   override def getFeaturesUsed(): Vector = ???
+
+  /**
+    * Saves the ensemble span model using the passed in writer.
+    *
+    * @param writer destination within Alloy for any resources that
+    *   must be preserved for this object to be reloadable
+    * @return Some[JObject] of configuration data that must be preserved
+    *   to reload the object. None if no configuration is needed
+    */
+  def save(writer: Writer): Option[JObject] = {
+    implicit val formats = org.json4s.DefaultFormats
+    //save each model into it's own space & get model metadata
+    val modelMetadata = this.saveModels(writer)
+    val modelNames = JArray(models.map({case (label, _) => JString(label)}).toList)
+    // create JSON config to return
+    val ensembleMetadata = JObject(List(
+      JField("labels", modelNames),
+      JField("model-meta", modelMetadata)
+    ))
+    Some(ensembleMetadata)
+  }
 }
 
 class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
@@ -50,19 +91,9 @@ class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
                     reader: Option[Reader],
                     config: Option[JObject]): SpanEnsembleModel = {
     implicit val formats = org.json4s.DefaultFormats
-    val labels = (config.get \ "labels").extract[List[String]]
+    val modelNames = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
-    val pipeline = CanHazPipeline.loadPipelineIfPresent(engine, reader, config)
-    val models = labels.map(name => {
-      // get model type
-      val modelType =
-        Class.forName((modelMeta \ name \ "class").extract[String])
-      // get model metadata JObject
-      val indivMeta = (modelMeta \ name \ "config").extract[Option[JObject]]
-      (name, ArchiveLoader
-        .reify[PredictModel[Span]](modelType, engine, Some(reader.get.within(name)), indivMeta)
-        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Span]]))
-    }).toMap
-    new SpanEnsembleModel(models, pipeline)
+    val models = EnsembleModel.load(modelNames, modelMeta, engine, reader)
+    new SpanEnsembleModel(models)
   }
 }

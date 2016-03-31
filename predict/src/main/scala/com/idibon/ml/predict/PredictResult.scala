@@ -427,6 +427,16 @@ object Span {
     *
     * Assumes the passed in sequence of spans all overlap with the starting span.
     *
+    * Note: without resorting to creating paths of possible spans, this chooses
+    * the one span to rule them all; we only return one span, where in certain cases
+    * you could return multiple:
+    * E.g. with
+    * 1)  A B C D
+    * 2)    B C
+    * 3)        D E F
+    * If ABCD isn't the best, then we just return either BC or DEF, when in reality they
+    * both could live on. This could be mediated by
+    *
     * @param start the span to start comparing at.
     * @param spans the sequence of spans to consider that overlap with the starting span.
     * @return a single span.
