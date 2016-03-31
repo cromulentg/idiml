@@ -31,6 +31,9 @@ class WebWordBreakIterator(delegate: BreakIterator)
   // URI parser state machine
   private [this] val uriState = new URIStateMachine
 
+  // stores the type of break that was detected, for getRuleStatus
+  private [this] var _lastRuleStatus: Int = 0
+
   /** Returns the position of the next boundary
     *
     * {@link com.ibm.icu.text.BreakIterator}
@@ -45,20 +48,47 @@ class WebWordBreakIterator(delegate: BreakIterator)
      * boundary detected in this class */
     val result = trie.matches(_characters).flatMap(_ match {
       case (WebWord.URI_HIERARCHICAL, boundary) =>
-        hierUriMatch(boundary).map(b => delegate.following(b - 1))
+        hierUriMatch(boundary).map(b => {
+          _lastRuleStatus = Tag.ruleStatus(Tag.URI)
+          delegate.following(b - 1)
+        })
       case (WebWord.URI_OPAQUE, boundary) =>
-        opaqueUriMatch(boundary).map(b => delegate.following(b - 1))
+        opaqueUriMatch(boundary).map(b => {
+          _lastRuleStatus = Tag.ruleStatus(Tag.URI)
+          delegate.following(b - 1)
+        })
       case (WebWord.HTML_DECIMAL_REF, boundary) =>
-        htmlRefMatch(boundary, false).map(b => delegate.following(b - 1))
+        htmlRefMatch(boundary, false).map(b => {
+          _lastRuleStatus = Tag.ruleStatus(Tag.Word)
+          delegate.following(b - 1)
+        })
       case (WebWord.HTML_HEXADECIMAL_REF, boundary) =>
-        htmlRefMatch(boundary, true).map(b => delegate.following(b - 1))
+        htmlRefMatch(boundary, true).map(b => {
+          _lastRuleStatus = Tag.ruleStatus(Tag.Word)
+          delegate.following(b - 1)
+        })
       case (_, boundary) =>
+        _lastRuleStatus = Tag.ruleStatus(Tag.Word)
         Some(delegate.following(boundary - 1))
-    }).getOrElse(delegate.next)
+    }).getOrElse({
+      _lastRuleStatus = 0
+      delegate.next
+    })
 
     // make the character iterator collectable if this is the last boundary
     if (result == BreakIterator.DONE) _characters = null
     result
+  }
+
+  /** Returns the status tag of the break rule that determined the last boundary
+    *
+    * {@link com.ibm.icu.text.BreakIterator#getRuleStatus}
+    */
+  override def getRuleStatus(): Int = {
+    if (_lastRuleStatus == 0)
+      delegate.getRuleStatus
+    else
+      _lastRuleStatus
   }
 
   /** Returns the boundary of an HTML hexadecimal character reference
