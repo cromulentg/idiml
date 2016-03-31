@@ -36,17 +36,17 @@ private[tokenizer] object ICUTokenizer {
       }
       breakIt.setText(content)
 
-      // grab all boundaries in the document
-      val boundaries = (breakIt.first ::
-        Stream.continually(breakIt.next)
-        .takeWhile(_ != BreakIterator.DONE).toList)
+      // grab all (boundary, ruleStatus) sets in the document
+      val boundaries = ((breakIt.first, 0) ::
+        Stream.continually((breakIt.next, breakIt.getRuleStatus))
+        .takeWhile(_._1 != BreakIterator.DONE).toList)
 
       /* iterate through neighboring pairs of segment boundaries to
        * generate the tokens */
       boundaries.sliding(2).map(_ match {
-        case first :: last :: Nil => {
+        case (first, _) :: (last, status) :: Nil => {
           val text = content.substring(first, last)
-          Token(text, Tag.of(text), first, last - first)
+          Token(text, Tag.of(text, status), first, last - first)
         }
         /* the only case where sliding(2) will not generate exactly
          * two entries is when tokenizing an empty string */

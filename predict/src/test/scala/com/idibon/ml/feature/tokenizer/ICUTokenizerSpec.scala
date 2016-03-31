@@ -55,6 +55,21 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
         ULocale.US, ContentTypeCode.XML) shouldBe List(
         "<!DOCTYPE xml 'fo\">o'>", "<h:p>", "words", "&amp;", ":)", "<test />", "</h:p>")
     }
+
+    it("should return the correct tags") {
+      ICUTokenizer.tokenize("<div id='foo'>&amp;:)<a href='file:///'>file:///</a> hi!</div>",
+          ContentTypeCode.XML, ULocale.US) shouldBe List(
+        Token("<div id='foo'>", Tag.Markup, 0, 14),
+            Token("&amp;", Tag.Word, 14, 5),
+            Token(":)", Tag.Word, 19, 2),
+            Token("<a href='file:///'>", Tag.Markup, 21, 19),
+            Token("file:///", Tag.URI, 40, 8),
+            Token("</a>", Tag.Markup, 48, 4),
+            Token(" ", Tag.Whitespace, 52, 1),
+            Token("hi", Tag.Word, 53, 2),
+            Token("!", Tag.Punctuation, 55, 1),
+            Token("</div>", Tag.Markup, 56, 6))
+    }
   }
 
   describe("english") {

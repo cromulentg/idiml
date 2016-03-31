@@ -38,8 +38,10 @@ object Tag extends Enumeration {
     * @param ruleStatus the rule status tag
     * @return the Tag of the token
     */
-  def of(content: String) = {
-    if (content.forall(UCharacter.isUWhiteSpace(_)))
+  def of(content: String, ruleStatus: Int) = {
+    if (ruleStatus < 0)
+      Tag(-ruleStatus - 1)
+    else if (content.forall(UCharacter.isUWhiteSpace(_)))
       Whitespace
     else if (content.forall(isPunctuation(_)))
       Punctuation
