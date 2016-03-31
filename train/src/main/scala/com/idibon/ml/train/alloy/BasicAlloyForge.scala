@@ -58,7 +58,7 @@ sealed class BasicAlloyForge[T <: PredictResult with Buildable[T, Builder[T]] : 
   def createEnsembleModel(models: Map[String, PredictModel[T]]): PredictModel[T] = {
     typeOf[T] match {
       case t if t =:= typeOf[Span] => {
-        new SpanEnsembleModel(models.asInstanceOf[Map[String, PredictModel[Span]]])
+        new SpanEnsembleModel(name, models.asInstanceOf[Map[String, PredictModel[Span]]])
           .asInstanceOf[PredictModel[T]]
       }
       case t if t =:= typeOf[Classification] => {

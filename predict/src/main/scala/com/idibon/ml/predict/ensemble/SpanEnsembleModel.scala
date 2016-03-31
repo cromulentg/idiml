@@ -15,9 +15,10 @@ import scala.collection.mutable
   * appropriately from the multiple models.
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/25/16.
+  * @param name
   * @param models
   */
-class SpanEnsembleModel(models: Map[String, PredictModel[Span]])
+class SpanEnsembleModel(name: String, models: Map[String, PredictModel[Span]])
   extends EnsembleModel[Span](models)
   with Archivable[SpanEnsembleModel, SpanEnsembleModelLoader]{
 
@@ -69,6 +70,7 @@ class SpanEnsembleModel(models: Map[String, PredictModel[Span]])
     val modelNames = JArray(models.map({case (label, _) => JString(label)}).toList)
     // create JSON config to return
     val ensembleMetadata = JObject(List(
+      JField("name", JString(name)),
       JField("labels", modelNames),
       JField("model-meta", modelMetadata)
     ))
@@ -91,9 +93,10 @@ class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
                     reader: Option[Reader],
                     config: Option[JObject]): SpanEnsembleModel = {
     implicit val formats = org.json4s.DefaultFormats
+    val name = (config.get \ "name").extract[String]
     val modelNames = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
     val models = EnsembleModel.load(modelNames, modelMeta, engine, reader)
-    new SpanEnsembleModel(models)
+    new SpanEnsembleModel(name, models)
   }
 }
