@@ -1,7 +1,5 @@
 package com.idibon.ml.predict.rules
 
-import java.util.regex.Pattern
-
 import com.idibon.ml.alloy.{MemoryAlloyReader, MemoryAlloyWriter}
 import com.idibon.ml.common.EmbeddedEngine
 import com.idibon.ml.predict._
@@ -163,6 +161,70 @@ class SpanRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
       results.size shouldBe 2
       results(0) shouldBe Span("a-label", 0.5f, 2, 2, 2)
       results(1) shouldBe Span("a-label", 0.5f, 2, 5, 2)
+    }
+    it("reduces correctly") {
+      val spanRules = new SpanRules("a-label", "a-label", List(("is", 0.6f), ("is a", 0.5f)))
+      val results = spanRules.spanPredict("this is a string")
+      results.size shouldBe 2
+      results(0) shouldBe Span("a-label", 0.6f, 2, 2, 2)
+      results(1) shouldBe Span("a-label", 0.55f, 2, 5, 4)
+    }
+  }
+
+  describe("Reduce overlaps tests") {
+    val spanRules = new SpanRules("a-label", "a-label", List())
+    it("handles no overlaps") {
+      val results = spanRules.reduceOverlaps(
+        Seq(Span("a-label", 0.6f, 2, 2, 2), Span("a-label", 0.45f, 2, 5, 4)))
+      results.size shouldBe 2
+      results(0) shouldBe Span("a-label", 0.6f, 2, 2, 2)
+      results(1) shouldBe Span("a-label", 0.45f, 2, 5, 4)
+    }
+    it("handles positive overlaps") {
+      val results = spanRules.reduceOverlaps(
+        Seq(Span("a-label", 0.6f, 2, 5, 3), Span("a-label", 0.5f, 2, 7, 4)))
+      results.size shouldBe 1
+      results(0) shouldBe Span("a-label", 0.55f, 2, 5, 6)
+    }
+    it("handles negative overlaps") {
+      val results = spanRules.reduceOverlaps(
+        Seq(Span("a-label", 0.2f, 2, 5, 2), Span("a-label", 0.4f, 2, 6, 4)))
+      results.size shouldBe 1
+      results(0) shouldBe Span("a-label", 0.3f, 2, 5, 5)
+    }
+    it("handles positive and negative overlaps that overlap themselves") {
+      val results = spanRules.reduceOverlaps(
+        Seq(Span("a-label", 0.2f, 2, 5, 2), Span("a-label", 0.4f, 2, 6, 4),
+        Span("a-label", 0.5f, 2, 5, 2), Span("a-label", 0.6f, 2, 6, 4)))
+      results.size shouldBe 1
+      results(0) shouldBe Span("a-label", 0.3f, 2, 5, 5)
+    }
+    it("handles positive and negative overlaps that don't overlap") {
+      val results = spanRules.reduceOverlaps(
+        Seq(Span("a-label", 0.2f, 2, 5, 2), Span("a-label", 0.4f, 2, 6, 4),
+          Span("a-label", 0.5f, 2, 0, 2), Span("a-label", 0.6f, 2, 1, 3)))
+      results.size shouldBe 2
+      results(0) shouldBe Span("a-label", 0.55f, 2, 0, 4)
+      results(1) shouldBe Span("a-label", 0.3f, 2, 5, 5)
+    }
+  }
+
+  describe("has overlaps tests") {
+    val spanRules = new SpanRules("a-label", "a-label", List())
+    it("detects overlaps") {
+      spanRules.hasOverlaps(
+        Seq(Span("a-label", 0.2f, 2, 0, 2),
+          Span("a-label", 0.2f, 2, 5, 2),
+          Span("a-label", 0.4f, 2, 6, 4))) shouldBe true
+    }
+    it("handles empty sequences") {
+      spanRules.hasOverlaps(Seq()) shouldBe false
+    }
+    it("handles no overlaps") {
+      spanRules.hasOverlaps(
+        Seq(Span("a-label", 0.2f, 2, 0, 2),
+          Span("a-label", 0.2f, 2, 2, 2),
+          Span("a-label", 0.4f, 2, 4, 4))) shouldBe false
     }
   }
 

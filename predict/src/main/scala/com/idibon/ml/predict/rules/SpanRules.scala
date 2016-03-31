@@ -65,14 +65,14 @@ case class SpanRules(labelUUID: String, labelHuman: String, rules: List[(String,
     * Creates the spans for a given piece of content.
     *
     * @param content the string content to look at.
-    * @return possibly empty sequence of spans
+    * @return possibly empty sequence of spans; the spans don't overlap.
     */
   def spanPredict(content: String): Seq[Span] = {
     // since we either got the whole thing, or a named group, we don't have any overlaps
     // to worry about
     val matches = getRuleMatches(content)
     // create spans
-    matches.flatMap({case (rule, matchIndexes) =>
+    val rawSpans = matches.flatMap({case (rule, matchIndexes) =>
       val weight = ruleWeightMap(rule)
       val flagValue = if (weight == 0f || weight == 1.0f) {
         PredictResultFlag.mask(PredictResultFlag.FORCED, PredictResultFlag.RULE)
@@ -82,7 +82,57 @@ case class SpanRules(labelUUID: String, labelHuman: String, rules: List[(String,
       matchIndexes.map({case (start, end) =>
         new Span(labelUUID, weight, flagValue, start, end - start)
       })
-    }).toSeq
+    }).toSeq.sortBy(s => (s.offset, -s.length))
+    if (rawSpans.isEmpty) {
+      Seq()
+    } else {
+      reduceOverlaps(rawSpans)
+    }
+  }
+
+  /**
+    * Reduces any spans that overlap into a single span.
+    *
+    * If there aren't any overlaps, we just return the passed in sequence as is.
+    * If there are overlaps:
+    * 1) We first try to union and average any spans that are 'positive' or 'negative',
+    *    which is based on their weight. We do this because it makes sense to union these
+    *    if they're indeed overlapping.
+    * 2) Then if we still have overlaps, we choose a greedy method of reduction.
+    *
+    * @param rawSpans the possible overlapping sequence of spans.
+    * @return non-overlapping sequence of spans
+    */
+  def reduceOverlaps(rawSpans: Seq[Span]): Seq[Span] = {
+    if (hasOverlaps(rawSpans)) {
+      val unionedPos = Span.unionAndAverageOverlaps(rawSpans.filter(s => s.probability >= 0.5f))
+      val unionedNeg = Span.unionAndAverageOverlaps(rawSpans.filter(s => s.probability < 0.5f))
+      val spans: Seq[Span] = (unionedPos ++ unionedNeg).sortBy(s => (s.offset, -s.length))
+      if (hasOverlaps(spans)) {
+        // do greedy reduction
+        Span.greedyReduce(spans, Span.chooseRuleSpanGreedily)
+      } else {
+        spans
+      }
+    } else {
+      rawSpans
+    }
+  }
+
+  /**
+    * Returns true if any spans in the list overlap
+    *
+    * Spans should be sorted by increasing offset before calling this
+    * method.
+    *
+    * @param spans list of spans, already sorted by offset
+    * @return true if any spans overlap
+    */
+  def hasOverlaps(spans: Seq[Span]): Boolean = {
+    spans.sliding(2).exists(_ match {
+      case a :: b :: _ => a.end > b.offset
+      case _ => false
+    })
   }
 
   /**
