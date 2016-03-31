@@ -25,7 +25,7 @@ class TokenTransformer extends FeatureTransformer {
     */
   def apply(content: Feature[String], language: Feature[LanguageCode],
     contentType: Feature[ContentType]): Seq[Token] = {
-    ICUTokenizer.tokenize(content.get,
+    ICUTokenizer.tokenize(content.get, contentType.get.code,
       language.get.icuLocale.getOrElse(ULocale.US))
   }
 }
@@ -44,7 +44,7 @@ class ChainTokenTransformer(accept: Seq[Tag.Value]) extends FeatureTransformer
 
   def apply(content: Feature[String], language: Feature[LanguageCode],
       contentType: Feature[ContentType]): Chain[Token] = {
-    Chain(ICUTokenizer.tokenize(content.get,
+    Chain(ICUTokenizer.tokenize(content.get, contentType.get.code,
       language.get.icuLocale.getOrElse(ULocale.US))
       .filter(token => (_tokenMask & (1 << token.tag.id)) != 0))
   }

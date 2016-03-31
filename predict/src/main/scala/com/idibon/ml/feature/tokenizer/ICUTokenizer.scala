@@ -4,6 +4,7 @@ import java.lang.ThreadLocal
 import java.lang.ref.SoftReference
 import scala.collection.mutable.{HashMap => MutableMap, Queue}
 
+import com.idibon.ml.feature.contenttype.ContentTypeCode
 import com.idibon.ml.cld2._
 
 import com.ibm.icu.text.BreakIterator
@@ -17,8 +18,22 @@ import com.ibm.icu.util.ULocale
   */
 private[tokenizer] object ICUTokenizer {
 
-  def tokenize(content: String, locale: ULocale): Seq[Token] = {
-    breaking(locale, (breakIt: BreakIterator) => {
+  /** Segments a string at word boundaries
+    *
+    * @param content string to segment
+    * @param contentType structure of the string
+    * @param locale language of the content
+    */
+  def tokenize(content: String,
+    contentType: ContentTypeCode.Value,
+    locale: ULocale): Seq[Token] = {
+
+    breaking(locale, (baseBreakIt: BreakIterator) => {
+      val breakIt = contentType match {
+        case ContentTypeCode.XML => new XMLBreakIterator(baseBreakIt)
+        case ContentTypeCode.HTML => new XMLBreakIterator(baseBreakIt)
+        case _ => baseBreakIt
+      }
       breakIt.setText(content)
 
       // grab all boundaries in the document

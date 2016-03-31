@@ -1,5 +1,7 @@
 package com.idibon.ml.feature.tokenizer
 
+import com.idibon.ml.feature.contenttype.ContentTypeCode
+
 import com.ibm.icu.util.ULocale
 import com.ibm.icu.text.BreakIterator
 import org.scalatest.{Matchers, FunSpec}
@@ -7,20 +9,23 @@ import org.scalatest.{Matchers, FunSpec}
 class ICUTokenizerSpec extends FunSpec with Matchers {
 
   /** Returns tokenized content, minus whitespace */
-  def !!(x: String, l: ULocale = ULocale.US) = {
-    ICUTokenizer.tokenize(x, l)
+  def !!(x: String, l: ULocale = ULocale.US,
+      c: ContentTypeCode.Value = ContentTypeCode.PlainText) = {
+    ICUTokenizer.tokenize(x, c, l)
       .filter(_.tag != Tag.Whitespace)
       .map(_.content)
   }
 
   /** Returns tokenized content, including whitespace */
-  def ??(x: String, l: ULocale = ULocale.US) = {
-    ICUTokenizer.tokenize(x, l).map(_.content)
+  def ??(x: String, l: ULocale = ULocale.US,
+      c: ContentTypeCode.Value = ContentTypeCode.PlainText) = {
+    ICUTokenizer.tokenize(x, c, l).map(_.content)
   }
 
   /** Returns tuples of start and length for all tokens */
-  def <<(x: String, l: ULocale = ULocale.US) = {
-    ICUTokenizer.tokenize(x, l).map(t => (t.offset, t.length))
+  def <<(x: String, l: ULocale = ULocale.US,
+      c: ContentTypeCode.Value = ContentTypeCode.PlainText) = {
+    ICUTokenizer.tokenize(x, c, l).map(t => (t.offset, t.length))
   }
 
   describe("weird") {
@@ -36,6 +41,19 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
 
     it("should handle empty strings") {
       ??("") shouldBe empty
+    }
+  }
+
+  describe("XML") {
+    it("should treat XML markup as individual tokens") {
+      !!("""<div class="foo">words</div>""", ULocale.US, ContentTypeCode.XML) shouldBe List(
+        """<div class="foo">""", "words", "</div>")
+    }
+
+    it("should nest emoticons & HTML entity tokenization inside XML") {
+      !!("<!DOCTYPE xml 'fo\">o'><h:p>words &amp; :)<test /></h:p>",
+        ULocale.US, ContentTypeCode.XML) shouldBe List(
+        "<!DOCTYPE xml 'fo\">o'>", "<h:p>", "words", "&amp;", ":)", "<test />", "</h:p>")
     }
   }
 
