@@ -59,6 +59,7 @@ object Furnace2 {
   private[train] def resetRegistry() {
     _registry.clear()
     register[Span]("ChainNERFurnace", ChainNERFurnace)
+    register[Span]("SpanRuleFurnace", SpanRuleFurnace)
   }
 
   resetRegistry()

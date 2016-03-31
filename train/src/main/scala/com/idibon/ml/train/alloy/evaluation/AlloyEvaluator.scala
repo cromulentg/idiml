@@ -203,6 +203,8 @@ trait AlloyEvaluator extends MetricHelper {
                                thresholds: Map[String, Float]) = {
     docs().map(doc => {
       val goldSet = getGoldSet(doc)
+      /* FIXME: Span Rules don't return tokens or tags, thus if picked as the winning
+         span, they will lower token and token tags metrics (i.e. recall). */
       val predicted = alloy.predict(doc, AlloyEvaluator.EVALUATE_PREDICT_DEFAULT)
       // create eval data point
       this.createEvaluationDataPoint(uuidStrToDouble, goldSet, predicted, thresholds)

@@ -43,5 +43,6 @@ trait PredictModel[+T <: PredictResult] {
     * After training, this method returns the value of the metric commonly used to evaluate model performance
     * @return Double (e.g. AreaUnderROC)
     */
+  @deprecated("Being replaced by evaluators and training summaries.", "Since 2015-03-24")
   def getEvaluationMetric(): Double
 }
