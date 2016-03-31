@@ -17,6 +17,11 @@
     "forgeConfig": {
       "furnaces": [
         {
+          "name":"span_rules",
+          "furnace": "SpanRuleFurnace",
+          "config": {}
+        },
+        {
           "name": "crf_ner",
           "furnace": "ChainNERFurnace",
           "config": {

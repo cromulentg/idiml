@@ -147,6 +147,10 @@ object Train extends Tool with StrictLogging {
 
     val options = TrainOptions()
     readTrainingData.map(f => options.addDocuments(f()))
+    alloyConfig.rules.nonEmpty match {
+      case true => options.addRules(alloyConfig.rules.map(r => (r.label, r.expression, r.weight)))
+      case false => ()
+    }
 
     val trainer = alloyConfig.task_type match {
       case "extraction.bio_ner" => AlloyForge[Span](engine, forgeConfig.forgeName,
@@ -222,7 +226,15 @@ object Train extends Tool with StrictLogging {
 case class AlloyConfiguration(
   task_type: String,
   uuid_to_label: Map[String, String],
-  rules: Option[JObject])
+  rules: Array[Rule])
+
+case class Rule(label: String, expression: String, weight: Float)
+
 
 /** Schema for JSON training configuration file */
-case class ForgeConfiguration(forgeName: String = "", forgeConfig: JObject = null, trainerConfig: JObject = null, configVersion: String = "0.0.1")
+case class ForgeConfiguration(forgeName: String = "",
+                              forgeConfig: JObject = null,
+                              trainerConfig: JObject = null,
+                              configVersion: String = "0.0.1")
+
+
