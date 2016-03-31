@@ -2,16 +2,17 @@ package com.idibon.ml.train.alloy
 
 import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy, Alloy}
 import com.idibon.ml.common.Engine
-import com.idibon.ml.feature.{SequenceGenerator, Builder, Buildable}
-import com.idibon.ml.predict.{Classification, Span, Label, PredictResult}
+import com.idibon.ml.feature.{Builder, Buildable}
+import com.idibon.ml.predict.ensemble.SpanEnsembleModel
+import com.idibon.ml.predict._
 import com.idibon.ml.train.TrainOptions
 import com.idibon.ml.train.alloy.evaluation.{NoOpEvaluator, BIOSpanMetricsEvaluator, AlloyEvaluator}
 import com.idibon.ml.train.furnace.{ChainNERFurnace, HasFurnaces, Furnace2}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s._
 
-import scala.concurrent.{Promise, ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{ExecutionContext}
+import scala.reflect.runtime.universe.{typeOf, TypeTag}
 
 /** Basic class for generating Alloys from one or more furnaces.
   *
@@ -20,7 +21,7 @@ import scala.util.{Failure, Success, Try}
   * @param labels the set of all labels assignable from the alloy
   * @param furnaces furnaces used to generate the models stored in the alloy
   */
-sealed class BasicAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
+sealed class BasicAlloyForge[T <: PredictResult with Buildable[T, Builder[T]] : TypeTag](
      override val name: String,
      override val labels: Seq[Label],
      override val furnaces: Seq[Furnace2[T]])
@@ -37,13 +38,32 @@ sealed class BasicAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
 
     // train all of the models, creating a name => Model map for the alloy
     val models = furnaces.map(_.name).zip(heatFurnaces(options)).toMap
+    // wrap each into their own ensemble model
+    val ensemble: PredictModel[T] = createEnsembleModel(models)
     // create wrapper alloy for evaluation
-    val baseAlloy = new BaseAlloy[T](name, labels, models)
+    val baseAlloy = new BaseAlloy[T](name, labels, Map("ensemble" -> ensemble))
     // evaluate
     val summaries = evaluator.evaluate(name, baseAlloy, options.dataSet)
     // now make real alloy with results
     new BaseAlloy(name, labels, models) with HasTrainingSummary {
       override def getTrainingSummaries = if (summaries.nonEmpty) Some(summaries) else None
+    }
+  }
+
+  /**
+    * Creates the ensemble model appropriate for the type of this forge.
+    * @param models the models to add to the ensemble model.
+    * @return a PredictModel[T] that is the ensemble model.
+    */
+  def createEnsembleModel(models: Map[String, PredictModel[T]]): PredictModel[T] = {
+    typeOf[T] match {
+      case t if t =:= typeOf[Span] => {
+        new SpanEnsembleModel(models.asInstanceOf[Map[String, PredictModel[Span]]])
+          .asInstanceOf[PredictModel[T]]
+      }
+      case t if t =:= typeOf[Classification] => {
+        throw new scala.IllegalArgumentException("No classification ensemble model!")
+      }
     }
   }
 
