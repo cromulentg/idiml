@@ -90,14 +90,11 @@ class IdibonSparkMLLIBLRWrapper(weights: Vector,
           bestClass = i + 1
         }
         margin  // so this is just the margin
-        // not sure about the bits here -- guesstimating without really thinking
-      }.map(margin => {
-        margin - math.max(0, maxMargin) //only subtract if maxMargin is greater than 0
-      }).map(margin => math.exp(margin)).toList // exponentiate the value
+        // FIXME: there is the possibility of overflow that we should handle...
+      }.map(margin => math.exp(margin)).toList // exponentiate the value
       val marginSum = margins.sum // get the sum
-      val eMax = math.exp(math.max(0, maxMargin))
-      val otherClasses = margins.map(m => m / (eMax + marginSum))
-      val zerothClass = eMax / (eMax + marginSum)
+      val otherClasses = margins.map(m => m / (1 + marginSum))
+      val zerothClass = 1 / (1 + marginSum)
       Vectors.sparse(numClasses, (0 until numClasses).toArray, (zerothClass :: otherClasses).toArray)
     }
   }
