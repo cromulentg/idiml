@@ -300,6 +300,13 @@ class SpanSpec extends FunSpec with Matchers {
       val spansWithPrediction = Seq(Span("b-label", 0.9f, 0, 2, 2), Span("b-label", 0.3f, 3, 2, 5))
       Span.chooseSpan(ruleStart, spansWithPrediction) shouldBe ruleStart
     }
+    it("throws exception when trying to merge to predict rules") {
+      val ruleStart = Span("a-label", 0.2f, 0, 2, 2)
+      val spansWithPrediction = Seq(Span("b-label", 0.9f, 0, 2, 2), Span("b-label", 0.3f, 0, 2, 5))
+      intercept[IllegalStateException] {
+        Span.chooseSpan(ruleStart, spansWithPrediction)
+      }
+    }
   }
   describe("get overlapping spans tests"){
     it("works with empty sequence") {
@@ -446,7 +453,20 @@ class SpanSpec extends FunSpec with Matchers {
       val start = Span("a", 0.5f, 0, 0, 3)
       Span.getContiguousOverlappingSpans(start, spans) shouldBe spans.slice(0, 2)
     }
-
+    it("handles tricky case to make sure current is assigned properly") {
+      /* E.g. so we can handle the following
+        1. [A, B, C, D]
+        2.   [ B, C ]
+        3.      [ C ]
+        4.         [ D, E ]*/
+      val spans = Seq(
+        Span("a", 0.8f, 2, 1, 2),
+        Span("a", 0.8f, 3, 2, 1),
+        Span("a", 0.9f, 3, 3, 2)
+      )
+      val start = Span("a", 0.7f, 0, 0, 4)
+      Span.getContiguousOverlappingSpans(start, spans) shouldBe spans
+    }
   }
   describe("unionAndAverage tests"){
     it("throws assert exception on empty sequence") {

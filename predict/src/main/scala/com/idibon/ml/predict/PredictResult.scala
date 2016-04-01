@@ -370,8 +370,9 @@ object Span {
     * @return subset of spans, where none of them overlap
     */
   def greedyReduce(components: Seq[Span], spanChooser: (Span, Seq[Span]) => Span): Seq[Span] = {
-    if (components.size <= 1) components
-    else {
+    if (components.size <= 1) {
+      components
+    } else {
       val mutableList = mutable.ListBuffer[Span]()
       var head = components.head
       var workspace = components.tail
@@ -393,7 +394,7 @@ object Span {
         } else {
           // choose span from overlapping & move workspace along
           head = spanChooser(head, overlapping)
-          workspace = workspace.slice(overlapping.size, workspace.length)
+          workspace = workspace.drop(overlapping.size)
         }
       }
       mutableList += head
@@ -423,7 +424,8 @@ object Span {
     * Takes in ML produced spans and rule produced spans that overlap and returns a single span.
     * Currently the logic is that if we have any rule span, take that span over a predicted
     * one. If we're dealing with multiple rule based spans, then we delegate to special logic
-    * for that.
+    * for that. Throws an error if we're merging two predicted spans (since we currently
+    * don't support this).
     *
     * Assumes the passed in sequence of spans all overlap with the starting span.
     *
@@ -440,6 +442,7 @@ object Span {
     * @param start the span to start comparing at.
     * @param spans the sequence of spans to consider that overlap with the starting span.
     * @return a single span.
+    * @throws IllegalStateException if you try to merge to predicted span rules.
     */
   def chooseSpan(start: Span, spans: Seq[Span]): Span = {
     var workspace = spans
@@ -454,7 +457,12 @@ object Span {
       } else if (!chosen.isRule && head.isRule) {
         // take the rule since we're a ML based span
         chosen = head
-      } // if chosen is Rule, but head is ML -- keep rule -- i.e. do nothing
+        // if chosen is Rule, but head is ML -- keep rule -- i.e. do nothing
+      } else if (chosen.isRule && !head.isRule) {
+        // do nothing
+      } else if (!chosen.isRule && !head.isRule) {
+        throw new IllegalStateException("Cannot merge two predicted rules; no BL defined!")
+      }
       workspace = workspace.tail
     }
     chosen
@@ -485,7 +493,7 @@ object Span {
     *
     * Assumes: that we're only dealing with rule spans -- since this only "makes sense"
     * for them. Also we assume we need a tolerance as to what is zero, since we're dealing with
-    * floating point numbers.
+    * floating point numbers. E.g. we want to be able to equate abs(0.4f - 0.5f) with abs(0.6f - 0.5f).
     *
     * @param chosen the current span that is chosen.
     * @param contender the span that is the contender for unseating the current span.
@@ -498,20 +506,16 @@ object Span {
     } else if (delta < -ZERO_TOLERANCE) {
       // keep chosen since that is higher
       chosen
-    } else {
       // equal, tie break on length
-      if (contender.length > chosen.length) {
-        contender
-      } else if (contender.length < chosen.length) {
-        chosen
-      } else {
-        // equal on length, tie break on label
-        if (contender.label < chosen.label) {
-          contender
-        } else {
-          chosen
-        }
-      }
+    } else if (contender.length > chosen.length) {
+      contender
+    } else if (contender.length < chosen.length) {
+      chosen
+      // equal on length, tie break on label
+    } else if (contender.label < chosen.label) {
+      contender
+    } else {
+      chosen
     }
   }
 
@@ -542,7 +546,7 @@ object Span {
           val head = workspace.head
           val overlapping = Span.getContiguousOverlappingSpans(head, workspace.tail)
           mutableList += Span.unionAndAverage(head +: overlapping)
-          workspace = workspace.tail.slice(overlapping.size, tail.length)
+          workspace = workspace.tail.drop(overlapping.size)
         }
         mutableList.toSeq
       }
@@ -565,7 +569,11 @@ object Span {
     spans.takeWhile(span => {
       // make sure the span offset is within the bounds of the head start & end.
       if (current.offset <= span.offset && span.offset < current.end) {
-        current = span
+        if (span.end >= current.end) {
+          /* since we've sorted by reverse length, we only want to change this if
+             we've actually got a span that goes past the current one. */
+          current = span
+        }
         true
       } else {
         false
