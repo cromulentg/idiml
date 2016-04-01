@@ -129,6 +129,7 @@ case class SpanRules(labelUUID: String, labelHuman: String, rules: List[(String,
     * @return true if any spans overlap
     */
   def hasOverlaps(spans: Seq[Span]): Boolean = {
+    // note: on some "sequences" e.g. listbuffers sliding doesn't work as expected on...
     spans.sliding(2).exists(_ match {
       case a :: b :: _ => a.end > b.offset
       case _ => false
@@ -252,9 +253,11 @@ case class SpanRules(labelUUID: String, labelHuman: String, rules: List[(String,
     try {
       // write to the output stream via the codec.
       Codec.String.write(output, jsonString)
-      Some(new JObject(List(
-        JField("labelUUID", JString(this.labelUUID)),
-        JField("labelHuman", JString(this.labelHuman))
+      Some(JObject(List(
+        JField("label", JObject(List(
+          JField("uuid", JString(this.labelUUID)),
+          JField("human", JString(this.labelHuman))
+        )))
       )))
     } finally {
       // close the stream
@@ -277,8 +280,8 @@ class SpanRulesLoader extends ArchiveLoader[SpanRules] {
   override def load(engine: Engine, reader: Option[Reader], config: Option[JObject]): SpanRules = {
     // it was not compiling without this implicit line...  ¯\_(ツ)_/¯
     implicit val formats = org.json4s.DefaultFormats
-    val labelUUID = (config.get \ "labelUUID").extract[String]
-    val labelHuman = (config.get \ "labelHuman").extract[String]
+    val labelUUID = (config.get \ "label" \ "uuid").extract[String]
+    val labelHuman = (config.get \ "label" \ "human").extract[String]
     val jsonObject: JValue = parse(
       Codec.String.read(reader.get.resource(SpanRules.RULE_RESOURCE_NAME)))
 

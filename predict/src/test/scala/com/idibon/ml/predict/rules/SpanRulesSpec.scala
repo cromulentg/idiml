@@ -255,11 +255,12 @@ class SpanRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
         val archive = HashMap[String, Array[Byte]]()
         val spanRules = new SpanRules("b-label", "b-label", List())
         val jsonConfig = spanRules.save(new MemoryAlloyWriter(archive))
-        jsonConfig shouldBe Some(JObject(
-          List(
-            ("labelUUID", JString("b-label")),
-            ("labelHuman", JString("b-label"))
-          )))
+        jsonConfig shouldBe Some(
+          JObject(List(("label",
+          JObject(List(
+            ("uuid", JString("b-label")),
+            ("human", JString("b-label"))
+          ))))))
         val spanRulesLoad = (new SpanRulesLoader).load(
           new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), jsonConfig)
         spanRulesLoad.rules shouldBe spanRules.rules
@@ -271,11 +272,12 @@ class SpanRulesSpec extends FunSpec with Matchers with BeforeAndAfter {
         val archive = HashMap[String, Array[Byte]]()
         val spanRules = new SpanRules("b-label", "b-label", List(("/str[ij]ng/", 0.3f), ("is", 0.10f)))
         val jsonConfig = spanRules.save(new MemoryAlloyWriter(archive))
-        jsonConfig shouldBe Some(JObject(
-          List(
-            ("labelUUID", JString("b-label")),
-            ("labelHuman", JString("b-label"))
-          )))
+        jsonConfig shouldBe Some(
+          JObject(List(("label",
+            JObject(List(
+            ("uuid", JString("b-label")),
+            ("human", JString("b-label"))
+          ))))))
         val spanRulesLoad = (new SpanRulesLoader).load(
           new EmbeddedEngine, Some(new MemoryAlloyReader(archive.toMap)), jsonConfig)
         spanRulesLoad.rules shouldBe spanRules.rules
