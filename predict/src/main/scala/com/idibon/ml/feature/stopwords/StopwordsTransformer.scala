@@ -3,9 +3,11 @@ package com.idibon.ml.feature.stopwords
 
 import java.io.File
 
+import com.ibm.icu.text.Normalizer2
 import com.idibon.ml.feature.Feature
-import com.idibon.ml.feature.bagofwords.Word
+import com.idibon.ml.feature.bagofwords.{CaseTransform, Word}
 import com.idibon.ml.feature.language.LanguageCode
+import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import scala.io.Source
 
 /**
@@ -18,7 +20,11 @@ import scala.io.Source
   * corresponding to the document's LanguageCode
   */
 class StopwordsTransformer extends com.idibon.ml.feature.FeatureTransformer {
+  val lower = new LowerCaseTransform()
+  val upper = new UpperCaseTransform()
+  val icu4jnormalizer = Normalizer2.getNFKCCasefoldInstance()
   val stopwordMap = generateStopFileMap()
+
 
   /**
     * Get the contents of the stopword file directory
@@ -45,12 +51,30 @@ class StopwordsTransformer extends com.idibon.ml.feature.FeatureTransformer {
     val stopFileDirectory = getClass.getClassLoader.getResource("stopwords/").getPath()
     val stopFileList = getListOfFiles(stopFileDirectory)
     val stopwordLists = stopFileList.map(x => {
-      val stopwordSet = Source.fromFile(x).getLines().toList.toSet
       val twoLetterCode = x.getName.split("\\.")(0)
       val threeLetterCode = LanguageCode.normalize(twoLetterCode)
+      val stopwordLines = Source.fromFile(x).getLines().toSeq
+      val stopwordSet = createStopwordsSet(stopwordLines,threeLetterCode)
       (threeLetterCode, stopwordSet)
     }).collect({ case (Some(threeLetterCode), sws) => (threeLetterCode, sws) })
     stopwordLists.toMap
+  }
+
+  def createStopwordsSet(lines:Seq[String], lc:Option[String]) = {
+    lines.flatMap(l => {
+      val t = new Token(l, Tag.Word, 0, 0)
+      val lowerF = lower.transformation(new LanguageCode(lc))
+      val upperF = upper.transformation(new LanguageCode(lc))
+      val tLower = lowerF(t)
+      val tUpper = upperF(t)
+      Seq(tUpper, tLower)
+    }).flatMap(s => {
+      if(icu4jnormalizer.isNormalized(s.word)) {
+        Seq(s.word)
+      } else {
+        Seq(s.word, icu4jnormalizer.normalize(s.word))
+      }
+    }).toSet
   }
 
   /**
@@ -61,7 +85,7 @@ class StopwordsTransformer extends com.idibon.ml.feature.FeatureTransformer {
     * @return -- Boolean, 1 if the word is not in the stopword list, 0 if it is
     */
   def filter(x: Word, stops: Set[String]) = {
-    !stops.contains(x.word.toLowerCase)
+    !stops.contains(x.word)
   }
 
   /**
@@ -78,4 +102,12 @@ class StopwordsTransformer extends com.idibon.ml.feature.FeatureTransformer {
     input.filter(x => filter(x, stopSet))
   }
 
+}
+
+sealed case class LowerCaseTransform() extends CaseTransform {
+  val transform = CaseTransform.ToLower
+}
+
+sealed case class UpperCaseTransform() extends CaseTransform {
+  val transform = CaseTransform.ToUpper
 }

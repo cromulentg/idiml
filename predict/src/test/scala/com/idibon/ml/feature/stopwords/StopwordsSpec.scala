@@ -17,10 +17,10 @@ class StopwordsSpec extends FunSpec with Matchers {
     }
   }
 
-  describe("The cat in the hat --> cat, hat") {
+  describe("the cat in the hat --> cat, hat") {
     it("should remove 'The', 'in', and 'the'") {
       val sentence = List(
-        Word("The"),
+        Word("the"),
         Word("cat"),
         Word("in"),
         Word("the"),
@@ -31,10 +31,24 @@ class StopwordsSpec extends FunSpec with Matchers {
     }
   }
 
-  describe("Il nome della rosa --> nome, rosa") {
+  describe("questo è un segno diacritico --> segno diacritico") {
+    it("should properly handle the accented e") {
+      val sentence = List(
+        Word("questo"),
+        Word("è"),
+        Word("un"),
+        Word("segno"),
+        Word("diacritico")
+      )
+      val expected = List(new Word("segno"), new Word("diacritico"))
+      transform(sentence, LanguageCode(Some("ita"))) shouldBe expected
+    }
+  }
+
+  describe("il nome della rosa --> nome, rosa") {
     it("should remove Il, della") {
       val sentence = List(
-        Word("Il"),
+        Word("il"),
         Word("nome"),
         Word("della"),
         Word("rosa")
@@ -47,7 +61,7 @@ class StopwordsSpec extends FunSpec with Matchers {
   describe("Properly handle unrepresented/bad language code") {
     it("should return the sentence as is") {
       val sentence = List(
-        Word("The"),
+        Word("the"),
         Word("cat"),
         Word("in"),
         Word("the"),
@@ -58,7 +72,7 @@ class StopwordsSpec extends FunSpec with Matchers {
     }
     it("should return the sentence as is also") {
       val sentence = List(
-        Word("The"),
+        Word("the"),
         Word("cat"),
         Word("in"),
         Word("the"),
