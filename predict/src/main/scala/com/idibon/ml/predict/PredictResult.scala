@@ -5,6 +5,8 @@ import com.idibon.ml.feature.tokenizer.Token
 import com.idibon.ml.feature.{FeatureOutputStream, FeatureInputStream, Builder, Buildable, Feature}
 import com.idibon.ml.predict.crf.{BIOType}
 
+import scala.collection.mutable
+
 /** Basic output result from a predictive model.
   *
   * Model predictions may return any number of PredictResult objects
@@ -118,7 +120,8 @@ trait HasRegion {
   val offset: Int
   /** Length of the affected region, in UTF-16 code units */
   val length: Int
-  /** End of the affected region, in UTF-16 code units */
+  /** End of the affected region, in UTF-16 code units.
+    * i.e. think of it as [offset, end), where end is exclusive of the span. */
   final val end = offset + length
 }
 
@@ -129,6 +132,7 @@ trait HasTokens {
 
   /**
     * Helper method to save the tokens to an output stream.
+    *
     * @param output
     */
   protected def saveTokens(output: FeatureOutputStream) = {
@@ -140,6 +144,7 @@ trait HasTokens {
 object HasTokens {
   /**
     * Helper method to load tokens.
+    *
     * @param input
     * @return
     */
@@ -157,6 +162,7 @@ trait HasTokenTags {
 
   /**
     * Helper method to save token tags to a stream
+    *
     * @param output
     */
   protected def saveTokenTags(output: FeatureOutputStream) = {
@@ -168,6 +174,7 @@ trait HasTokenTags {
 object HasTokenTags {
   /**
     * Helper method to load token tags from input stream.
+    *
     * @param input
     * @return
     */
@@ -335,5 +342,269 @@ object Classification extends PredictResultReduction[Classification] {
   /** Divide n/d, return zero if d <= 0 */
   def divide_or_zero(n: Float, d: Float): Float = {
     if (d <= 0) 0.0f else n/d
+  }
+}
+
+/** Companion class and reduction operation for Classification instances */
+object Span {
+  /** used when comparing how close some numbers are to each other **/
+  val ZERO_TOLERANCE: Float = 0.0000003f
+  /**
+    * Computes a valid set of spans from a contiguous set of overlapping spans.
+    *
+    * We greedily go from left to right pick the best span.
+    *
+    * Important to understand: we assume the spans are a contiguous set that overlap,
+    * and we want to decide which one or set of them to return.
+    * E.g.
+    *  1) A-B-C-D
+    *  2)   B-C
+    *  3)       D-E
+    *  4)         E-F-G
+    *  5)             G-H-I
+    *
+    *
+    * @param components assumes they are sorted by offset and if at the same offset,
+    *                   sorted by decreasing length (so longest first if there is an
+    *                   offset tie)
+    * @return subset of spans, where none of them overlap
+    */
+  def greedyReduce(components: Seq[Span], spanChooser: (Span, Seq[Span]) => Span): Seq[Span] = {
+    if (components.size <= 1) {
+      components
+    } else {
+      val mutableList = mutable.ListBuffer[Span]()
+      var head = components.head
+      var workspace = components.tail
+      /*
+       We have a contiguous overlapping set of spans. Our desire is to return a subset of them.
+       Perform a greedy reduction:
+       1) Grab the head
+       2) Get overlapping spans with the head
+       3) One by one, choose a strategy to merge/choose the span.
+       4) Make head the recently merged span, and advance to next unseen span. Repeat #2-4
+       */
+      while (workspace.nonEmpty) {
+        val overlapping = getOverlappingSpans(head, workspace)
+        // if no overlapping spans -- move along
+        if (overlapping.isEmpty) {
+          mutableList += head
+          head = workspace.head
+          workspace = workspace.tail
+        } else {
+          // choose span from overlapping & move workspace along
+          head = spanChooser(head, overlapping)
+          workspace = workspace.drop(overlapping.size)
+        }
+      }
+      mutableList += head
+      mutableList.toSeq
+    }
+  }
+
+  /**
+    * Gets spans that overlap with this particular span.
+    *
+    * Assumes that the spans passed in are sorted by offset, and that the start
+    * span's offset is <= the first span in the spans sequence.
+    *
+    * @param start span to start at, offset needs to be <= first offset in spans.
+    * @param spans sorted list of spans by offset.
+    * @return a sequence of spans that overlap with the start span.
+    */
+  def getOverlappingSpans(start: Span, spans: Seq[Span]): Seq[Span] = {
+    spans.takeWhile(span => {
+      start.offset <= span.offset && span.offset < start.end
+    })
+  }
+
+  /**
+    * Chooses the span to represent a set of overlapping spans.
+    *
+    * Takes in ML produced spans and rule produced spans that overlap and returns a single span.
+    * Currently the logic is that if we have any rule span, take that span over a predicted
+    * one. If we're dealing with multiple rule based spans, then we delegate to special logic
+    * for that. Throws an error if we're merging two predicted spans (since we currently
+    * don't support this).
+    *
+    * Assumes the passed in sequence of spans all overlap with the starting span.
+    *
+    * Note: without resorting to creating paths of possible spans, this chooses
+    * the one span to rule them all; we only return one span, where in certain cases
+    * you could return multiple:
+    * E.g. with
+    * 1)  A B C D
+    * 2)    B C
+    * 3)        D E F
+    * If ABCD isn't the best, then we just return either BC or DEF, when in reality they
+    * both could live on. This could be mediated by
+    *
+    * @param start the span to start comparing at.
+    * @param spans the sequence of spans to consider that overlap with the starting span.
+    * @return a single span.
+    * @throws IllegalStateException if you try to merge to predicted span rules.
+    */
+  def chooseSpan(start: Span, spans: Seq[Span]): Span = {
+    var workspace = spans
+    var chosen = start
+    while (workspace.nonEmpty) {
+      val head = workspace.head
+      // if we're both rules
+      if (chosen.isRule && head.isRule) {
+        // take the greedy way (treat black or white list rules the same as normal)
+        chosen = chooseBetweenRuleSpans(chosen, head)
+        // if the head is a rule, but chosen is ML
+      } else if (!chosen.isRule && head.isRule) {
+        // take the rule since we're a ML based span
+        chosen = head
+        // if chosen is Rule, but head is ML -- keep rule -- i.e. do nothing
+      } else if (chosen.isRule && !head.isRule) {
+        // do nothing
+      } else if (!chosen.isRule && !head.isRule) {
+        throw new IllegalStateException("Cannot merge two predicted rules; no BL defined!")
+      }
+      workspace = workspace.tail
+    }
+    chosen
+  }
+
+  /**
+    * Greedily chooses the span with the best absolute probability when subtracted by 0.5.
+    *
+    * Given a starting span, and a sequence to mull over, looks at each
+    * one to decide which one should be returned.
+    *
+    * @param start the span to start at.
+    * @param spans the spans to consider.
+    * @return a single span that had a better absolute probability when subtracted by 0.5.
+    */
+  def chooseRuleSpanGreedily(start: Span, spans: Seq[Span]): Span = {
+    spans.foldLeft(start)({case (chosenSpan, span) =>
+      Span.chooseBetweenRuleSpans(chosenSpan, span)
+    })
+  }
+
+  /**
+    * Chooses between rule spans.
+    *
+    * Chooses between rule spans based on which one has the greater number when we subtract
+    * the weight by 0.5 and take the absolute value.
+    * If that is equal, we tie break on the longest span length, else tie break on the label name.
+    *
+    * Assumes: that we're only dealing with rule spans -- since this only "makes sense"
+    * for them. Also we assume we need a tolerance as to what is zero, since we're dealing with
+    * floating point numbers. E.g. we want to be able to equate abs(0.4f - 0.5f) with abs(0.6f - 0.5f).
+    *
+    * @param chosen the current span that is chosen.
+    * @param contender the span that is the contender for unseating the current span.
+    * @return a singe span.
+    */
+  def chooseBetweenRuleSpans(chosen: Span, contender: Span): Span = {
+    val delta: Float = Math.abs(contender.probability - 0.5f) - Math.abs(chosen.probability - 0.5f)
+    if (delta > ZERO_TOLERANCE) {
+      contender
+    } else if (delta < -ZERO_TOLERANCE) {
+      // keep chosen since that is higher
+      chosen
+      // equal, tie break on length
+    } else if (contender.length > chosen.length) {
+      contender
+    } else if (contender.length < chosen.length) {
+      chosen
+      // equal on length, tie break on label
+    } else if (contender.label < chosen.label) {
+      contender
+    } else {
+      chosen
+    }
+  }
+
+  /**
+    * Finds any contiguous overlapping spans and unions them and takes their average.
+    *
+    * Note: Assumes they are all the same label & sorted in order of offset.
+    *
+    * E.g. given:
+    *  1) A-B-C-D
+    *  2)   B-C
+    *  3)       D-E
+    *  4)           F-G
+    *  5)             G-H-I
+    * Would union [1, 2, 3] and [4, 5].
+    *
+    * @param spans to union; assumes they are all the same label & sorted in order
+    *              of offset.
+    * @return
+    */
+  def unionAndAverageOverlaps(spans: Seq[Span]): Seq[Span] = {
+    spans match {
+      case Seq() => Seq()
+      case head :: tail => {
+        val mutableList = mutable.ListBuffer[Span]()
+        var workspace = head :: tail
+        while (workspace.nonEmpty) {
+          val head = workspace.head
+          val overlapping = Span.getContiguousOverlappingSpans(head, workspace.tail)
+          mutableList += Span.unionAndAverage(head +: overlapping)
+          workspace = workspace.tail.drop(overlapping.size)
+        }
+        mutableList.toSeq
+      }
+    }
+  }
+
+  /**
+    * Gets largest set of contiguous overlapping spans starting with the starting span.
+    *
+    * Assumes spans are sorted by (offset, -length), and the start span has an
+    * offset <= the spans.head.offset.
+    *
+    * @param start the starting span, should have offset <= offsets in spans.
+    * @param spans sequence of spans, sorted by (offset, -length).
+    * @return a sequence of spans that contiguously overlap with the start span.
+    */
+  def getContiguousOverlappingSpans(start: Span, spans: Seq[Span]): Seq[Span] = {
+    // the right most span to check for overlaps with
+    var current = start
+    spans.takeWhile(span => {
+      // make sure the span offset is within the bounds of the head start & end.
+      if (current.offset <= span.offset && span.offset < current.end) {
+        if (span.end >= current.end) {
+          /* since we've sorted by reverse length, we only want to change this if
+             we've actually got a span that goes past the current one. */
+          current = span
+        }
+        true
+      } else {
+        false
+      }
+    })
+  }
+
+  /**
+    * Unions a sequence of spans and averages their probabilities.
+    *
+    * You only case this method makes sense is when there is a single string
+    * of overlaps. e.g.
+    *  A-B-C-D
+    *    B-C
+    *      C-D-E
+    *          E-F
+    * Note: Assumes they are all the same label & sorted in order of offset.
+    *
+    * Unions the flags and averages the probability, and unions them into
+    * a single span.
+    *
+    * @param spans to union; assumes they are all the same label & sorted in order
+    *              of offset.
+    * @return a single unioned span
+    */
+  def unionAndAverage(spans: Seq[Span]): Span = {
+    assert(spans.nonEmpty, "can only union a non-empty sequence of spans")
+    val sum = spans.map(_.probability).sum
+    val flags = spans.map(_.flags).foldLeft(0)({case (accum, flag) => accum | flag})
+    val maxEnd = spans.map(_.end).max
+    val minOffset = spans.map(_.offset).min
+    new Span(spans.head.label, sum / spans.length.toFloat, flags, minOffset, maxEnd - minOffset)
   }
 }

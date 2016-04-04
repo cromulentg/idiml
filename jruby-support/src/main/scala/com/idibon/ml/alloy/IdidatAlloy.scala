@@ -4,9 +4,8 @@ import scala.collection.JavaConverters._
 import java.util.{Map => JavaMap, List => JavaList}
 
 import com.idibon.ml.common.Engine
-import com.idibon.ml.predict.{Label, PredictResult,
-  PredictModel, Classification, Span}
-import com.idibon.ml.predict.rules.DocumentRules
+import com.idibon.ml.predict.{Label, PredictModel, Classification, Span}
+import com.idibon.ml.predict.rules.{SpanRules, DocumentRules}
 import com.idibon.ml.predict.ensemble.GangModel
 
 /** Alloy loader helper for Ididat tasks
@@ -112,6 +111,7 @@ object IdidatAlloy {
           case remain => (name, Some(new GangModel(remain, gang.featurePipeline)))
         }
         case rules: DocumentRules => (name, None)
+        case spanRules: SpanRules => (name, None)
         case _ => (name, Some(model))
     }}}).filter(_._2.isDefined).map(k => (k._1, k._2.get))
   }

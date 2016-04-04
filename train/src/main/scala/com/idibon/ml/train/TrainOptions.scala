@@ -14,7 +14,9 @@ import org.json4s.JObject
   * @param dataSet the dataset to use as training data (and also testing)
   */
 case class TrainOptions(maxTrainTime: Duration,
-                        dataSet: TrainingDataSet)
+                        dataSet: TrainingDataSet,
+                        labels: Seq[Label],
+                        rules: Seq[Rule] = Seq())
 
 object TrainOptions {
 
@@ -58,6 +60,20 @@ class TrainOptionsBuilder {
     this
   }
 
+  /**
+    * Adds rules to train options.
+    *
+    * @param rules a sequence of (label: String, expression: String, weight: Float)
+    * @return this object.
+    */
+  def addRules(rules: Seq[(String, String, Float)]) = {
+    implicit val formats = org.json4s.DefaultFormats
+    this.rules = rules.map({
+      case (label, expression, weight) => new Rule(label, expression, weight)
+    })
+    this
+  }
+
   /** Iterates over all documents in all submitted document lists */
   private[this] def documentIterator: TraversableOnce[JObject] = {
     new Traversable[JObject] {
@@ -73,10 +89,17 @@ class TrainOptionsBuilder {
     */
   def build(labels: Seq[Label]): TrainOptions = {
     val labelToDouble = labels.zipWithIndex.map({ case (label, index) => (label, index.toDouble) }).toMap
-    TrainOptions(this.maxTrainTime,
-      new TrainingDataSet(new DataSetInfo(0, 1.0, labelToDouble), () => this.documentIterator))
+    TrainOptions(
+      this.maxTrainTime,
+      new TrainingDataSet(new DataSetInfo(0, 1.0, labelToDouble), () => this.documentIterator),
+      labels,
+      rules)
   }
 
   private[this] var maxTrainTime: Duration = Duration.Inf
   private[this] val documents = ListBuffer[() => TraversableOnce[JObject]]()
+  private[this] var rules: Seq[Rule] = Seq()
 }
+
+/** Internal train options rule representation class **/
+case class Rule(label: String, expression: String, weight: Float)

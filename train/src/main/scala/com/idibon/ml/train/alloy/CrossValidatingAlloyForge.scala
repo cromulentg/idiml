@@ -116,7 +116,9 @@ class CrossValidatingAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]
                     baseOptions: TrainOptions): Seq[TrainingSummary] = {
     folds.map(ds => {
       logger.info(s"Beginning fold run: $name-${ds.info.fold}-${ds.info.portion}")
-      val alloy = this.forgeForges(new TrainOptions(baseOptions.maxTrainTime, ds), evaluator).head
+      val alloy = this.forgeForges(
+        new TrainOptions(baseOptions.maxTrainTime, ds, baseOptions.labels, baseOptions.rules),
+        evaluator).head
       alloy.asInstanceOf[BaseAlloy[T] with HasTrainingSummary].getTrainingSummaries
     }).collect({case Some(ts) => ts}).flatten
   }
