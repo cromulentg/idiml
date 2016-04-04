@@ -1,8 +1,11 @@
 package com.idibon.ml.predict
 
-import org.scalatest.{Matchers, FunSpec}
-import com.idibon.ml.feature.bagofwords.Word
+import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 
+import com.idibon.ml.feature.bagofwords.Word
+import com.idibon.ml.feature.{FeatureInputStream, FeatureOutputStream}
+
+import org.scalatest.{Matchers, FunSpec}
 
 
 /**
@@ -106,6 +109,16 @@ class PredictResultSpec extends FunSpec with Matchers {
 
 class ClassificationSpec extends FunSpec with Matchers {
 
+  it("should save and load correctly") {
+    val c = Classification("foo", 0.875f, 1, 0, Seq(Word("foo") -> 0.5f))
+    val os = new ByteArrayOutputStream
+    val fos = new FeatureOutputStream(os)
+    fos.writeBuildable(c)
+    fos.close
+    val fis = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray))
+    fis.readBuildable.asInstanceOf[Classification] shouldBe c
+  }
+
   describe("#weighted_average") {
     it("should return a 0.0 confidence if there is no weight returned") {
       val result = Classification.weighted_average(Seq(
@@ -195,5 +208,22 @@ class ClassificationSpec extends FunSpec with Matchers {
       result.flags shouldBe PredictResultFlag.mask(PredictResultFlag.FORCED,PredictResultFlag.RULE)
       result.significantFeatures shouldBe Seq(Word("bar") -> 1.0f, Word("baz") -> 0.0f)
     }
+  }
+}
+
+class SpanSpec extends FunSpec with Matchers {
+  it("should save and load correctly") {
+    val s = Span("label", 0.75f, 0, 0, 5)
+    val os = new ByteArrayOutputStream
+    val fos = new FeatureOutputStream(os)
+    fos.writeBuildable(s)
+    fos.close
+    val fis = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray))
+    fis.readBuildable.asInstanceOf[Span] shouldBe s
+  }
+
+  it("should compute the endpoint correctly") {
+    val s = Span("label", 0.75f, 0, 2, 2)
+    s.end shouldBe 4
   }
 }

@@ -32,6 +32,9 @@ class XMLBreakIterator(delegate: BreakIterator)
   // keep track of the current text processing mechanism within XML
   private[this] var _state: XMLParserState.Value = XMLParserState.CharacterData
 
+  // stores the type of break that was detected, for getRuleStatus
+  private[this] var _lastRuleStatus: Int = 0
+
   /** Returns the position of the next boundary
     *
     * {@link com.ibm.icu.text.BreakIterator}
@@ -54,7 +57,9 @@ class XMLBreakIterator(delegate: BreakIterator)
     * otherwise tokenizes character data using the provided delegate.
     */
   private[this] def nextCharacterData: Int = {
-    trie.matches(_characters).map(_ match {
+    trie.matches(_characters).map(element => {
+      _lastRuleStatus = Tag.ruleStatus(Tag.Markup)
+      element match {
       case (XMLElement.CDATA, boundary) =>
         /* switch the execution state to CDATA processing so that tokens
          * within the CDATA block are extracted normally (i.e., treated as
@@ -75,7 +80,10 @@ class XMLBreakIterator(delegate: BreakIterator)
         delegate.following(XMLBreakIterator.nextEndOfTag(_characters) - 1)
       case (XMLElement.EndTag, _) =>
         delegate.following(XMLBreakIterator.nextEndOfTag(_characters) - 1)
-    }).getOrElse(delegate.next)
+      }}).getOrElse({
+        _lastRuleStatus = 0
+        delegate.next
+      })
   }
 
   /** Locates the next boundary within a CDATA section
@@ -96,9 +104,11 @@ class XMLBreakIterator(delegate: BreakIterator)
     if (isDelim) {
       // matched end-of-section marker ]]>, return to normal parsing
       _state = XMLParserState.CharacterData
+      _lastRuleStatus = Tag.ruleStatus(Tag.Markup)
       delegate.following(_characters.getIndex - 1)
     } else {
       // still inside CDATA, tokenize the next word
+      _lastRuleStatus = 0
       delegate.next
     }
   }
@@ -116,6 +126,17 @@ class XMLBreakIterator(delegate: BreakIterator)
   override def setText(text: java.text.CharacterIterator) {
     super.setText(text)
     _state = XMLParserState.CharacterData
+  }
+
+  /** Returns the status tag of the break rule that determined the last boundary
+    *
+    * {@link com.ibm.icu.text.BreakIterator#getRuleStatus}
+    */
+  override def getRuleStatus(): Int = {
+    if (_lastRuleStatus == 0)
+      delegate.getRuleStatus
+    else
+      _lastRuleStatus
   }
 }
 

@@ -21,8 +21,25 @@ class XMLBreakIteratorSpec extends FunSpec with Matchers {
     boundaries.sliding(2).map(tok => x.substring(tok.head, tok.last)).toSeq
   }
 
+  def tag(x: String): Seq[(String, Int)] = {
+    val i = breakIterator.get
+    i.setText(x)
+    val boundaries = ((i.first, 0) ::
+      Stream.continually((i.next, i.getRuleStatus))
+      .takeWhile(_._1 != icu.text.BreakIterator.DONE).toList)
+    boundaries.sliding(2).map(tok => {
+      (x.substring(tok.head._1, tok.last._1), tok.last._2)
+    }).toSeq
+  }
+
   it("should support empty strings") {
     !!("") shouldBe List("")
+  }
+
+  it("should report a negative status tag for custom tokens") {
+    tag("<div>text</div>") shouldBe List(
+      ("<div>", Tag.ruleStatus(Tag.Markup)), ("text", 200),
+      ("</div>", Tag.ruleStatus(Tag.Markup)))
   }
 
   it("should tokenize comments") {

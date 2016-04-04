@@ -1,9 +1,12 @@
 package com.idibon.ml.feature.language
 
-import org.json4s._
-import org.scalatest.{Matchers, FunSpec}
 import com.idibon.ml.feature.Feature
+import com.idibon.ml.cld2.CLD2.DocumentMode
 import com.idibon.ml.feature.contenttype.{ContentType, ContentTypeCode}
+
+import org.json4s._
+import org.json4s.JsonDSL._
+import org.scalatest.{Matchers, FunSpec}
 
 class LanguageDetectorSpec extends FunSpec with Matchers {
 
@@ -25,6 +28,21 @@ class LanguageDetectorSpec extends FunSpec with Matchers {
       val document = JObject(List(
         JField("content", JString("Ceci est une phrase en français"))))
       transform(document, ContentType(ContentTypeCode.PlainText)) shouldBe LanguageCode(Some("fra"))
+    }
+
+    it("should ignore markup in HTML and XML mode") {
+      val document = ("content" -> """<div class="class names are often english text">est une phrase en français</div>""")
+      transform(document, ContentType(ContentTypeCode.PlainText)) shouldBe LanguageCode(Some("eng"))
+      transform(document, ContentType(ContentTypeCode.HTML)) shouldBe LanguageCode(Some("fra"))
+    }
+  }
+
+  describe("modeForContent") {
+    it("should return the correct modes") {
+      val transform = new LanguageDetector
+      transform.modeForContent(ContentType(ContentTypeCode.PlainText)) shouldBe DocumentMode.PlainText
+      transform.modeForContent(ContentType(ContentTypeCode.HTML)) shouldBe DocumentMode.HTML
+      transform.modeForContent(ContentType(ContentTypeCode.XML)) shouldBe DocumentMode.HTML
     }
   }
 

@@ -73,6 +73,12 @@ private[tokenizer] abstract class BreakIteratorDelegate(delegate: BreakIterator)
     */
   def getText: CharacterIterator = delegate.getText
 
+  /** Returns the status tag of the break rule that determined the last boundary
+    *
+    * {@link com.ibm.icu.text.BreakIterator#getRuleStatus}
+    */
+  override def getRuleStatus: Int = delegate.getRuleStatus
+
   /** Sets the iterator to analyze a new piece of text.
     *
     * {@link com.ibm.icu.text.BreakIterator#setText}

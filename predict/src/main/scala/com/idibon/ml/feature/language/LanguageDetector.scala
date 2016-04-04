@@ -26,8 +26,21 @@ class LanguageDetector extends FeatureTransformer {
       .orElse({
         (document \ "content").toOption
           .map(_.asInstanceOf[JString].s)
-          .map(text => identifyLocale(text, CLD2.DocumentMode.PlainText))
+          .map(text => identifyLocale(text, modeForContent(contentType)))
       }).getOrElse(LanguageCode(None))
+  }
+
+  /** Returns the appropriate CLD detection mode for the document content
+    *
+    * @param contentType detected document content-type
+    */
+  private[language] def modeForContent(contentType: Feature[ContentType]) = {
+    contentType.get.code match {
+      case ContentTypeCode.HTML | ContentTypeCode.XML =>
+        CLD2.DocumentMode.HTML
+      case _ =>
+        CLD2.DocumentMode.PlainText
+    }
   }
 
   /** Uses language detection to identify the correct locale for a string.
