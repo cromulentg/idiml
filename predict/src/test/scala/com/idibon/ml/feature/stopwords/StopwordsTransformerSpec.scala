@@ -7,7 +7,7 @@ import com.idibon.ml.feature.bagofwords.Word
 /**
   * Created by nick on 3/21/16.
   */
-class StopwordsSpec extends FunSpec with Matchers {
+class StopwordsTransformerSpec extends FunSpec with Matchers {
 
   val transform = new StopwordsTransformer()
 
