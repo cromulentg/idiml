@@ -7,9 +7,9 @@ import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{Builder, Buildable}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
-import com.idibon.ml.predict.{Span, Classification, Label, PredictResult}
+import com.idibon.ml.predict.{Span, Label, PredictResult}
 import com.idibon.ml.train.TrainOptions
-import com.idibon.ml.train.alloy.evaluation.AlloyEvaluator
+import com.idibon.ml.train.alloy.evaluation.{Granularity, AlloyEvaluator}
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JsonAST.JObject
 
@@ -97,6 +97,12 @@ class LearningCurveAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
       .flatMap({ case (portion, summary) => summary.map(ts => (portion, ts)) })
       // this probably isn't needed, but it's a safeguard anyway
       .filter({ case (portion, ts) => ts.identifier.endsWith(CrossValidatingAlloyForge.SUFFIX) })
+      // filter to document or token level summaries only
+      .filter({case (portion, ts) =>
+      ts.getNotesValues(AlloyEvaluator.GRANULARITY)
+        .exists(s =>
+          s.equals(Granularity.Document.toString) || s.equals(Granularity.Token.toString))
+    })
   }
 
   /**

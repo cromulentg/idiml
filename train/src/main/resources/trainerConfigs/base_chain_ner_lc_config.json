@@ -2,8 +2,17 @@
   "forgeName": "LearningCurveSpanAlloyForge",
   "forgeConfig": {
     "version": "0.0.1",
-    "portions": [0.25, 0.5],
-    "numFolds": 2,
+    "portions": [
+      0.25,
+      0.5,
+      0.625,
+      0.75,
+      0.8125,
+      0.875,
+      0.9375,
+      1.0
+    ],
+    "numFolds": 5,
     "forgeName": "BasicSpanAlloyForge",
     "forgeConfig": {
       "furnaces": [

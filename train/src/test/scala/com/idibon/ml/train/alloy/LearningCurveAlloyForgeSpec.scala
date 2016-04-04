@@ -6,6 +6,7 @@ import com.idibon.ml.feature.Buildable
 import com.idibon.ml.predict.{Span, Classification}
 import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics._
+import com.idibon.ml.train.alloy.evaluation.{Granularity, AlloyEvaluator}
 import org.scalatest._
 
 /**
@@ -106,6 +107,7 @@ class LearningCurveAlloyForgeSpec extends FunSpec
 
     /**
       * Helper method to create a metric.
+      *
       * @param mt
       * @param mc
       * @return
@@ -121,6 +123,7 @@ class LearningCurveAlloyForgeSpec extends FunSpec
     }
     /**
       * Helper method to create some metrics.
+      *
       * @param metricTypes
       * @param metricClasses
       * @return
@@ -217,9 +220,15 @@ class LearningCurveAlloyForgeSpec extends FunSpec
     def createSummaries(name1: String, name2: String) = {
       Seq(
         new TrainingSummary(name1,
-          Seq(new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Alloy, "L1", 1.0f))),
+          Seq[Metric with Buildable[_, _]](
+            new LabelFloatMetric(MetricTypes.LabelF1, MetricClass.Alloy, "L1", 1.0f),
+            new PropertyMetric(MetricTypes.Notes, MetricClass.Alloy,
+              Seq((AlloyEvaluator.GRANULARITY, Granularity.Document.toString))))),
         new TrainingSummary(name2,
-          Seq(new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Alloy, "L1", 1.0f)))
+          Seq[Metric with Buildable[_, _]](
+            new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Alloy, "L1", 1.0f),
+            new PropertyMetric(MetricTypes.Notes, MetricClass.Alloy,
+              Seq((AlloyEvaluator.GRANULARITY, Granularity.Document.toString)))))
       )
     }
     it("ignores non cross validation summaries") {

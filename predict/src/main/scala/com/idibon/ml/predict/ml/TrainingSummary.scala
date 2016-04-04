@@ -30,6 +30,20 @@ case class TrainingSummary(identifier: String, metrics: Seq[Metric with Buildabl
     })
     sb.mkString
   }
+
+  /**
+    * Helper method to get some notes values out using a key filter.
+    *
+    * @param keyFilter the key in the notes metric to get values for.
+    * @return sequence of strings that correspond to the keyFilter or empty an empty sequence.
+    */
+  def getNotesValues(keyFilter: String): Seq[String] = {
+    val notes = metrics.filter(m => m.metricType == MetricTypes.Notes && m.isInstanceOf[PropertyMetric])
+    notes.flatMap(m => {
+      val p = m.asInstanceOf[PropertyMetric]
+      p.properties.filter({case (key, _) => key.equals(keyFilter)}).map(_._2)
+    })
+  }
 }
 
 object TrainingSummary {
