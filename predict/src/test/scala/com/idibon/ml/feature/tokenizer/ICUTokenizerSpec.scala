@@ -44,6 +44,15 @@ class ICUTokenizerSpec extends FunSpec with Matchers {
     }
   }
 
+  describe("HTML") {
+    it("should handle inline code blocks as opaque tokens") {
+      !!("<script>function foo()</a></script><p>hello&amp;!</p>",
+        ULocale.US, ContentTypeCode.HTML) shouldBe List(
+        "<script>function foo()</a></script>", "<p>", "hello",
+          "&amp;", "!", "</p>")
+    }
+  }
+
   describe("XML") {
     it("should treat XML markup as individual tokens") {
       !!("""<div class="foo">words</div>""", ULocale.US, ContentTypeCode.XML) shouldBe List(

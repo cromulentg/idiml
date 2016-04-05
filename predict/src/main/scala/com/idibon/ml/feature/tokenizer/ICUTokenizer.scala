@@ -31,7 +31,7 @@ private[tokenizer] object ICUTokenizer {
     breaking(locale, (baseBreakIt: BreakIterator) => {
       val breakIt = contentType match {
         case ContentTypeCode.XML => new XMLBreakIterator(baseBreakIt)
-        case ContentTypeCode.HTML => new XMLBreakIterator(baseBreakIt)
+        case ContentTypeCode.HTML => new HTMLBreakIterator(baseBreakIt)
         case _ => baseBreakIt
       }
       breakIt.setText(content)
