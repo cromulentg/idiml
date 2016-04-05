@@ -1,0 +1,102 @@
+{
+  "pipeline": [
+    {
+      "inputs": [
+        "ngrams"
+      ],
+      "name": "convertToIndex"
+    },
+    {
+      "inputs": [
+        "bagOfWords"
+      ],
+      "name": "ngrams"
+    },
+    {
+      "inputs": [
+        "convertToTokens",
+        "languageDetector"
+      ],
+      "name": "bagOfWords"
+    },
+    {
+      "inputs": [
+        "contentExtractor",
+        "languageDetector",
+        "contentTypeDetector"
+      ],
+      "name": "convertToTokens"
+    },
+    {
+      "inputs": [
+        "$document",
+        "contentTypeDetector"
+      ],
+      "name": "languageDetector"
+    },
+    {
+      "inputs": [
+        "$document"
+      ],
+      "name": "contentExtractor"
+    },
+    {
+      "inputs": [
+        "$document"
+      ],
+      "name": "contentTypeDetector"
+    },
+    {
+      "inputs": [
+        "convertToIndex"
+      ],
+      "name": "$output"
+    }
+  ],
+  "transforms": [
+    {
+      "class": "com.idibon.ml.feature.ContentExtractor",
+      "name": "contentExtractor"
+    },
+    {
+      "class": "com.idibon.ml.feature.ngram.NgramTransformer",
+      "config": {
+        "max": 3,
+        "min": 1
+      },
+      "name": "ngrams"
+    },
+    {
+      "class": "com.idibon.ml.feature.language.LanguageDetector",
+      "name": "languageDetector"
+    },
+    {
+      "class": "com.idibon.ml.feature.tokenizer.TokenTransformer",
+      "name": "convertToTokens"
+    },
+    {
+      "class": "com.idibon.ml.feature.indexer.IndexTransformer",
+      "name": "convertToIndex",
+      "config": {
+        "minimumObservations": 4
+      }
+    },
+    {
+      "class": "com.idibon.ml.feature.bagofwords.BagOfWordsTransformer",
+      "config": {
+        "accept": [
+          "Word",
+          "Punctuation",
+          "URI"
+        ],
+        "transform": "ToLower"
+      },
+      "name": "bagOfWords"
+    },
+    {
+      "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector",
+      "name": "contentTypeDetector"
+    }
+  ],
+  "version": "0.0.1"
+}
