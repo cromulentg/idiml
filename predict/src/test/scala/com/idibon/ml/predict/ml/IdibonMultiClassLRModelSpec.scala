@@ -29,7 +29,7 @@ with Matchers with BeforeAndAfter with ParallelTestExecution {
     += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "language", "contentDetector"))
     += (FeaturePipelineBuilder.entry("language", new LanguageDetector, "$document", "contentDetector"))
     += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-    += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
+    += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector(false), "$document"))
     := ("convertToIndex"))
 
   val text: String = "Everybody loves replacing hadoop with spark because it's much faster. a b d"

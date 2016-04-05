@@ -41,7 +41,7 @@ class SimpleLogisticRegressionFurnaceSpec extends FunSpec
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector(false), "$document"))
       := ("convertToIndex"))
   }
 
@@ -113,7 +113,7 @@ class XValLogisticRegressionFurnaceSpec extends FunSpec
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector(false), "$document"))
       := ("convertToIndex"))
   }
 
@@ -185,7 +185,7 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector(false), "$document"))
       := ("convertToIndex"))
   }
 

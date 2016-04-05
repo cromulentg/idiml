@@ -8,9 +8,9 @@ import org.scalatest.{Matchers, FunSpec}
   */
 class ContentTypeDetectorSpec extends FunSpec with Matchers {
 
-  describe("apply") {
+  describe("deepDetection = false") {
 
-    val transform = new ContentTypeDetector
+    val transform = new ContentTypeDetector(false)
 
     it("should use starts with tag detection when applicable") {
       val plainDoc = JObject(List(
