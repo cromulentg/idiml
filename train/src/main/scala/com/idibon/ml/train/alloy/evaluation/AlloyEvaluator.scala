@@ -912,9 +912,9 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
     * The values should be tuples of (precision, recall & f1) -- these values are averaged to
     * give the macro versions.
     *
-    * @param metrics
-    * @param mClass
-    * @return
+    * @param metrics map of _ -> (precision, recall, f1)
+    * @param mClass the metric class to give these new metrics.
+    * @return the macro average precision, recall & f1 metrics.
     */
   def computeMacroMetrics(metrics: Map[_, (LabelFloatMetric, LabelFloatMetric, LabelFloatMetric)],
                           mClass: MetricClass.Value = MetricClass.Multiclass) = {
@@ -992,7 +992,15 @@ case class BIOSpanMetricsEvaluator(override val engine: Engine, bioGenerator: BI
       })
     val microResults: Seq[Metric with Buildable[_, _]] = microPrecisionRecallF1(predictedByLabel, goldByLabel)
     val labelResults: Seq[Metric with Buildable[_, _]] = byLabelPrecisionRecallF1(predictedByLabel, goldByLabel, dbleToLabel)
-    microResults ++ labelResults
+    val byLabel: Map[String, (LabelFloatMetric, LabelFloatMetric, LabelFloatMetric)] = labelResults
+      .groupBy(x => x.asInstanceOf[LabelFloatMetric].label).map({case (label, grouped) =>
+      val precision = grouped.find(m => m.metricType == MetricTypes.LabelPrecision).get.asInstanceOf[LabelFloatMetric]
+      val recall = grouped.find(m => m.metricType == MetricTypes.LabelRecall).get.asInstanceOf[LabelFloatMetric]
+      val f1 = grouped.find(m => m.metricType == MetricTypes.LabelF1).get.asInstanceOf[LabelFloatMetric]
+      (label, (precision, recall, f1))
+    })
+    val macroMetrics: Seq[Metric with Buildable[_, _]] = computeMacroMetrics(byLabel)
+    microResults ++ labelResults ++ macroMetrics
   }
 
   /**
