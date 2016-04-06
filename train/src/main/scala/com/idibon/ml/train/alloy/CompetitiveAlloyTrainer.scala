@@ -15,6 +15,7 @@ import org.json4s.JsonAST.JObject
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/2/16.
   * @param builder
   */
+@deprecated("CompetitiveAlloyForge is the new way.", "Since 2015-04-03")
 class CompetitiveAlloyTrainer(builder: CompetitiveAlloyTrainerBuilder)
   extends AlloyTrainer with StrictLogging {
   val engine: Engine = builder.engine

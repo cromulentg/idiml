@@ -1,0 +1,416 @@
+{
+  "forgeName": "CompetitiveSpanAlloyForge",
+  "forgeConfig": {
+    "version": "0.0.1",
+    "numFolds": 2,
+    "forges": {
+      "option1": {
+        "version": "0.0.1",
+        "forgeName": "BasicSpanAlloyForge",
+        "forgeConfig": {
+          "furnaces": [
+            {
+              "name": "span_rules",
+              "furnace": "SpanRuleFurnace",
+              "config": {}
+            },
+            {
+              "name": "crf_ner",
+              "furnace": "ChainNERFurnace",
+              "config": {
+                "sequenceGenerator": {
+                  "transforms": [
+                    {
+                      "name": "contentType",
+                      "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector"
+                    },
+                    {
+                      "name": "lang",
+                      "class": "com.idibon.ml.feature.language.LanguageDetector"
+                    },
+                    {
+                      "name": "content",
+                      "class": "com.idibon.ml.feature.ContentExtractor"
+                    },
+                    {
+                      "name": "tokenizer",
+                      "class": "com.idibon.ml.feature.tokenizer.ChainTokenTransformer",
+                      "config": {
+                        "accept": [
+                          "Word",
+                          "Punctuation",
+                          "URI"
+                        ]
+                      }
+                    }
+                  ],
+                  "pipeline": [
+                    {
+                      "name": "$output",
+                      "inputs": [
+                        "tokenizer"
+                      ]
+                    },
+                    {
+                      "name": "tokenizer",
+                      "inputs": [
+                        "content",
+                        "lang",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "content",
+                      "inputs": [
+                        "$document"
+                      ]
+                    },
+                    {
+                      "name": "lang",
+                      "inputs": [
+                        "$document",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "contentType",
+                      "inputs": [
+                        "$document"
+                      ]
+                    }
+                  ]
+                },
+                "featureExtractor": {
+                  "transforms": [
+                    {
+                      "name": "contentType",
+                      "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector"
+                    },
+                    {
+                      "name": "lang",
+                      "class": "com.idibon.ml.feature.language.LanguageDetector"
+                    },
+                    {
+                      "name": "words",
+                      "class": "com.idibon.ml.feature.bagofwords.ChainBagOfWords",
+                      "config": {
+                        "transform": "ToLower"
+                      }
+                    },
+                    {
+                      "name": "shapes",
+                      "class": "com.idibon.ml.feature.wordshapes.ChainWordShapesTransformer"
+                    },
+                    {
+                      "name": "wordLifter",
+                      "class": "com.idibon.ml.feature.ChainLiftTransformer"
+                    },
+                    {
+                      "name": "shapeLifter",
+                      "class": "com.idibon.ml.feature.ChainLiftTransformer"
+                    },
+                    {
+                      "name": "shapeNeighborhood",
+                      "class": "com.idibon.ml.feature.chain.ChainNeighborhood",
+                      "config": {
+                        "before": 4,
+                        "after": 4
+                      }
+                    },
+                    {
+                      "name": "wordNeighborhood",
+                      "class": "com.idibon.ml.feature.chain.ChainNeighborhood",
+                      "config": {
+                        "before": 3,
+                        "after": 2
+                      }
+                    },
+                    {
+                      "name": "indexer",
+                      "class": "com.idibon.ml.feature.indexer.ChainIndexTransformer",
+                      "config": {
+                        "minimumObservations": 3
+                      }
+                    }
+                  ],
+                  "pipeline": [
+                    {
+                      "name": "$output",
+                      "inputs": [
+                        "indexer"
+                      ]
+                    },
+                    {
+                      "name": "indexer",
+                      "inputs": [
+                        "shapeLifter",
+                        "wordLifter",
+                        "shapeNeighborhood",
+                        "wordNeighborhood"
+                      ]
+                    },
+                    {
+                      "name": "shapeNeighborhood",
+                      "inputs": [
+                        "shapeLifter"
+                      ]
+                    },
+                    {
+                      "name": "wordNeighborhood",
+                      "inputs": [
+                        "wordLifter"
+                      ]
+                    },
+                    {
+                      "name": "wordLifter",
+                      "inputs": [
+                        "words"
+                      ]
+                    },
+                    {
+                      "name": "shapeLifter",
+                      "inputs": [
+                        "shapes"
+                      ]
+                    },
+                    {
+                      "name": "shapes",
+                      "inputs": [
+                        "$sequence"
+                      ]
+                    },
+                    {
+                      "name": "words",
+                      "inputs": [
+                        "$sequence",
+                        "lang"
+                      ]
+                    },
+                    {
+                      "name": "lang",
+                      "inputs": [
+                        "$document",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "contentType",
+                      "inputs": [
+                        "$document"
+                      ]
+                    }
+                  ]
+                },
+                "seed": 1076754516
+              }
+            }
+          ]
+        }
+      },
+      "option2": {
+        "version": "0.0.1",
+        "forgeName": "BasicSpanAlloyForge",
+        "forgeConfig": {
+          "furnaces": [
+            {
+              "name": "span_rules",
+              "furnace": "SpanRuleFurnace",
+              "config": {}
+            },
+            {
+              "name": "crf_ner",
+              "furnace": "ChainNERFurnace",
+              "config": {
+                "sequenceGenerator": {
+                  "transforms": [
+                    {
+                      "name": "contentType",
+                      "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector"
+                    },
+                    {
+                      "name": "lang",
+                      "class": "com.idibon.ml.feature.language.LanguageDetector"
+                    },
+                    {
+                      "name": "content",
+                      "class": "com.idibon.ml.feature.ContentExtractor"
+                    },
+                    {
+                      "name": "tokenizer",
+                      "class": "com.idibon.ml.feature.tokenizer.ChainTokenTransformer",
+                      "config": {
+                        "accept": [
+                          "Word",
+                          "Punctuation",
+                          "URI"
+                        ]
+                      }
+                    }
+                  ],
+                  "pipeline": [
+                    {
+                      "name": "$output",
+                      "inputs": [
+                        "tokenizer"
+                      ]
+                    },
+                    {
+                      "name": "tokenizer",
+                      "inputs": [
+                        "content",
+                        "lang",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "content",
+                      "inputs": [
+                        "$document"
+                      ]
+                    },
+                    {
+                      "name": "lang",
+                      "inputs": [
+                        "$document",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "contentType",
+                      "inputs": [
+                        "$document"
+                      ]
+                    }
+                  ]
+                },
+                "featureExtractor": {
+                  "transforms": [
+                    {
+                      "name": "contentType",
+                      "class": "com.idibon.ml.feature.contenttype.ContentTypeDetector"
+                    },
+                    {
+                      "name": "lang",
+                      "class": "com.idibon.ml.feature.language.LanguageDetector"
+                    },
+                    {
+                      "name": "words",
+                      "class": "com.idibon.ml.feature.bagofwords.ChainBagOfWords",
+                      "config": {
+                        "transform": "ToLower"
+                      }
+                    },
+                    {
+                      "name": "shapes",
+                      "class": "com.idibon.ml.feature.wordshapes.ChainWordShapesTransformer"
+                    },
+                    {
+                      "name": "wordLifter",
+                      "class": "com.idibon.ml.feature.ChainLiftTransformer"
+                    },
+                    {
+                      "name": "shapeLifter",
+                      "class": "com.idibon.ml.feature.ChainLiftTransformer"
+                    },
+                    {
+                      "name": "shapeNeighborhood",
+                      "class": "com.idibon.ml.feature.chain.ChainNeighborhood",
+                      "config": {
+                        "before": 4,
+                        "after": 4
+                      }
+                    },
+                    {
+                      "name": "wordNeighborhood",
+                      "class": "com.idibon.ml.feature.chain.ChainNeighborhood",
+                      "config": {
+                        "before": 3,
+                        "after": 2
+                      }
+                    },
+                    {
+                      "name": "indexer",
+                      "class": "com.idibon.ml.feature.indexer.ChainIndexTransformer",
+                      "config": {
+                        "minimumObservations": 3
+                      }
+                    }
+                  ],
+                  "pipeline": [
+                    {
+                      "name": "$output",
+                      "inputs": [
+                        "indexer"
+                      ]
+                    },
+                    {
+                      "name": "indexer",
+                      "inputs": [
+                        "shapeLifter",
+                        "wordLifter",
+                        "shapeNeighborhood",
+                        "wordNeighborhood"
+                      ]
+                    },
+                    {
+                      "name": "shapeNeighborhood",
+                      "inputs": [
+                        "shapeLifter"
+                      ]
+                    },
+                    {
+                      "name": "wordNeighborhood",
+                      "inputs": [
+                        "wordLifter"
+                      ]
+                    },
+                    {
+                      "name": "wordLifter",
+                      "inputs": [
+                        "words"
+                      ]
+                    },
+                    {
+                      "name": "shapeLifter",
+                      "inputs": [
+                        "shapes"
+                      ]
+                    },
+                    {
+                      "name": "shapes",
+                      "inputs": [
+                        "$sequence"
+                      ]
+                    },
+                    {
+                      "name": "words",
+                      "inputs": [
+                        "$sequence",
+                        "lang"
+                      ]
+                    },
+                    {
+                      "name": "lang",
+                      "inputs": [
+                        "$document",
+                        "contentType"
+                      ]
+                    },
+                    {
+                      "name": "contentType",
+                      "inputs": [
+                        "$document"
+                      ]
+                    }
+                  ]
+                },
+                "seed": 1076754516
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "configVersion": "0.1.0"
+}
