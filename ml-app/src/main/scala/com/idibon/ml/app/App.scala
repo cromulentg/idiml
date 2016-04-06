@@ -11,7 +11,8 @@ object App extends Tool {
     ("spanPredict" -> SpanPredict),
     ("train" -> Train),
     ("trainingSummary" -> GetTrainingStats),
-    ("sparkBatchPredict" -> SparkBatchPredict)
+    ("sparkBatchPredict" -> SparkBatchPredict),
+    ("insights" -> Insights)
   )
 
   def run(engine: Engine, argv: Array[String]) {
