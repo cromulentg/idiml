@@ -1,6 +1,9 @@
 package com.idibon.ml.feature.wordshapes
 
-import com.idibon.ml.feature.{Chain, Feature}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+
+import com.idibon.ml.feature.{Chain, Feature,
+  FeatureInputStream, FeatureOutputStream}
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
 import org.scalatest.{Matchers, BeforeAndAfter, FunSpec}
 
@@ -10,6 +13,16 @@ class WordShapesSpec extends FunSpec with Matchers with BeforeAndAfter {
     it("should generate chains") {
       val xf = new ChainWordShapesTransformer()
       xf(Chain(Token("hi", Tag.Word, 0, 2), Token("!", Tag.Punctuation, 3, 1))) shouldBe Chain(Shape("cc"), Shape("p"))
+    }
+  }
+
+  describe("save / load") {
+    it("should save and load word shapes features") {
+      val shape = Shape("psp")
+      val os = new ByteArrayOutputStream
+      new FeatureOutputStream(os).writeFeature(shape)
+      val loaded = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray)).readFeature
+      loaded shouldBe shape
     }
   }
 
