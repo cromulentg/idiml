@@ -10,6 +10,35 @@ import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
   */
 class TrainingSummarySpec extends FunSpec with Matchers with BeforeAndAfter {
 
+  describe("to String tests") {
+    it("creates correct string for empty metrics") {
+      val ts = new TrainingSummary("tests", Seq())
+      val actual = ts.toString
+      val expected = "----- Training summary for tests ---- Total = 0\n"
+      actual shouldBe expected
+    }
+    it("creates correct string") {
+      val ts = new TrainingSummary(
+        "tests", Seq(new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.5f)))
+      val actual = ts.toString
+      val expected = "----- Training summary for tests ---- Total = 1\n[Alloy, F1, 0.5]\n"
+      actual shouldBe expected
+    }
+  }
+
+  describe("average summaries tests") {
+    it("averages as simple float metrics") {
+      val ts1 = new TrainingSummary(
+        "tests", Seq(new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.4f)))
+      val ts2 = new TrainingSummary(
+        "tests", Seq(new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.6f)))
+      val actual = TrainingSummary.averageSummaries(
+        "test-avg", Seq(ts1, ts2), MetricClass.Multiclass)
+      actual.identifier shouldBe "test-avg"
+      actual.metrics shouldBe Seq(new FloatMetric(MetricTypes.F1, MetricClass.Multiclass, 0.5f))
+    }
+  }
+
   describe("getNotesValues tests") {
     it("handles no notes") {
       // empty metrics
