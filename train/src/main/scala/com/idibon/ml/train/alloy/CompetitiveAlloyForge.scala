@@ -5,6 +5,7 @@ import java.util.Random
 import com.idibon.ml.alloy.{HasTrainingSummary, BaseAlloy, Alloy}
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.{Builder, Buildable}
+import com.idibon.ml.predict.ml.TrainingSummary
 import com.idibon.ml.predict.ml.metrics.{MetricClass, FloatMetric, MetricTypes}
 import com.idibon.ml.predict.{Span, Label, PredictResult}
 import com.idibon.ml.train.TrainOptions
@@ -54,7 +55,7 @@ class CompetitiveAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
   override def doForge(options: TrainOptions, evaluator: AlloyEvaluator): Alloy[T] = {
     val alloys = this.forgeForges(options, evaluator)
       .map(x => x.asInstanceOf[BaseAlloy[T] with HasTrainingSummary])
-    val maxAlloy = findMaxF1(alloys)
+    val maxAlloy = CompetitiveAlloyForge.findMaxF1[T](alloys)
     val maxAlloyName = maxAlloy.name
     logger.info(s"Max F1 alloy was $maxAlloyName")
     /* create new alloy with extra training summaries from other alloys
@@ -87,6 +88,12 @@ class CompetitiveAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
   override def getEvaluator(engine: Engine, taskType: String): AlloyEvaluator = {
     forges.head.getEvaluator(engine, taskType)
   }
+}
+
+/**
+  * Companion object to house the static methods.
+  */
+object CompetitiveAlloyForge {
 
   /**
     * Helper function find the alloy forge and training summary with the best F1
@@ -98,38 +105,43 @@ class CompetitiveAlloyForge[T <: PredictResult with Buildable[T, Builder[T]]](
     * @param averagedResults
     * @return
     */
-  def findMaxF1(averagedResults:  Seq[BaseAlloy[T] with HasTrainingSummary]):
-  BaseAlloy[T] with HasTrainingSummary = {
+  def findMaxF1[T <: PredictResult with Buildable[T, Builder[T]]](
+   averagedResults: Seq[BaseAlloy[T] with HasTrainingSummary]): BaseAlloy[T] with HasTrainingSummary = {
     //find max by finding the value to use
     val maxF1 = averagedResults.maxBy({case alloy =>
-      alloy.getTrainingSummaries match {
-        case Some(summaries) => {
-          // find the summary from cross validation & then find the F1 metric in it
-          val candidateSummaries = summaries.filter(ts => {
-            ts.identifier.endsWith(CrossValidatingAlloyTrainer.SUFFIX)
-          }).filter(ts => {
-            // filter by granularity -- so we're only getting the max of the ones we want.
-            val notes = ts.getNotesValues(AlloyEvaluator.GRANULARITY)
-            // if there are no granularity notes, assume this training summary is fine.
-            if (notes.nonEmpty) {
-              notes.exists(v => {
-                v == Granularity.Document.toString || v == Granularity.Token.toString
-              })
-            } else {
-              true
-            }
-          })
-          candidateSummaries.flatMap(ts => ts.metrics)
-            .find(m => m.metricType == MetricTypes.F1 || m.metricType == MetricTypes.MacroF1)
-            .getOrElse(new FloatMetric(MetricTypes.F1, MetricClass.Alloy, 0.0f))
-            .asInstanceOf[FloatMetric].float
-        }
-        case None => 0.0f
-      }
+      alloy.getTrainingSummaries.map(summaries => {
+        val candidateSummaries = filterToAppropriateSummaries(summaries)
+        candidateSummaries.flatMap(_.metrics)
+          .find(m => m.metricType == MetricTypes.F1 || m.metricType == MetricTypes.MacroF1)
+          .map(_.asInstanceOf[FloatMetric].float)
+          .getOrElse(0.0f)
+      })
     })
     maxF1
   }
 
+  /**
+    * Method to filter to the appropriate summaries.
+    *
+    * @param summaries
+    * @return
+    */
+  def filterToAppropriateSummaries(summaries: Seq[TrainingSummary]): Seq[TrainingSummary] = {
+    summaries.filter(ts => {
+      ts.identifier.endsWith(CrossValidatingAlloyTrainer.SUFFIX)
+    }).filter(ts => {
+      // filter by granularity -- so we're only getting the max of the ones we want.
+      val notes = ts.getNotesValues(AlloyEvaluator.GRANULARITY)
+      // if there are no granularity notes, assume this training summary is fine.
+      if (notes.nonEmpty) {
+        notes.exists(v => {
+          v == Granularity.Document.toString || v == Granularity.Token.toString
+        })
+      } else {
+        true
+      }
+    })
+  }
 }
 
 /**
