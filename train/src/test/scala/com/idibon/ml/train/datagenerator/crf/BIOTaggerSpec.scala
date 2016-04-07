@@ -19,7 +19,7 @@ class BIOTaggerSpec extends FunSpec with Matchers with BIOTagger with BeforeAndA
   var featureExtractor: ChainPipeline = null
 
   def buildSequenceGenerator = (SequenceGeneratorBuilder("foo")
-    += ("contentType", new contenttype.ContentTypeDetector, Seq("$document"))
+    += ("contentType", new contenttype.ContentTypeDetector(false), Seq("$document"))
     += ("lang", new language.LanguageDetector, Seq("$document", "contentType"))
     += ("content", new ContentExtractor, Seq("$document"))
     += ("tokenizer", new tokenizer.ChainTokenTransformer(Seq(tokenizer.Tag.Word)),
@@ -27,7 +27,7 @@ class BIOTaggerSpec extends FunSpec with Matchers with BIOTagger with BeforeAndA
     := ("tokenizer"))
 
   def buildChainPipeline = (ChainPipelineBuilder("foo")
-    += ("contentType", new contenttype.ContentTypeDetector, Seq("$document"))
+    += ("contentType", new contenttype.ContentTypeDetector(false), Seq("$document"))
     += ("lang", new language.LanguageDetector, Seq("$document", "contentType"))
     += ("words", new bagofwords.ChainBagOfWords(bagofwords.CaseTransform.ToLower),
       Seq("$sequence", "lang"))

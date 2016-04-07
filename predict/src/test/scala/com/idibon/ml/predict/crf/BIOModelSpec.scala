@@ -33,7 +33,7 @@ class BIOModelSpec extends FunSpec with Matchers {
     model.train(documents map model.observe, new Random)
 
     val sequencer = (SequenceGeneratorBuilder("foo")
-      += ("contentType", new contenttype.ContentTypeDetector, Seq("$document"))
+      += ("contentType", new contenttype.ContentTypeDetector(false), Seq("$document"))
       += ("lang", new language.LanguageDetector, Seq("$document", "contentType"))
       += ("content", new ContentExtractor, Seq("$document"))
       += ("tokenizer", new tokenizer.ChainTokenTransformer(Seq(tokenizer.Tag.Word)),
@@ -41,7 +41,7 @@ class BIOModelSpec extends FunSpec with Matchers {
       := ("tokenizer"))
 
     val extractor = (ChainPipelineBuilder("foo")
-      += ("contentType", new contenttype.ContentTypeDetector, Seq("$document"))
+      += ("contentType", new contenttype.ContentTypeDetector(false), Seq("$document"))
       += ("lang", new language.LanguageDetector, Seq("$document", "contentType"))
       += ("words", new bagofwords.ChainBagOfWords(bagofwords.CaseTransform.ToLower),
         Seq("$sequence", "lang"))

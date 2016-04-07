@@ -158,7 +158,7 @@ object XMLElement extends Enumeration {
     StartTag = Value
 }
 
-private[tokenizer] object XMLBreakIterator {
+private[feature] object XMLBreakIterator {
 
   val TRIE: Trie[XMLElement.type] = {
     val builder = new CharsTrieBuilder()

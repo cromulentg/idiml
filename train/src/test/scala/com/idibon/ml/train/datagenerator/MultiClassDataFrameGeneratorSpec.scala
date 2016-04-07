@@ -42,7 +42,7 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers
       += (FeaturePipelineBuilder.entry("convertToTokens", new TokenTransformer, "contentExtractor", "languageDetector", "contentDetector"))
       += (FeaturePipelineBuilder.entry("languageDetector", new LanguageDetector, "$document", "contentDetector"))
       += (FeaturePipelineBuilder.entry("contentExtractor", new ContentExtractor, "$document"))
-      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector, "$document"))
+      += (FeaturePipelineBuilder.entry("contentDetector", new ContentTypeDetector(false), "$document"))
       := ("convertToIndex"))
   }
 
