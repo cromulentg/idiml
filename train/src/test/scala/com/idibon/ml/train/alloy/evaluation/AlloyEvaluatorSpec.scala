@@ -811,6 +811,9 @@ class AlloyEvaluatorSpec extends FunSpec
         new LabelFloatMetric(MetricTypes.LabelPrecision, MetricClass.Multiclass, "b", 0.5f),
         new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Multiclass, "a", 0.0f),
         new LabelFloatMetric(MetricTypes.LabelRecall, MetricClass.Multiclass, "b", 0.5f),
+        new FloatMetric(MetricTypes.MacroF1, MetricClass.Multiclass, 0.25f),
+        new FloatMetric(MetricTypes.MacroPrecision, MetricClass.Multiclass, 0.25f),
+        new FloatMetric(MetricTypes.MacroRecall, MetricClass.Multiclass, 0.25f),
         new FloatMetric(MetricTypes.MicroF1, MetricClass.Multiclass, 0.25f),
         new FloatMetric(MetricTypes.MicroPrecision, MetricClass.Multiclass, 0.25f),
         new FloatMetric(MetricTypes.MicroRecall, MetricClass.Multiclass, 0.25f)

@@ -84,6 +84,7 @@ object AlloyForge {
     register[Span]("BasicSpanAlloyForge", BasicSpanAlloyForge)
     register[Span]("CrossValidatingSpanAlloyForge", CrossValidatingSpanAlloyForge)
     register[Span]("LearningCurveSpanAlloyForge", LearningCurveSpanAlloyForge)
+    register[Span]("CompetitiveSpanAlloyForge", CompetitiveSpanAlloyForge)
   }
 
   resetRegistry()
