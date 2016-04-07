@@ -34,10 +34,19 @@ class TokenSpec extends FunSpec with Matchers {
       Tag.of(":)", Tag.ruleStatus(Tag.Word)) shouldBe Tag.Word
     }
 
-    ignore("should identify SMP (surrogate-pair) Punctuation") {
-      // FIXME: of() isn't surrogate-pair safe
+    it("should identify punctuation from the supplementary planes") {
       for (x <- List("\ud805\udf3d", "\ud836\ude8a"))
         Tag.of(x, 0) shouldBe Tag.Punctuation
+    }
+
+    it("should treat combining marks with punctuation as punctuation") {
+      Tag.of("(.\u0321\u0301)\u030a\ud802\udf39\u030a", 0) shouldBe Tag.Punctuation
+    }
+
+    it("should treat combining marks with whitespace as non-whitespace") {
+      /* some emoticons (like Lenny face) use combining marks
+       * over whitespace. these should be detected as non-whitespace */
+      Tag.of(" \u0361", 0) shouldBe Tag.Word
     }
   }
 

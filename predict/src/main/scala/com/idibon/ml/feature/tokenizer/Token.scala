@@ -39,14 +39,28 @@ object Tag extends Enumeration {
     * @return the Tag of the token
     */
   def of(content: String, ruleStatus: Int) = {
-    if (ruleStatus < 0)
+    if (ruleStatus < 0) {
       Tag(-ruleStatus - 1)
-    else if (content.forall(UCharacter.isUWhiteSpace(_)))
-      Whitespace
-    else if (content.forall(isPunctuation(_)))
-      Punctuation
-    else
-      Word
+    } else {
+      var i = 0
+      var whitespace = true
+      var punctuation = true
+
+      while (i < content.length && (whitespace || punctuation)) {
+        val cp = content.codePointAt(i)
+        i += (if (Character.isSupplementaryCodePoint(cp)) 2 else 1)
+
+        whitespace &= UCharacter.isUWhiteSpace(cp)
+        punctuation &= (isPunctuation(cp) || isGraphemeExtender(cp))
+      }
+
+      if (whitespace)
+        Whitespace
+      else if (punctuation)
+        Punctuation
+      else
+        Word
+    }
   }
 }
 

@@ -33,7 +33,7 @@ trait CaseTransform {
         lang.get.icuLocale.map(locale => {
           (t: Token) => Word(UCharacter.toUpperCase(locale, t.content))
         }).getOrElse({
-          (t: Token) => Word(UCharacter.toLowerCase(t.content))
+          (t: Token) => Word(UCharacter.toUpperCase(t.content))
         })
       }
       case CaseTransform.None => {

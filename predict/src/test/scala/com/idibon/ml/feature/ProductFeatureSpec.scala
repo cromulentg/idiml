@@ -1,5 +1,7 @@
 package com.idibon.ml.feature
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+
 import com.idibon.ml.feature.bagofwords.Word
 import com.idibon.ml.feature.contenttype.{ContentTypeCode, ContentType}
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
@@ -11,6 +13,16 @@ import org.scalatest.{FunSpec, Matchers}
   * Created by michelle on 2/22/16.
   */
 class ProductFeatureSpec extends FunSpec with Matchers {
+
+  describe("save / load") {
+    it("should save and load product features") {
+      val feature = ProductFeature(Seq[Feature[_]](Token("foo", Tag.Word, 0, 3), Word("bar")))
+      val os = new ByteArrayOutputStream
+      new FeatureOutputStream(os).writeFeature(feature)
+      val loaded = new FeatureInputStream(new ByteArrayInputStream(os.toByteArray)).readFeature
+      loaded shouldBe feature
+    }
+  }
 
   it("should output human-readable strings") {
     val features = List(new StringFeature("colorless"), new StringFeature("green ideas"), new StringFeature("sleep"),

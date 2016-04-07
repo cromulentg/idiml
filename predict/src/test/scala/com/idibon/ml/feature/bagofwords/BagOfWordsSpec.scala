@@ -21,6 +21,22 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
     }
   }
 
+  describe("save / load") {
+    it("should save and load correctly") {
+      val archive = collection.mutable.HashMap[String, Array[Byte]]()
+      val bow = new BagOfWordsTransformer(Seq(Tag.Word, Tag.Punctuation),
+        CaseTransform.ToUpper)
+      val cfg = bow.save(new MemoryAlloyWriter(archive))
+      val loader = new BagOfWordsTransformerLoader
+      val bow2 = loader.load(new EmbeddedEngine,
+        Some(new MemoryAlloyReader(archive.toMap)), cfg)
+      bow2(Seq(Token(" ", Tag.Whitespace, 0, 1),
+        Token(":)", Tag.Word, 1, 2), Token("http://", Tag.URI, 3, 7),
+        Token(".", Tag.Punctuation, 10, 1), Token("foo", Tag.Word, 11, 3)),
+        LanguageCode(Some("eng"))) shouldBe List(Word(":)"), Word("."), Word("FOO"))
+    }
+  }
+
   describe("accept-all, no case transform") {
 
     val transform = new BagOfWordsTransformer(Tag.values.toList, CaseTransform.None)
@@ -70,6 +86,7 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
         Token("HI", Tag.Word, 0, 2), Token("!!", Tag.Punctuation, 2, 2))
       val expected = List(Word("hi"))
       transform(tokens, LanguageCode(Some("eng"))) shouldBe expected
+      transform(tokens, LanguageCode(None)) shouldBe expected
     }
   }
 
@@ -79,6 +96,7 @@ class BagOfWordsSpec extends FunSpec with Matchers with BeforeAndAfter {
       val tokens = List(Token("hi", Tag.Word, 0, 2))
       transform(tokens, LanguageCode(Some("tur"))) shouldBe List(Word("Hİ"))
       transform(tokens, LanguageCode(Some("eng"))) shouldBe List(Word("HI"))
+      transform(tokens, LanguageCode(None)) shouldBe List(Word("HI"))
     }
   }
 }
