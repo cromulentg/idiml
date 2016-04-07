@@ -125,5 +125,7 @@ and you just have to deal with them :( -->""", "<doc>", "not", " ",
     !!("<?xml ? >foo") shouldBe List("<?xml ? >foo")
     !!("<a ") shouldBe List("<a ")
     !!("<![ IGNORE [") shouldBe List("<![ IGNORE [")
+    !!("<!-") shouldBe List("<!-")
+    !!("<!DOCTYPE [ <!") shouldBe List("<!DOCTYPE [ <!")
   }
 }
