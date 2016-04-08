@@ -1,12 +1,13 @@
 package com.idibon.ml.feature.indexer
 
+import com.idibon.ml.alloy.Alloy.Reader
 import com.idibon.ml.feature._
 import com.idibon.ml.alloy.Alloy
 import com.idibon.ml.common.{Archivable, ArchiveLoader, Engine}
 
 import org.json4s.{JInt, JObject}
 import org.json4s.JsonDSL._
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.linalg.{SparseVector, Vector, Vectors}
 import com.typesafe.scalalogging.Logger
 
 /** Base class for index transforms
@@ -56,7 +57,7 @@ abstract class AbstractIndexTransformer(vocabulary: Vocabulary)
     * @param features list of features
     * @return vector of feature counts
     */
-  protected def toVector(features: Seq[Feature[_]]): Vector = {
+  protected def toVector(features: Seq[Feature[_]]): SparseVector = {
     /* convert all of the features to indices, and sort by ascending
      * index to construct a list of unique indices and the number
      * of times each index appears, to generate a SparseVector of
@@ -67,7 +68,7 @@ abstract class AbstractIndexTransformer(vocabulary: Vocabulary)
     /* skip over OOV features at the start, and return a zero vector
      * if every feature is OOV */
     var i = indices.indexWhere(_ > Vocabulary.OOV, 0)
-    if (i == -1) return Vectors.zeros(dimensions)
+    if (i == -1) return Vectors.sparse(dimensions, Array(), Array()).asInstanceOf[SparseVector]
 
     val uniques = new Array[Int](indices.length - i)
     val counts = new Array[Double](indices.length - i)
@@ -79,12 +80,14 @@ abstract class AbstractIndexTransformer(vocabulary: Vocabulary)
        * the next unique feature */
       val next = indices.indexWhere(_ != indices(i), i)
       uniques(active) = indices(i)
-      counts(active) = if (next > -1) { next - i } else { indices.length - i }
+      val tf = if (next > -1) { next - i } else { indices.length - i }
+      counts(active) = tf
       active += 1
       i = next
     }
 
     Vectors.sparse(vocabulary.size, uniques.slice(0, active), counts.slice(0, active))
+      .asInstanceOf[SparseVector]
   }
 
   protected def logger: Logger
@@ -99,10 +102,24 @@ abstract class AbstractIndexTransformLoader[T] extends ArchiveLoader[T] {
   def load(engine: Engine, reader: Option[Alloy.Reader],
       config: Option[JObject]): T = {
 
-    val observations = config.map(_ \ "minimumObservations")
-      .map(_.asInstanceOf[JInt].num.intValue)
-      .getOrElse(0)
+    val vocabulary: Vocabulary = loadVocabulary(reader, config)
+    newTransform(vocabulary)
+  }
 
+  /**
+    * Loads the vocabulary if there is one to load, else returns a mutable vocabulary.
+    *
+    * @param reader location within Alloy for loading any resources
+    *   previous preserved by a call to save
+    * @param config archived configuration data returned by a previous call to save
+    * @return a vocabulary that maps feature -> dimension index
+    */
+  def loadVocabulary(reader: Option[Reader], config: Option[JObject]): Vocabulary = {
+    implicit val formats = org.json4s.DefaultFormats
+    val observations = config.map(_ \ "minimumObservations")
+      .collect({case j: JInt => j})
+      .map(_.num.intValue())
+      .getOrElse(0)
     val vocabulary = reader match {
       case None => {
         // when no reader exists, create an empty, mutable vocabulary
@@ -119,12 +136,12 @@ abstract class AbstractIndexTransformLoader[T] extends ArchiveLoader[T] {
         }
       }
     }
-
     vocabulary.minimumObservations = observations
-    newTransform(vocabulary)
+    vocabulary
   }
 }
 
 object AbstractIndexTransformer {
   val INDEX_RESOURCE_NAME = "featureIndex"
+  val IDF_RESOURCE_NAME = "idfFeatureIndex"
 }
