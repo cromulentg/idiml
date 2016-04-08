@@ -139,6 +139,7 @@ public final class CLD2 {
             success = true;
         } catch (NoSuchElementException |
                  FileNotFoundException |
+                 UnsatisfiedLinkError |
                  AccessDeniedException ex) {
             /* these are all common enough errors that logging the full
              * stack is more log noise than desirable */
