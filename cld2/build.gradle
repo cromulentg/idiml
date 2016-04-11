@@ -13,18 +13,25 @@ targetCompatibility = 1.8
 // cc / c++ command line, so that this won't have to be repeated
 // for every tool chain
 def add_cc_args(platform, args) {
-  // where to find the JNI headers
+  /* where to find the JNI headers -- for cross-compilation, try
+   * to use the system/JDK-provided _md headers first, then
+   * fallback to the OpenJDK 8 headers stored in the repo */
   def javaHome = org.gradle.internal.jvm.Jvm.current().javaHome
+  def projectDir = project.projectDir.getAbsolutePath()
   args << "-O2"
   args << "-I${javaHome}/include"
-  if (platform.operatingSystem.macOsX)
+  if (platform.operatingSystem.macOsX) {
     args << "-I${javaHome}/include/darwin"
-  else if (platform.operatingSystem.linux)
+    args << "-I${projectDir}/src/main/include/darwin"
+  } else if (platform.operatingSystem.linux) {
     args << "-I${javaHome}/include/linux"
-  else if (platform.operatingSystem.windows)
+    args << "-I${projectDir}/src/main/include/linux"
+  } else if (platform.operatingSystem.windows) {
     args << "-I${javaHome}/include/win32"
-  else if (platform.operatingSystem.freebsd)
+    args << "-I${projectDir}/src/main/include/win32"
+  } else if (platform.operatingSystem.freebsd) {
     args << "-I${javaHome}/include/freebsd"
+  }
 }
 
 // define the native (shared + static library) part of the build
@@ -112,6 +119,25 @@ model {
           add_cc_args(platform.platform, args)
         }
       }
+    }
+    mingw_w64(Gcc) {
+      path "/usr/bin"
+      eachPlatform { platform ->
+        cCompiler.executable "x86_64-w64-mingw32-gcc"
+        cppCompiler.executable "x86_64-w64-mingw32-g++"
+        linker.executable "x86_64-w64-mingw32-g++"
+        assembler.executable "x86_64-w64-mingw32-as"
+        staticLibArchiver.executable "x86_64-w64-mingw32-ar"
+        linker.withArguments { args ->
+          args << "-static-libgcc"
+          args << "-static-libstdc++"
+        }
+        cppCompiler.withArguments { args ->
+          args << "-std=c++11"
+          add_cc_args(platform.platform, args)
+        }
+      }
+      target("windows_amd64")
     }
   }
 }

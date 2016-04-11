@@ -40,3 +40,15 @@ configurations.archives.artifacts
   .findAll { it.buildDependencies.getDependencies(uploadArchives)
                .any { it.name == "distZip" || it.name == "distTar" } }
   .each { configurations.archives.artifacts.remove(it) }
+
+jar {
+  manifest {
+    attributes(
+      "Class-Path": configurations.runtime.files.collect { "./${it.name}" }.join(' ')
+    )
+  }
+}
+
+startScripts {
+  classpath = files(jar.archivePath)
+}
