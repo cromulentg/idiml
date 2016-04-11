@@ -19,6 +19,9 @@ general:
     - "train/build/libs"
 
 dependencies:
+  pre:
+    # install MinGW for Win64 cross-compiles
+    - sudo apt-get install mingw-w64
   override:
     # install all of the gradle dependencies prior to the build, so that
     # they can be cached and don't spew to the log with download updates
