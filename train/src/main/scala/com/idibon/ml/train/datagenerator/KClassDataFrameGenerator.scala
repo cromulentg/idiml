@@ -13,7 +13,9 @@ import org.json4s._
   * it for training K binary classifiers.
   *
   */
-class KClassDataFrameGenerator(builder: KClassDataFrameGeneratorBuilder) extends DataFrameBase {
+class KClassDataFrameGenerator(builder: KClassDataFrameGeneratorBuilder)
+    extends SparkDataGenerator {
+
   val scale = builder.scale.build()
   /**
     * Creates a map of label -> list of labelled points for that label.

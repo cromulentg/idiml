@@ -23,7 +23,7 @@ import scala.collection.mutable
   *
   */
 class MultiClassDataFrameGenerator(builder: MultiClassDataFrameGeneratorBuilder)
-  extends DataFrameBase with StrictLogging {
+  extends SparkDataGenerator {
   val scale = builder.scale.build()
   /**
     * Creates a map of label -> RDD of labeled points.

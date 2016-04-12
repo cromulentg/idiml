@@ -17,33 +17,14 @@ import scala.collection.mutable
 import scala.util.{Success, Try}
 
 /**
-  * SparkData Generator Trait
-  *
-  * Based on DataFrames, since they look to be the way forward in Spark, and if RDDs are needed,
-  * they can be easily converted by the consumers of this.
-  *
-  */
-trait SparkDataGenerator {
-  /**
-    *
-    * @param engine
-    * @param pipeline
-    * @param docs
-    * @return
-    */
-  def getLabeledPointData(engine: Engine,
-                          pipeline: FeaturePipeline,
-                          docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]]
-}
-
-/**
   * Base Class for creating dataframes for training on.
   *
   * This contains common logic, e.g. creating temp directories, converting to
   * parquet, etc. that is used by subclasses.
   *
   */
-abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
+abstract class SparkDataGenerator extends StrictLogging {
+  /** Scale used for re-balancing and padding the training data */
   val scale: DataSetScale
 
   /** Produces a DataFrame of LabeledPoints for each distinct label name.
@@ -71,9 +52,9 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
     * @param docs: a callback function returning the training documents
     * @return a Map from label name to a DataFrame of LabeledPoints for that label
     */
-  override def getLabeledPointData(engine: Engine,
-                                   pipeline: FeaturePipeline,
-                                   docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]] = {
+  def getLabeledPointData(engine: Engine, pipeline: FeaturePipeline,
+    docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]] = {
+
     // create a temporary directory for all of the intermediate files
     val trainerTemp = FileUtils.deleteAtExit(
       FileUtils.createTemporaryDirectory("idiml-datagen"))
