@@ -5,7 +5,6 @@ import com.idibon.ml.feature.{Buildable, FeaturePipeline}
 import com.idibon.ml.predict.Classification
 import com.idibon.ml.predict.ml.metrics._
 import com.idibon.ml.predict.ml.{TrainingSummary, IdibonMultiClassLRModel}
-import com.idibon.ml.train.alloy.MultiClass
 import com.idibon.ml.train.datagenerator.SparkDataGenerator
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.classification.{LogisticRegressionModel, IdibonSparkMLLIBLRWrapper, LogisticRegressionWithLBFGS}
@@ -102,24 +101,11 @@ class MultiClassLRFurnace(builder: MultiClassLRFurnaceBuilder)
                              dataGen: SparkDataGenerator,
                              featurePipelines: Seq[FeaturePipeline]):
   Seq[Option[Map[String, DataFrame]]] = {
-    val data = dataGen.getLabeledPointData(this.engine, featurePipelines.head, rawData)
+    val data = dataGen(this.engine, featurePipelines.head, rawData)
+    assert(data.size == 1, "Wrong number of models returned from dataGen")
+    val mdl = data.head
 
-    // lets set what we're actually fitting to what integer label
-    labelToInt = data match {
-      case Some(data) => {
-        // recreate label to Int
-        data
-          .filter(x => !x._1.equals(MultiClass.MODEL_KEY))
-          .map({case (label, df) => (label, df.collect()(0).getDouble(0).toInt)})
-      }
-      case _ => return List(None)
-    }
-    // only grab the data frame in the map that makes sense
-    val returnMe = data.map(_.filter(x => x._1.equals(MultiClass.MODEL_KEY)))
-
-    returnMe match {
-      case features: Some[_] => List(features)
-      case _ => List(None)
-    }
+    labelToInt = mdl.labels.map({ case (name, klass) => name -> klass.toInt })
+    List(Some(Map(mdl.id -> mdl.frame)))
   }
 }

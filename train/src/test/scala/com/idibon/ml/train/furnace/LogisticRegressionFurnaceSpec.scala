@@ -57,7 +57,7 @@ class SimpleLogisticRegressionFurnaceSpec extends FunSpec
           .getLines.map(line => parse(line).extract[JObject])
       }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
-      features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
+      features.get.keys should contain theSameElementsAs List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
       itbpoints.size shouldBe 2
       itbpoints(0) === Array(LabeledPoint(1.0,
@@ -129,7 +129,7 @@ class XValLogisticRegressionFurnaceSpec extends FunSpec
           .getLines.map(line => parse(line).extract[JObject])
       }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
-      features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
+      features.get.keys should contain theSameElementsAs List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
       itbpoints.size shouldBe 2
       itbpoints(0) === Array(LabeledPoint(1.0,
@@ -201,7 +201,7 @@ class HoldOutSetLogisticRegressionFurnaceSpec extends FunSpec
           .getLines.map(line => parse(line).extract[JObject])
       }, new KClassDataFrameGeneratorBuilder().build(), List(primedPipeline)).head
       features.get.size shouldBe 2
-      features.get.keys.toList shouldBe List("Intent to Buy", "Monkey")
+      features.get.keys should contain theSameElementsAs List("Intent to Buy", "Monkey")
       val itbpoints = features.get("Intent to Buy").collect()
       itbpoints.size shouldBe 2
       itbpoints(0) === Array(LabeledPoint(1.0,

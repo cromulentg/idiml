@@ -13,14 +13,6 @@ import com.typesafe.scalalogging.StrictLogging
 import org.json4s.JObject
 
 /**
-  * Static class for storing Multi-class constants.
-  */
-object MultiClass {
-  // key to use to get the single model that handles all classes.
-  val MODEL_KEY = "\u000all"
-}
-
-/**
   * This class creates a single model that handles prediction for all labels. i.e. multinomial model.
   * So instead of a label -> model mapping, this returns a single model mapped to MultiClass.MODEL_KEY.
   *
@@ -57,14 +49,14 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     // prime the pipeline
     val primedPipeline = rawPipeline.prime(rawData())
     // create featurized data once since we only have one feature pipeline
-    val featurizedData = furnace.featurizeData(rawData, dataGen, List(primedPipeline)).head match {
-      case Some(data) => data(MultiClass.MODEL_KEY) // should be only MultiClass.MODEL_KEY
-      case _ => throw new RuntimeException("Failed to create training data.")
-    }
-    val featuresUsed = new util.HashSet[Int](100000)
-    // delegate to the furnace for producing MLModel for all labels
-    val model = furnace.fit(MultiClass.MODEL_KEY, List(featurizedData), Some(List(primedPipeline)))
+    val modelSet = furnace.featurizeData(rawData, dataGen, List(primedPipeline)).head.get.toSeq
+    assert(modelSet.size == 1, "Multi-class furnace should only return 1 model")
+
+    val (modelId, trainingSet) = modelSet.head
+    val model = furnace.fit(modelId, List(trainingSet), Some(List(primedPipeline)))
+
     // add what was used so we can prune it from the global feature pipeline.
+    val featuresUsed = new util.HashSet[Int](100000)
     model.getFeaturesUsed().foreachActive((index, _) => featuresUsed.add(index))
 
     logger.info(s"Fitted models, ${featuresUsed.size()} features used.")
@@ -76,6 +68,6 @@ class MultiClass1FP(builder: MultiClass1FPBuilder)
     // prune unused features from global feature pipeline
     primedPipeline.prune(isNotUsed)
     // return MLModel
-    Map(MultiClass.MODEL_KEY -> model)
+    Map(modelId -> model)
   }
 }

@@ -37,10 +37,11 @@ abstract class LogisticRegressionFurnace[T](engine: Engine)
     * @return a map from label name to the training DataFrame for that label
     */
   def featurizeData(rawData: () => TraversableOnce[JObject],
-                             dataGen: SparkDataGenerator,
-                             featurePipelines: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
-    // produces data frames
-    List(dataGen.getLabeledPointData(this.engine, featurePipelines.head, rawData))
+    dataGen: SparkDataGenerator,
+    featurePipelines: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
+
+    List(Some(dataGen(this.engine, featurePipelines.head, rawData)
+      .map(model => model.id -> model.frame).toMap))
   }
 
 
@@ -371,8 +372,7 @@ class PerLabelFurnace(builder: PerLabelFurnaceBuilder)
                              dataGen: SparkDataGenerator,
                              featurePipeline: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames
-    featurePipeline.map { case p: FeaturePipeline =>
-        dataGen.getLabeledPointData(this.engine, p, rawData)
-    }.toList
+    featurePipeline.map(fp => Some(dataGen(this.engine, fp, rawData)
+      .map(model => model.id -> model.frame).toMap))
   }
 }
