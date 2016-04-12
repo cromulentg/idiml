@@ -34,23 +34,6 @@ trait SparkDataGenerator {
   def getLabeledPointData(engine: Engine,
                           pipeline: FeaturePipeline,
                           docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]]
-
-  /**
-    * Creates subdirectory where data should be stored.
-    *
-    * @return
-    */
-  protected def createTrainingDirs(): File = {
-    /* use a random subdirectory within the system temp directory for
-    * storing the intermediate training files */
-    val trainerTemp = FileSystems.getDefault.getPath(
-      System.getProperty("java.io.tmpdir"), "idiml", "training",
-      Math.abs(SecureRandom.getInstance("SHA1PRNG").nextInt).toString).toFile
-
-    trainerTemp.mkdirs()
-
-    trainerTemp
-  }
 }
 
 /**
@@ -91,21 +74,18 @@ abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
   override def getLabeledPointData(engine: Engine,
                                    pipeline: FeaturePipeline,
                                    docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]] = {
+    // create a temporary directory for all of the intermediate files
+    val trainerTemp = FileUtils.deleteAtExit(
+      FileUtils.createTemporaryDirectory("idiml-datagen"))
+
     val perLabelLPs = createPerLabelLPs(pipeline, docs)
     // Generate the RDDs, given the per-label list of LabeledPoints we just created -- now it's all in memory.
     val perLabelRDDs = createPerLabelRDDs(engine, perLabelLPs)
     // create training directories - return file where to save stuff.
-    val trainerTemp = createTrainingDirs()
 
     val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
     // convert RDDs to data frames
     val files = createPerLabelDFs(trainerTemp, sqlContext, perLabelRDDs)
-    // make sure the files go away
-    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run {
-        FileUtils.rm_rf(trainerTemp)
-      }
-    })
 
     // only train if all labels were successfully stored
     if (files.exists({ case (_, file) => file.isFailure })) {
