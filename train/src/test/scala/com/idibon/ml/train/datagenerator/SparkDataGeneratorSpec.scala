@@ -68,8 +68,8 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers {
 
     monkey.label match {
       case 0.0 =>
-        monkey shouldBe LabeledPoint(0.0, Vectors.dense(1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-        intent shouldBe LabeledPoint(1.0, Vectors.dense(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1))
+        monkey shouldBe LabeledPoint(0.0, Vectors.dense(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1))
+        intent shouldBe LabeledPoint(1.0, Vectors.dense(1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0))
       case 1.0 =>
         intent shouldBe LabeledPoint(0.0, Vectors.dense(1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0))
         monkey shouldBe LabeledPoint(1.0, Vectors.dense(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1))

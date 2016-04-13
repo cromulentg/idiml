@@ -45,14 +45,40 @@ abstract class SparkDataGenerator(scale: DataSetScale,
         (a, p) => SparkDataGenerator.deepMerge(a, p)
       })
 
-    modelsAndLabels.toSeq.map({ case (modelId, labelClassMap) => {
+    val results = modelsAndLabels.toSeq.map({ case (modelId, labels) => {
       val name = SparkDataGenerator.safeName(modelId)
       val file = new File(temp, s"${name}.parquet")
       val frame = sql.read.parquet(file.getAbsolutePath)
-      ModelData(modelId, labelClassMap, frame)
+      val before = reportLabelDistribution(ModelData(modelId, labels, frame))
+      val balanced = ModelData(modelId, labels, scale(sql, frame))
+      val after = reportLabelDistribution(balanced)
+      (before, after, balanced)
     }})
 
-    // FIXME: balancing!
+    val before = results.map(_._1).mkString("\n")
+    val after = results.map(_._2).mkString("\n")
+
+    logger.info(s"BEFORE BALANCING\n$before\n\nAFTER BALANCING\n$after\n")
+    results.map(_._3)
+  }
+
+  /** Produces a formatted String report of label distributions
+    *
+    * @param m model to report
+    * @return string with per-label breakdown of training item counts
+    */
+  private[this] def reportLabelDistribution(m: ModelData): String = {
+    val classes = m.labels.map(kv => kv._2 -> kv._1)
+    val dist = m.frame.groupBy("label").count.orderBy("count").collect
+    val report = new StringBuilder
+    report.append(s"Label distribution for '${m.id}'\n")
+    dist.foreach(row => {
+      val klass = row.getAs[Double]("label")
+      val label = classes.get(klass).getOrElse("<UNK>")
+      val count = row.getAs[Long]("count")
+      report.append(f"\t$klass ($label): $count\n")
+    })
+    report.toString
   }
 
   /** Creates training data for a batch of documents and persists to parquet
