@@ -11,7 +11,7 @@ import com.idibon.ml.feature.{FeatureTransformer, Feature}
 import com.idibon.ml.feature.bagofwords.{CaseTransform, Word}
 import com.idibon.ml.feature.language.LanguageCode
 import com.idibon.ml.feature.tokenizer.{Tag, Token}
-import org.json4s.{DefaultFormats, JObject}
+import org.json4s._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
 import scala.io.Source
@@ -24,8 +24,13 @@ import scala.io.Source
   * features. This transformer takes a sequence of Words and returns another
   * sequence of Words filtered to exclude the contents of the stopword file
   * corresponding to the document's LanguageCode
+  *
+  * @param stopwordMap map of three letter iso code to set of words
+  * @param defaultStopwordLanguage the default language to use if none is detected in the content
+  *                                that is passed in.
   */
-class StopwordsTransformer(private[stopwords] val stopwordMap: Map[String, Set[String]])
+class StopwordsTransformer(private[stopwords] val stopwordMap: Map[String, Set[String]],
+                           val defaultStopwordLanguage: String = "")
   extends FeatureTransformer
   with Archivable[StopwordsTransformer, StopwordsTransformerLoader] {
 
@@ -50,7 +55,7 @@ class StopwordsTransformer(private[stopwords] val stopwordMap: Map[String, Set[S
     */
   def apply(input: Seq[Word], lc: Feature[LanguageCode]): Seq[Word] = {
     val code: LanguageCode = lc.get
-    val stopSet = stopwordMap.getOrElse(code.iso_639_2.getOrElse(""), Set())
+    val stopSet = stopwordMap.getOrElse(code.iso_639_2.getOrElse(defaultStopwordLanguage), Set())
     input.filter(x => filter(x, stopSet))
   }
 
@@ -94,6 +99,9 @@ class StopwordsTransformer(private[stopwords] val stopwordMap: Map[String, Set[S
       words.foreach(w => Codec.String.write(resource, w))
       resource.close()
     })
+    val resource = baseDir.resource(StopwordsTransformer.STOPWORD_LANGUAGE_DEFAULT)
+    Codec.String.write(resource, defaultStopwordLanguage)
+    resource.close()
     None
   }
 }
@@ -113,6 +121,7 @@ object StopwordsTransformer {
   val languageIndex = "stopwords.properties"
   val STOPWORD_LANGUAGE_RESOURCE_NAME = "languages"
   val STOPWORD_RESOURCE_NAME = "stopwords"
+  val STOPWORD_LANGUAGE_DEFAULT = "language_default.txt"
   val lower = new LowerCaseTransform()
   val upper = new UpperCaseTransform()
   /* See http://unicode.org/reports/tr15/#Norm_Forms for the different types.
@@ -179,6 +188,7 @@ class StopwordsTransformerLoader extends ArchiveLoader[StopwordsTransformer] {
                     reader: Option[Reader],
                     config: Option[JObject]): StopwordsTransformer = {
     val defaultStopwords = StopwordsTransformer.generateStopFileMap()
+    var defaultLanguage = ""
     val stopwordMap: Map[String, Set[String]] = reader match {
       case None => {
         // check config to see if we are to load any custom stop words
@@ -187,6 +197,7 @@ class StopwordsTransformerLoader extends ArchiveLoader[StopwordsTransformer] {
           case Some(config) => {
             implicit val formats = DefaultFormats
             val languageConfig = config.extract[StopwordsConfig]
+            defaultLanguage = languageConfig.defaultStopwordLanguage
             val customStopwords = loadExternalStopwords(languageConfig)
             createStopwordMap(customStopwords, defaultStopwords)
           }
@@ -195,12 +206,16 @@ class StopwordsTransformerLoader extends ArchiveLoader[StopwordsTransformer] {
       case Some(reader) => {
         //read vocab from alloy
         val baseDir = reader.within(StopwordsTransformer.STOPWORD_RESOURCE_NAME)
+        val resource = baseDir.resource(StopwordsTransformer.STOPWORD_LANGUAGE_DEFAULT)
+        if (resource != null) {
+          defaultLanguage = Codec.String.read(resource)
+        }
         val languageList = readLanguages(baseDir)
         val savedStopwords = readStopwordMap(baseDir, languageList)
         createStopwordMap(savedStopwords, defaultStopwords)
       }
     }
-    new StopwordsTransformer(stopwordMap)
+    new StopwordsTransformer(stopwordMap, defaultLanguage)
   }
 
   /**
@@ -274,4 +289,4 @@ class StopwordsTransformerLoader extends ArchiveLoader[StopwordsTransformer] {
 }
 
 /** JSON config class. Only used during training. **/
-sealed case class StopwordsConfig(languages: Map[String, String])
+sealed case class StopwordsConfig(languages: Map[String, String], defaultStopwordLanguage: String = "")
