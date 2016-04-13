@@ -14,9 +14,10 @@ import org.json4s._
   *
   * @param scale object used to re-balance and pad raw training data
   * @param lpg generates labeled points from JSON documents
+  * @param batchSize number of documents to process at once
   */
 abstract class SparkDataGenerator(scale: DataSetScale,
-  lpg: LabeledPointGenerator) extends StrictLogging {
+  lpg: LabeledPointGenerator, batchSize: Int = 1000) extends StrictLogging {
 
   /** Produces a DataFrame of LabeledPoints for one or more models
     *
@@ -39,7 +40,7 @@ abstract class SparkDataGenerator(scale: DataSetScale,
     val sql = new SQLContext(engine.sparkContext)
 
     // process documents in batches to limit the amount of data in-memory
-    val modelsAndLabels = docs().toStream.grouped(1000)
+    val modelsAndLabels = docs().toStream.grouped(batchSize)
       .map(persistDocBatch(temp, sql, engine.sparkContext, pipeline, _))
       .foldLeft(Map[String, Map[String, Double]]())({
         (a, p) => SparkDataGenerator.deepMerge(a, p)

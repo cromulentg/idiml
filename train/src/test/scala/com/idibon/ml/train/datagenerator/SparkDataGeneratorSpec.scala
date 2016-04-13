@@ -54,6 +54,15 @@ class MultiClassDataFrameGeneratorSpec extends FunSpec with Matchers {
 
   val engine = new EmbeddedEngine
 
+  it("should build datasets incrementally") {
+    val gen = new SparkDataGenerator(scales.NoOpScale(),
+      new MulticlassLabeledPointGenerator, 1) {}
+
+    val model = gen(engine, pipeline, () => documents ++ documents).head
+    model.labels.keys should contain theSameElementsAs List("Intent to Buy", "Monkey")
+    model.frame.count shouldBe 4
+  }
+
   it("should create a single model with all positive labels") {
     val gen = new MultiClassDataFrameGeneratorBuilder().build()
     val models = gen(engine, pipeline, () => documents).sortBy(_.id)
