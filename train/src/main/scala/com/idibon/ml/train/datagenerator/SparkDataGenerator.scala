@@ -10,19 +10,13 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.json4s._
 
-/**
-  * Base Class for creating dataframes for training on.
+/** Converts annotated documents into Spark DataFrames for model training
   *
-  * This contains common logic, e.g. creating temp directories, converting to
-  * parquet, etc. that is used by subclasses.
-  *
+  * @param scale object used to re-balance and pad raw training data
+  * @param lpg generates labeled points from JSON documents
   */
-abstract class SparkDataGenerator extends StrictLogging {
-
-  /** Scale used for re-balancing and padding the training data */
-  val scale: DataSetScale
-  /** Labeled point generator */
-  val lpg: LabeledPointGenerator
+abstract class SparkDataGenerator(scale: DataSetScale,
+  lpg: LabeledPointGenerator) extends StrictLogging {
 
   /** Produces a DataFrame of LabeledPoints for one or more models
     *
@@ -124,7 +118,21 @@ private[datagenerator] object SparkDataGenerator {
 
 }
 
-/** Describes a model that may be trained
+/** Generator for multi-nomial (multi-class) logistic regression models
+  *
+  * @param b configuration object
+  */
+class MultiClassDataFrameGenerator(b: MultiClassDataFrameGeneratorBuilder)
+    extends SparkDataGenerator(b.scale.build, new MulticlassLabeledPointGenerator)
+
+/** Generator for multiple binary logistic regression models
+  *
+  * @param b configuration object
+  */
+class KClassDataFrameGenerator(b: KClassDataFrameGeneratorBuilder)
+    extends SparkDataGenerator(b.scale.build, new KClassLabeledPointGenerator)
+
+/** Defines a model that may be trained
   *
   * @param id model identifier
   * @param labels map of label name to class identifier for classes in the frame
