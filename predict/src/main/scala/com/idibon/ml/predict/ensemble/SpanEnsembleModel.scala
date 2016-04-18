@@ -96,7 +96,7 @@ class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
     val name = (config.get \ "name").extract[String]
     val modelNames = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
-    val models = EnsembleModel.load(modelNames, modelMeta, engine, reader)
+    val models = EnsembleModel.load[Span](modelNames, modelMeta, engine, reader)
     new SpanEnsembleModel(name, models)
   }
 }

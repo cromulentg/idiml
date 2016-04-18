@@ -112,7 +112,7 @@ object EnsembleModel {
     *               { @link com.idibon.ml.common.Archivable#save}
     * @return
     */
-  def load(modelNames: Seq[String],
+  def load[T <: PredictResult](modelNames: Seq[String],
            modelMetaData: JObject,
            engine: Engine,
            reader: Option[Reader]) = {
@@ -124,8 +124,8 @@ object EnsembleModel {
       // get model metadata JObject
       val indivMeta = (modelMetaData \ name \ "config").extract[Option[JObject]]
       (name, ArchiveLoader
-        .reify[PredictModel[Span]](modelType, engine, Some(reader.get.within(name)), indivMeta)
-        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[Span]]))
+        .reify[PredictModel[T]](modelType, engine, Some(reader.get.within(name)), indivMeta)
+        .getOrElse(modelType.newInstance.asInstanceOf[PredictModel[T]]))
     }).toMap
   }
 }
