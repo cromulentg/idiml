@@ -1,140 +1,120 @@
 package com.idibon.ml.train.datagenerator.scales
 
-import com.typesafe.scalalogging.StrictLogging
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.sql.{SQLContext, DataFrame}
+
+import com.typesafe.scalalogging.StrictLogging
 
 /**
   * Classes that deal with balancing datasets.
   *
   */
 
-/**
-  * Trait that deals with scaling datasets to appropriate proportions of
-  * negative & positive examples.
+/** Modifies training data sets to produce more-optimal label distributions
   *
-  * The name "scale" alludes to weighing metals...
+  * Some Furnaces will produce models that fail to generalize if the training
+  * data is heavily skewed toward a small number of labels, or will fail to
+  * train if labels are missing. The DataSetScale implementations can be used
+  * to improve model performance and protect against degeneracy.
   */
-trait DataSetScale {
+abstract class DataSetScale {
 
-  /**
-    * Function to balance a training set.
+  /** Rebalances the training data set
     *
-    * This strategy could be a pass through or could actually do something.
-    *
-    * @param label the label we're balancing.
-    * @param labeledPoints the set of RDDs for that label.
-    * @return a balance RDD dataset for the passed in label.
+    * @param sql current spark SQLContext
+    * @param trainingData the input raw training data
+    * @return a possibly-modified set of training data
     */
-  def balance(label: String, labeledPoints: RDD[LabeledPoint]): RDD[LabeledPoint]
+  def apply(sql: SQLContext, trainingData: DataFrame): DataFrame = {
+    DataSetScale.ensureTwoClasses(sql, trainingData)
+      .getOrElse(balance(sql, trainingData))
+  }
+
+  /** Implementation of balancing algorithm
+    *
+    * @param sql current spark SQLContext
+    * @param trainingData input raw training data
+    * @return a possibly-modified set of training data
+    */
+  protected def balance(sql: SQLContext, trainingData: DataFrame): DataFrame
 }
 
-/**
-  * Defends against breakage when there's is only a single polarity/class presented in the
-  * data.
-  */
-trait SingleClassDataSetDefender extends StrictLogging {
+object DataSetScale {
 
-  /**
-    * If there is only a single polarity/class in the data set, pads it.
+  /** Ensures that trainind data exists for at least two classes
     *
-    * How does it pad it? We just take the data in the set, and produce the opposite
-    * polarity label. The intuition being that we have no idea what to predict without
-    * some proper data, so doing it this way will hopefully make downstream consumers
-    * of this data output a prediction of 0.5, i.e. equal chance...
+    * Logistic regression fitting fails when the training data only includes
+    * examples for a single label. In these degenerate cases, this method
+    * produces a second label (0.0 if all examples are for class 1.0, 1.0 if
+    * all examples are for class 0.0) with identical training items as the
+    * present label, so that model predictions have 50% confidence.
     *
-    * @param labeledPoints
-    * @return
+    * @param sql current spark SQLContext
+    * @param data raw training data
+    * @return a new data frame if only one class exists in rawData, else None
     */
-  def defend(labeledPoints: RDD[LabeledPoint]): Option[RDD[LabeledPoint]] = {
-    val byLabel = labeledPoints.groupBy(x => x.label)
-    val labelCount = byLabel.count()
-    if (labelCount == 1){
-      val labelUsed = byLabel.collect().head._1
-      logger.warn(s"Data set has only single polarity/class from ${labeledPoints.count()} points." +
-        s" Padding so we don't break.")
-      val labelToUse = if (labelUsed == 1.0) 0.0 else 1.0
-      Some(labeledPoints.union(labeledPoints.map(lp => new LabeledPoint(labelToUse, lp.features))))
-    } else {
-      None
+  def ensureTwoClasses(sql: SQLContext, data: DataFrame): Option[DataFrame] = {
+    data.groupBy("label").count.count match {
+      case 0 => throw new RuntimeException("No training data")
+      case 1 =>
+        val missingLabel = data.head.getAs[Double]("label") match {
+          case 0.0 => 1.0
+          case _ => 0.0
+        }
+        /* the padding data is just all the original feature vectors with
+         * the missing label assigned */
+        val padding = sql.createDataFrame(data.map(row => {
+          LabeledPoint(missingLabel, row.getAs[Vector]("features"))
+        }))
+        Some(data.unionAll(padding))
+      case _ => None
     }
   }
 }
 
-/**
-  * Creates balanced datasets if the ratio of binary data is below the tolerance threshold.
+/** Randomly filters binary classifier data to produce a desired distribution
   *
-  * @param builder
+  * If the ratio between training items is below a user-defined threshold, the
+  * balanced data set will randomly discard elements from the more-popular
+  * label so that the overall label distribution matches the threshold.
+  *
+  * @param builder configuration for the scale
   */
 case class BalancedBinaryScale(builder: BalancedBinaryScaleBuilder)
-  extends DataSetScale with SingleClassDataSetDefender with StrictLogging {
+    extends DataSetScale with StrictLogging {
+
   val tolerance = builder.tolerance
   val seed = builder.seed
 
-  /**
-    * Function to balance a training set.
+  /** Balances the training set, if needed
     *
-    * This particular strategy randomly removes negatives or positives if either ratio compared to
-    * the other is below `tolerance`.
-    *
-    * @param label         the label we're balancing.
-    * @param baseLabeledPoints the set of RDDs for that label.
-    * @return a balance RDD dataset for the passed in label.
+    * {@link com.idibon.ml.train.datagenerator.scales.DataSetScale#balance}
     */
-  override def balance(label: String, baseLabeledPoints: RDD[LabeledPoint]): RDD[LabeledPoint] = {
-    val labeledPoints = defend(baseLabeledPoints) match {
-      case Some(lps) => lps
-      case None => baseLabeledPoints
-    }
-    val byPosNeg = labeledPoints.groupBy(x => x.label)
-    val polarityCounts: Map[Double, Int] = byPosNeg.map({ case (label, points) => (label, points.size) })
-      .toLocalIterator.map(x => x).toMap
-    if (polarityCounts.size > 2) {
-      // we should not worry about < 2 since we use the SingleClassDataSetDefender
-      logger.warn(s"Skipping balancing since there are ${polarityCounts.size} classes," +
-        s" rather than the required 2 that I was designed for.")
-      return labeledPoints
-    }
-    val neg_ratio = polarityCounts.get(1.0).get.toFloat / polarityCounts.get(0.0).get.toFloat
-    val pos_ratio = 1.0 / neg_ratio
+  protected def balance(sql: SQLContext, data: DataFrame): DataFrame = {
+    val dist = data.groupBy("label").count.orderBy("count").collect
+    require(dist.size == 2, "Only binary classifiers supported")
 
-    if (neg_ratio < tolerance) {
-      logger.info(s"Ratio is $neg_ratio for $label; Balancing!")
-      val targetNum = polarityCounts.get(0.0).get.toFloat * neg_ratio
-      val negTraining = labeledPoints.filter(l => l.label == 0.0).sample(false, neg_ratio, seed)
-      val posTraining = labeledPoints.filter(l => l.label == 1.0)
-      posTraining.union(negTraining)
-    } else if (pos_ratio < tolerance) {
-      logger.info(s"Ratio is $pos_ratio for $label; Balancing!")
-      val negTraining = labeledPoints.filter(l => l.label == 0.0)
-      val posTraining = labeledPoints.filter(l => l.label == 1.0).sample(false, pos_ratio, seed)
-      posTraining.union(negTraining)
+    // ratio of less-frequent to more-frequent label
+    val r = dist(0).getAs[Long]("count").toDouble / dist(1).getAs[Long]("count")
+
+    if (r < tolerance) {
+      // randomly discard elements from the more-frequent label to reach parity
+      val a = dist(0).getAs[Double]("label")
+      val b = dist(1).getAs[Double]("label")
+
+      val dataA = data.filter(s"label = $a")
+      val dataB = data.filter(s"label = $b")
+
+      dataA.unionAll(dataB.sample(false, r, seed))
     } else {
-      logger.info(s"Ratio is $neg_ratio & $pos_ratio for $label; Within tolerance. No balancing needed.")
-      labeledPoints
+      data
     }
   }
 }
 
-/**
-  * No-op scale.
-  */
-case class NoOpScale() extends DataSetScale with SingleClassDataSetDefender {
-  /**
-    * Function to balance a training set.
-    *
-    * This one does nothing to it.
-    *
-    * @param label         the label we're balancing.
-    * @param baseLabeledPoints the set of RDDs for that label.
-    * @return a balance RDD dataset for the passed in label.
-    */
-  override def balance(label: String, baseLabeledPoints: RDD[LabeledPoint]): RDD[LabeledPoint] = {
-    val labeledPoints = defend(baseLabeledPoints) match {
-      case Some(lps) => lps
-      case None => baseLabeledPoints
-    }
-    labeledPoints
-  }
+/** Trivial no-op balancer that returns the input training data */
+case class NoOpScale() extends DataSetScale {
 
+  protected def balance(sql: SQLContext, data: DataFrame) = data
 }

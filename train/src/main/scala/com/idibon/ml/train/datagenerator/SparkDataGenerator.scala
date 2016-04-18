@@ -1,196 +1,168 @@
 package com.idibon.ml.train.datagenerator
 
 import java.io.File
-import java.nio.file.FileSystems
-import java.security.SecureRandom
 
 import com.idibon.ml.common.Engine
 import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.train.datagenerator.scales.DataSetScale
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.json4s._
 
-import scala.collection.mutable
-import scala.util.{Success, Try}
-
-/**
-  * SparkData Generator Trait
+/** Converts annotated documents into Spark DataFrames for model training
   *
-  * Based on DataFrames, since they look to be the way forward in Spark, and if RDDs are needed,
-  * they can be easily converted by the consumers of this.
-  *
+  * @param scale object used to re-balance and pad raw training data
+  * @param lpg generates labeled points from JSON documents
+  * @param batchSize number of documents to process at once
   */
-trait SparkDataGenerator {
-  /**
+abstract class SparkDataGenerator(scale: DataSetScale,
+  lpg: LabeledPointGenerator, batchSize: Int = 1000) extends StrictLogging {
+
+  /** Produces a DataFrame of LabeledPoints for one or more models
     *
-    * @param engine
-    * @param pipeline
-    * @param docs
-    * @return
-    */
-  def getLabeledPointData(engine: Engine,
-                          pipeline: FeaturePipeline,
-                          docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]]
-
-  /**
-    * Creates subdirectory where data should be stored.
+    * Given a set of annotated training documents matching the
+    * {@link com.idibon.ml.train.datagenerator.json.Document} schema, returns
+    * DataFrames containing LabeledPoint training data for one or more models.
     *
-    * @return
+    * @param engine the current idiml engine context
+    * @param pipeline a FeaturePipeline to use for processing documents. Already primed.
+    * @param docs a callback function returning the training documents
+    * @return a list of models to train
     */
-  protected def createTrainingDirs(): File = {
-    /* use a random subdirectory within the system temp directory for
-    * storing the intermediate training files */
-    val trainerTemp = FileSystems.getDefault.getPath(
-      System.getProperty("java.io.tmpdir"), "idiml", "training",
-      Math.abs(SecureRandom.getInstance("SHA1PRNG").nextInt).toString).toFile
+  def apply(engine: Engine, pipeline: FeaturePipeline,
+    docs: () => TraversableOnce[JObject]): Seq[ModelData] = {
 
-    trainerTemp.mkdirs()
+    // create a temporary directory for all of the intermediate files
+    val temp = FileUtils.deleteAtExit(
+      FileUtils.createTemporaryDirectory("idiml-datagen"))
 
-    trainerTemp
+    val sql = new SQLContext(engine.sparkContext)
+
+    // process documents in batches to limit the amount of data in-memory
+    val modelsAndLabels = docs().toStream.grouped(batchSize)
+      .map(persistDocBatch(temp, sql, engine.sparkContext, pipeline, _))
+      .foldLeft(Map[String, Map[String, Double]]())({
+        (a, p) => SparkDataGenerator.deepMerge(a, p)
+      })
+
+    val results = modelsAndLabels.toSeq.map({ case (modelId, labels) => {
+      val name = SparkDataGenerator.safeName(modelId)
+      val file = new File(temp, s"${name}.parquet")
+      val frame = sql.read.parquet(file.getAbsolutePath)
+      val before = reportLabelDistribution(ModelData(modelId, labels, frame))
+      val balanced = ModelData(modelId, labels, scale(sql, frame))
+      val after = reportLabelDistribution(balanced)
+      (before, after, balanced)
+    }})
+
+    val before = results.map(_._1).mkString("\n")
+    val after = results.map(_._2).mkString("\n")
+
+    logger.info(s"BEFORE BALANCING\n$before\n\nAFTER BALANCING\n$after\n")
+    results.map(_._3)
+  }
+
+  /** Produces a formatted String report of label distributions
+    *
+    * @param m model to report
+    * @return string with per-label breakdown of training item counts
+    */
+  private[this] def reportLabelDistribution(m: ModelData): String = {
+    val classes = m.labels.map(kv => kv._2 -> kv._1)
+    val dist = m.frame.groupBy("label").count.orderBy("count").collect
+    val report = new StringBuilder
+    report.append(s"Label distribution for '${m.id}'\n")
+    dist.foreach(row => {
+      val klass = row.getAs[Double]("label")
+      val label = classes.get(klass).getOrElse("<UNK>")
+      val count = row.getAs[Long]("count")
+      report.append(f"\t$klass ($label): $count\n")
+    })
+    report.toString
+  }
+
+  /** Creates training data for a batch of documents and persists to parquet
+    *
+    * @param trainerTemp temporary directory
+    * @param sql SQLContext instance to use for creating DataFrames
+    * @param spark SparkContext instance for creating RDDs
+    * @param pipeline primed FeaturePipeline
+    * @param batch a set of documents to process
+    * @return a map of model identifiers and each model's label-to-class map
+    */
+  private[this] def persistDocBatch(temp: File, sql: SQLContext,
+    spark: SparkContext, pipeline: FeaturePipeline, batch: Stream[JObject]):
+      Map[String, Map[String, Double]] = {
+
+    val modelsAndPoints = batch.par.flatMap(lpg(pipeline, _)).groupBy(_.modelId)
+
+    modelsAndPoints.aggregate(Map[String, Map[String, Double]]())(
+      (accum, entry) => {
+        val name = SparkDataGenerator.safeName(entry._1)
+        val file = new File(temp, s"${name}.parquet")
+        // extract the labeled points for this model and append to Parquet
+        sql.createDataFrame(spark.parallelize(entry._2.map(_.p).seq))
+          .write.mode(SaveMode.Append).parquet(file.getAbsolutePath)
+
+        /* add the label => class entries from this partition for this model
+         * into the accumulated set */
+        SparkDataGenerator.deepMerge(accum,
+          Map(entry._1 -> entry._2.map(t => (t.labelName -> t.p.label)).toMap))
+
+      }, (a, b) => SparkDataGenerator.deepMerge(a, b))
   }
 }
 
-/**
-  * Base Class for creating dataframes for training on.
-  *
-  * This contains common logic, e.g. creating temp directories, converting to
-  * parquet, etc. that is used by subclasses.
-  *
-  */
-abstract class DataFrameBase extends SparkDataGenerator with StrictLogging {
-  val scale: DataSetScale
+/** Companion object for SparkDataGenerator */
+private[datagenerator] object SparkDataGenerator {
+  private type ModelMap = collection.GenMap[String, collection.GenMap[String, Double]]
 
-  /** Produces a DataFrame of LabeledPoints for each distinct label name.
+  /** Returns a unique, filesystem-safe name for a model ID
     *
-    * Dataframes are persisted to parquet format and that's what they're backed by
-    *
-    * Creates a set of labeled points for each label in the training document
-    * set, writes the points out to a temporary Parquet file, and re-loads
-    * the file as a DataFrame ready for training.
-    *
-    * Callers should provide a callback function which returns a traversable
-    * list of documents; this function will be called multiple times, and
-    * each invocation of the function must return an instance that will
-    * traverse over the exact set of documents traversed by previous instances.
-    *
-    * Traversed documents should match the format generated by
-    * idibin.git:/idibin/bin/open_source_integration/export_training_to_idiml.rb
-    *
-    *   { "content": "Who drives a chevy maliby Would you recommend it?
-    *     "metadata": { "iso_639_1": "en" },
-    *     "annotations: [{ "label": { "name": "Intent" }, "isPositive": true }]}
-    *
-    * @param engine: the current idiml engine context
-    * @param pipeline: a FeaturePipeline to use for processing documents. Already primed.
-    * @param docs: a callback function returning the training documents
-    * @return a Map from label name to a DataFrame of LabeledPoints for that label
+    * @param modelId model identifier string
+    * @return hashed name using only fs-safe characters
     */
-  override def getLabeledPointData(engine: Engine,
-                                   pipeline: FeaturePipeline,
-                                   docs: () => TraversableOnce[JObject]): Option[Map[String, DataFrame]] = {
-    val perLabelLPs = createPerLabelLPs(pipeline, docs)
-    // Generate the RDDs, given the per-label list of LabeledPoints we just created -- now it's all in memory.
-    val perLabelRDDs = createPerLabelRDDs(engine, perLabelLPs)
-    // create training directories - return file where to save stuff.
-    val trainerTemp = createTrainingDirs()
-
-    val sqlContext = new org.apache.spark.sql.SQLContext(engine.sparkContext)
-    // convert RDDs to data frames
-    val files = createPerLabelDFs(trainerTemp, sqlContext, perLabelRDDs)
-    // make sure the files go away
-    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run {
-        FileUtils.rm_rf(trainerTemp)
-      }
-    })
-
-    // only train if all labels were successfully stored
-    if (files.exists({ case (_, file) => file.isFailure })) {
-      None
-    } else {
-      Some(files.map({ case (label, file) => {
-        label -> sqlContext.read.parquet(file.get.getAbsolutePath)
-      }
-      }))
-    }
+  def safeName(modelId: String): String = {
+    val hash = java.security.MessageDigest.getInstance("SHA-1")
+    val digest = hash.digest(modelId.getBytes("UTF-8"))
+    digest.map(b => f"$b%02X").mkString.substring(0, 12)
   }
 
-  /**
-    * Converts the in memory RDDs to dataframes that have been persisted to
-    * parquet format on disk at the location of trainerTemp.
+  /** Deeply merges 2 maps-of-maps into a resulting map
     *
-    * @param trainerTemp the base directory where to save these files.
-    * @param sqlContext the sql context to use to create data frames
-    * @param perLabelRDDs the map of label -> RDD to convert to dataframe & persist.
-    * @return map of label -> file (location of parquet file)
+    * @param x input map
+    * @param y input map
+    * @return new map consisting of all keys with merged value maps from x and y
     */
-  def createPerLabelDFs(trainerTemp: File,
-                        sqlContext: org.apache.spark.sql.SQLContext,
-                        perLabelRDDs: Map[String, RDD[LabeledPoint]]): Map[String, Try[File]] = {
-    perLabelRDDs.zipWithIndex.map({ case ((label, rdd), index) => {
-      (label, Try({
-        /* can't call File.createTempFile here, because parquet "files" are
-         * actually directories. */
-        val file = new File(trainerTemp, s"idiml-${index}.parquet")
-        logger.info(s"Saving RDD for $label to $file")
-        try {
-          sqlContext.createDataFrame(rdd)
-            .write.parquet(file.getAbsolutePath)
-          file
-        } catch {
-          case error: Throwable => {
-            /* if saving fails for any reason, delete the temporary file
-             * and map store a Failure in the map */
-            logger.error(s"Failed to save training data for $label", error)
-            FileUtils.rm_rf(file)
-            throw error
-          }
-        }
-      }))
-    }
-    })
+  def deepMerge(x: ModelMap, y: ModelMap): Map[String, Map[String, Double]] = {
+    Map[String, Map[String, Double]]((x.keys ++ y.keys).map(k => {
+      (k -> Map[String, Double](
+        (x.getOrElse(k, Map[String, Double]()).toSeq.seq ++
+          y.getOrElse(k, Map[String, Double]()).toSeq.seq): _*))
+    }).toSeq.seq: _*)
   }
 
-  /**
-    * Creates a map of label -> RDD of labeled points.
-    *
-    * @param engine the engine to use to parallelize the data
-    * @param perLabelLPs map of label to list of labeled points
-    * @return
-    */
-  def createPerLabelRDDs(engine: Engine,
-                         perLabelLPs: Map[String, List[LabeledPoint]]): Map[String, RDD[LabeledPoint]] = {
-    val perLabelRDDs = mutable.HashMap[String, RDD[LabeledPoint]]()
-    val logLine = perLabelLPs.map {
-      case (label, lp) => {
-        perLabelRDDs(label) = this.scale.balance(label, engine.sparkContext.parallelize(lp))
-        val splits = perLabelRDDs(label)
-          .groupBy(x => x.label)
-          .map(x => s"Polarity: ${x._1}, Size: ${x._2.size}")
-          .collect().toList
-        // create some data for logging.
-        (label, lp.size, splits)
-      }
-    }.foldRight("") {
-      // create atomic log line.
-      case ((label, size, splits), line) => {
-        line + s"\nCreated $size data points for $label; with splits $splits"
-      }
-    }
-    logger.info(logLine)
-    perLabelRDDs.toMap
-  }
-
-  /**
-    * Method that turns an raw data into featurized labeled points, split by "label".
-    *
-    * @param pipeline primed pipeline.
-    * @param docs the raw docs to featurize and created points from.
-    * @return map that contains a "label" -> List of labeled points.
-    */
-  def createPerLabelLPs(pipeline: FeaturePipeline,
-                        docs: () => TraversableOnce[JObject]): Map[String, List[LabeledPoint]]
 }
+
+/** Generator for multi-nomial (multi-class) logistic regression models
+  *
+  * @param b configuration object
+  */
+class MultiClassDataFrameGenerator(b: MultiClassDataFrameGeneratorBuilder)
+    extends SparkDataGenerator(b.scale.build, new MulticlassLabeledPointGenerator)
+
+/** Generator for multiple binary logistic regression models
+  *
+  * @param b configuration object
+  */
+class KClassDataFrameGenerator(b: KClassDataFrameGeneratorBuilder)
+    extends SparkDataGenerator(b.scale.build, new KClassLabeledPointGenerator)
+
+/** Defines a model that may be trained
+  *
+  * @param id model identifier
+  * @param labels map of label name to class identifier for classes in the frame
+  * @param frame training data for the model
+  */
+case class ModelData(id: String, labels: Map[String, Double], frame: DataFrame)

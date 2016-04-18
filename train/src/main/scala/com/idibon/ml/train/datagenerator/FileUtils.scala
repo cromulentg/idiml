@@ -1,11 +1,51 @@
 package com.idibon.ml.train.datagenerator
 
 import java.io.{IOException, File}
+import java.util.Random
 import java.nio.file._
+
 import com.typesafe.scalalogging.StrictLogging
 
 /** Utility methods for cleaning up temporary files */
 package object FileUtils extends StrictLogging {
+
+  /** Creates a random temporary directory
+    *
+    * Creates a random path within the system temporary folder prefixed
+    * with a caller-provided string.
+    *
+    * @param prefix prefix for the random temporary name
+    * @param maxAttempts maximum number of random names to try before failing
+    * @param rng random number generator to use for name generation
+    * @return File representing the temporary directory
+    */
+  def createTemporaryDirectory(prefix: String, maxAttempts: Int = 10,
+    rng: Random = new Random): File = {
+
+    val systemTemp = FileSystems.getDefault.getPath(
+      System.getProperty("java.io.tmpdir")).toFile
+
+    if (!systemTemp.canWrite)
+      throw new IOException("Unable to write to the system temporary folder")
+
+    val privateDir = Stream.continually(rng.nextInt).take(maxAttempts)
+      .map(id => new File(systemTemp, s"${prefix}-${id}"))
+      .collectFirst({ case f: File if f.mkdir => f })
+
+    privateDir.getOrElse({ throw new IOException("Failed to create directory") })
+  }
+
+  /** Deletes a file or directory when the JVM exits
+    *
+    * @param file file or directory that should be deleted
+    * @return the file
+    */
+  def deleteAtExit(file: File): File = {
+    java.lang.Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run { rm_rf(file) }
+    })
+    file
+  }
 
   /** Recursively deletes all files starting from any file
     *

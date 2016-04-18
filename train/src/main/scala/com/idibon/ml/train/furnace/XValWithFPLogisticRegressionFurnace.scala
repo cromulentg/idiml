@@ -103,9 +103,8 @@ class XValWithFPLogisticRegressionFurnace(builder: XValWithFPLogisticRegressionF
                              dataGen: SparkDataGenerator,
                              featurePipelines: Seq[FeaturePipeline]): Seq[Option[Map[String, DataFrame]]] = {
     // produces data frames for each label
-    featurePipelines.map {
-      case p: FeaturePipeline => dataGen.getLabeledPointData(this.engine, p, rawData)
-    }.toList
+    featurePipelines.map(fp => Some(dataGen(this.engine, fp, rawData)
+      .map(model => model.id -> model.frame).toMap))
   }
 
   /**
