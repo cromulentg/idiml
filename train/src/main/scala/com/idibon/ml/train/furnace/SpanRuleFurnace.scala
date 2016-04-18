@@ -16,24 +16,8 @@ import org.json4s._
   *
   * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/24/16.
   */
-class SpanRuleFurnace(val name: String)
-  extends Furnace2[Span] {
-
-  /** Trains the model synchronously
-    *
-    * @param options training data and options
-    */
-  override protected def doHeat(options: TrainOptions): PredictModel[Span] = {
-    // create map of label -> list of rules
-    val ruleMap = createLabelToRulesMap(options.rules)
-    // create uuid label to human lable map
-    val labelToName = options.labels.map(l => l.uuid.toString -> l.name).toMap
-    // create span rules
-    val models: Map[String, SpanRules] = createSpanRuleModels(ruleMap, labelToName)
-    // create span ensemble model to house it all
-    //TODO: create training summaries
-    new SpanEnsembleModel(name, models)
-  }
+class SpanRuleFurnace(val name: String) extends RuleFurnace[Span](name)
+  with Furnace2[Span] {
 
   /**
     * Helper method to create span rule models from a map of rules.
@@ -51,20 +35,18 @@ class SpanRuleFurnace(val name: String)
   }
 
   /**
-    * Returns a map of label -> list of rules from the passed in rules list.
+    * Creates the span ensemble model.
     *
-    * @param rules
+    * @param ruleMap uuid label -> sequence of rules for that uuid label
+    * @param labelToName uuid label -> human readable label
     * @return
     */
-  def createLabelToRulesMap(rules: Seq[Rule]): Map[String, Seq[(String, Float)]] = {
-    rules// get the bits we need out
-      .map(r => (r.label, r.expression, r.weight))
-      // group by label
-      .groupBy({case (label, _, _) => label})
-      // create label -> list of (expression, weight)
-      .map({case (label, grouped) =>
-      label -> grouped.map({case (l, e, w) => (e, w)})
-    })
+  override def createEnsembleRuleModel(ruleMap: Map[String, Seq[(String, Float)]],
+                                       labelToName: Map[String, String]): PredictModel[Span] = {
+    val models: Map[String, SpanRules] = createSpanRuleModels(ruleMap, labelToName)
+    // create span ensemble model to house it all
+    //TODO: create training summaries
+    new SpanEnsembleModel(name, models)
   }
 }
 
