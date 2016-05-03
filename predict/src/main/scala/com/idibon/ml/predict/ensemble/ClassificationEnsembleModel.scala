@@ -1,7 +1,8 @@
 package com.idibon.ml.predict.ensemble
 
-import com.idibon.ml.alloy.Alloy.{Writer, Reader}
+import com.idibon.ml.alloy.Alloy.{Reader, Writer}
 import com.idibon.ml.common.{Engine, ArchiveLoader, Archivable}
+import com.idibon.ml.feature.FeaturePipeline
 import com.idibon.ml.predict._
 import org.apache.spark.mllib.linalg.Vector
 import org.json4s._
@@ -9,54 +10,43 @@ import org.json4s._
 import scala.collection.mutable
 
 /**
-  * Span ensemble model implementation.
+  * Classification ensemble model implementation.
   *
   * This handles delegating predictions to models as well as reducing results
   * appropriately from the multiple models.
   *
-  * @author "Stefan Krawczyk <stefan@idibon.com>" on 3/25/16.
+  * @author "Stefan Krawczyk <stefan@idibon.com>"
   * @param name
   * @param models
+  * @param featurePipeline
   */
-class SpanEnsembleModel(name: String, models: Map[String, PredictModel[Span]])
-  extends EnsembleModel[Span](models)
-  with Archivable[SpanEnsembleModel, SpanEnsembleModelLoader]{
+class ClassificationEnsembleModel(name: String,
+                                  models: Map[String, PredictModel[Classification]],
+                                  override val featurePipeline: Option[FeaturePipeline] = None)
+  extends EnsembleModel[Classification](models) with CanHazPipeline
+  with Archivable[ClassificationEnsembleModel, ClassificationEnsembleModelLoader]{
 
-  override val reifiedType: Class[_ <: PredictModel[Span]] = classOf[SpanEnsembleModel]
+  override val reifiedType: Class[_ <: PredictModel[Classification]] = classOf[ClassificationEnsembleModel]
 
   /**
     * Reduces predictions.
     *
-    * Each span of text can only have one span associated with it. So reduce
-    * any overlaps using a greedy approach.
+    * Each label can only have one classification associated with it. So reduce by label.
     *
-    * @param predictions the span predictions to reduce
-    * @return a sequence of spans that dont overlap
+    * @param predictions the classification predictions to reduce
+    * @return a sequence of classifications, one for each label
     */
-  override protected def reduce(predictions: Seq[Span]): Seq[Span] = {
-    // sort by offset, and tie break on negative length
-    val sorted = predictions.sortBy(p => (p.offset, -p.length)).toList
-    var workspace = sorted
-    val mutableList = mutable.ListBuffer[Span]()
-    while (workspace.nonEmpty) {
-      // grab the head element
-      val head = workspace.head
-      // find overlapping pieces
-      val overlapping = Span.getContiguousOverlappingSpans(head, workspace.tail)
-      // send to reducer
-      val reduced = Span.greedyReduce(head +: overlapping, Span.chooseSpan)
-      // filter < 0.5 Rule Spans & add to mutableList
-      mutableList ++= reduced.filterNot(s => s.isRule && s.probability < 0.5f)
-      // advance over the list
-      workspace = workspace.slice(overlapping.size + 1, workspace.length)
-    }
-    mutableList.toSeq
+  override protected def reduce(predictions: Seq[Classification]): Seq[Classification] = {
+    predictions
+      .groupBy(_.label)
+      .map({ case (label, components) => Classification.reduce(components) }).toSeq
+      .sortWith(_.probability > _.probability)
   }
 
   override def getFeaturesUsed(): Vector = ???
 
   /**
-    * Saves the ensemble span model using the passed in writer.
+    * Saves the ensemble classification model using the passed in writer.
     *
     * @param writer destination within Alloy for any resources that
     *   must be preserved for this object to be reloadable
@@ -72,13 +62,15 @@ class SpanEnsembleModel(name: String, models: Map[String, PredictModel[Span]])
     val ensembleMetadata = JObject(List(
       JField("name", JString(name)),
       JField("labels", modelNames),
-      JField("model-meta", modelMetadata)
+      JField("model-meta", modelMetadata),
+      savePipelineIfPresent(writer)
     ))
     Some(ensembleMetadata)
   }
 }
 
-class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
+
+class ClassificationEnsembleModelLoader extends ArchiveLoader[ClassificationEnsembleModel] {
   /** Reloads the object from the Alloy
     *
     * @param engine implementation of the Engine trait
@@ -91,12 +83,13 @@ class SpanEnsembleModelLoader extends ArchiveLoader[SpanEnsembleModel] {
     */
   override def load(engine: Engine,
                     reader: Option[Reader],
-                    config: Option[JObject]): SpanEnsembleModel = {
+                    config: Option[JObject]): ClassificationEnsembleModel = {
     implicit val formats = org.json4s.DefaultFormats
     val name = (config.get \ "name").extract[String]
     val modelNames = (config.get \ "labels").extract[List[String]]
     val modelMeta = (config.get \ "model-meta").extract[JObject]
-    val models = EnsembleModel.load[Span](modelNames, modelMeta, engine, reader)
-    new SpanEnsembleModel(name, models)
+    val pipeline = CanHazPipeline.loadPipelineIfPresent(engine, reader, config)
+    val models = EnsembleModel.load[Classification](modelNames, modelMeta, engine, reader)
+    new ClassificationEnsembleModel(name, models, pipeline)
   }
 }
