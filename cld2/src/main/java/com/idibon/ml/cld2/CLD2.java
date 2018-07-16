@@ -34,9 +34,16 @@ public final class CLD2 {
      */
     public static LangID detect(String content, DocumentMode mode) {
         mustBeInitialized();
+
         // CLD2 only operates on UTF-8 bytes. convert to UTF-8 before calling
-        int cld = cld2_Detect(content.getBytes(UTF_8),
-                              mode == DocumentMode.PlainText);
+        byte[] contentBytes = content.getBytes(UTF_8);
+
+        // Add null terminator character, so we don't get segmentation fault inside of CLD2
+        byte[] nullTerminatedContentBytes = new byte[contentBytes.length + 1];
+        System.arraycopy(contentBytes, 0, nullTerminatedContentBytes, 0, contentBytes.length);
+        nullTerminatedContentBytes[contentBytes.length] = 0;
+
+        int cld = cld2_Detect(nullTerminatedContentBytes, mode == DocumentMode.PlainText);
         return LangID.of(Math.abs(cld));
     }
 
